@@ -6,6 +6,7 @@ use App\Http\Controllers\FlightController;
 use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TripController;
+use Inertia\Inertia;
 
 
 /*
@@ -19,9 +20,10 @@ use App\Http\Controllers\TripController;
 |
 */
 
+
 Route::get('/', function () {
-    return view('welcome');
-});
+    return Inertia::render('Home');
+})->name('home');
 
 Route::middleware('auth')->group(function () {
     Route::post('/trips', [TripController::class, 'store'])
