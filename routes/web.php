@@ -7,6 +7,7 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TripController;
 use Inertia\Inertia;
+use App\Models\Trip;
 
 
 /*
@@ -22,7 +23,13 @@ use Inertia\Inertia;
 
 
 Route::get('/', function () {
-    return Inertia::render('Home');
+    $trips = Trip::where('user_id', auth()->id())
+        ->orderByDesc('start_date')
+        ->get();
+
+    return Inertia::render('Home', [
+        'trips' => $trips,
+    ]);
 })->name('home');
 
 Route::middleware('auth')->group(function () {

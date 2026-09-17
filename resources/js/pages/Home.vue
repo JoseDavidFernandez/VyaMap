@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import TripCounter from '../components/TripCounter.vue';
 
-const trips = ref(1);
+interface Trip {
+    id: number;
+    name: string;
+    description: string | null;
+    start_date: string;
+    end_date: string;
+}
+
+const props = defineProps<{
+    trips: Trip[];
+}>();
 </script>
 
 <template>
@@ -13,10 +22,12 @@ const trips = ref(1);
             A personal space to build, visualize and explore your travel history.
         </p>
 
-        <TripCounter :trips="trips" />
+        <TripCounter :trips="props.trips.length" />
 
-        <button type="button" @click="trips++">
-            Add trip
-        </button>
+        <ul>
+            <li v-for="trip in props.trips" :key="trip.id">
+                {{ trip.name }}
+            </li>
+        </ul>
     </main>
 </template>
