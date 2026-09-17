@@ -2,13 +2,16 @@ import './bootstrap';
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
+import type { DefineComponent } from 'vue';
+
+const pages = import.meta.glob<{
+    default: DefineComponent;
+}>('./pages/**/*.vue', {
+    eager: true,
+});
 
 createInertiaApp({
     resolve: (name) => {
-        const pages = import.meta.glob('./pages/**/*.vue', {
-            eager: true,
-        });
-
         const page = pages[`./pages/${name}.vue`];
 
         if (!page) {

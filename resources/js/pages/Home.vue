@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import TripCounter from '../components/TripCounter.vue';
 
 const trips = ref(1);
 </script>
@@ -12,7 +13,7 @@ const trips = ref(1);
             A personal space to build, visualize and explore your travel history.
         </p>
 
-        <p>Trips: {{ trips }}</p>
+        <TripCounter :trips="trips" />
 
         <button type="button" @click="trips++">
             Add trip
