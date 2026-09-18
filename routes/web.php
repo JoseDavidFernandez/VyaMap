@@ -1,13 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\VisitController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FlightController;
-use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\TripController;
+use App\Http\Controllers\VisitController;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Models\Trip;
+
 
 
 /*
@@ -21,16 +22,21 @@ use App\Models\Trip;
 |
 */
 
+// LOGIN
+Route::get('/login', function () {
+    return Inertia::render('Auth/Login');
+})->name('login');
 
-Route::get('/', function () {
-    $trips = Trip::where('user_id', auth()->id())
-        ->orderByDesc('start_date')
-        ->get();
+//REGISTER
+Route::get('/register', function () {
+    return Inertia::render('Auth/Register');
+})->name('register');
 
-    return Inertia::render('Home', [
-        'trips' => $trips,
-    ]);
-})->name('home');
+
+Route::get('/', DashboardController::class)
+    ->middleware('auth')
+    ->name('home');
+
 
 Route::middleware('auth')->group(function () {
     Route::post('/trips', [TripController::class, 'store'])
