@@ -2,7 +2,8 @@
 import StatCard from '../components/dashboard/StatCard.vue';
 import RecentTrips from '../components/dashboard/RecentTrips.vue';
 import AppLayout from '../layouts/AppLayout.vue';
-import TravelMap from '../components/dashboard/TravelMap.vue';
+import CountryMap from '../components/dashboard/CountryMap.vue';
+
 
 interface DashboardStats {
     countries: number;
@@ -40,9 +41,16 @@ interface MapFlight {
     };
 }
 
+interface Country {
+    id: number;
+    name: string;
+    iso_code: string;
+}
+
 const props = defineProps<{
     stats: DashboardStats;
     trips: Trip[];
+    countries: Country[];
     cities: MapCity[];
     flights: MapFlight[];
 }>();
@@ -115,13 +123,11 @@ const props = defineProps<{
                     </div>
                 </div>
 
-                <div class="mt-5 overflow-hidden rounded-[var(--vyamap-radius-xl)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]">
-                    <TravelMap
-                        :cities="props.cities"
-                        :flights="props.flights"
-                    />
+                <div
+                    class="mt-5 overflow-hidden rounded-[var(--vyamap-radius-xl)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]"
+                >
+                    <CountryMap :countries="props.countries" />
                 </div>
-                
             </section>
 
             <!-- Recent trips -->

@@ -49,6 +49,18 @@ class DashboardController extends Controller
                 'start_date' => $trip->start_date->format('Y-m-d'),
                 'end_date' => $trip->end_date->format('Y-m-d'),
             ]);
+        
+        $countries = Visit::query()
+            ->where('user_id', $userId)
+            ->with('city.country')
+            ->get()
+            ->map(fn (Visit $visit) => [
+                'id' => $visit->city->country->id,
+                'name' => $visit->city->country->name,
+                'iso_code' => $visit->city->country->iso_code,
+            ])
+            ->unique('id')
+            ->values();
 
         $cities = Visit::query()
             ->where('user_id', $userId)
@@ -86,6 +98,8 @@ class DashboardController extends Controller
             'trips' => $trips,
             'cities' => $cities,
             'flights' => $flights,
+            'countries' => $countries,
+
         ]);
     }
 }
