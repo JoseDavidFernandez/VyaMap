@@ -10,28 +10,82 @@ interface Trip {
 defineProps<{
     trips: Trip[];
 }>();
+
+const formatDate = (date: string) => {
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(new Date(`${date}T00:00:00`));
+};
 </script>
 
 <template>
     <section>
-        <h2>Recent trips</h2>
+        <div class="flex items-end justify-between">
+            <div>
+                <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
+                    History
+                </p>
 
-        <div v-if="trips.length === 0">
-            <p>No trips yet.</p>
+                <h2 class="mt-1 text-2xl font-semibold tracking-tight">
+                    Recent trips
+                </h2>
+            </div>
+
+            <span
+                class="text-sm text-[var(--vyamap-text-muted)]"
+            >
+                {{ trips.length }} {{ trips.length === 1 ? 'trip' : 'trips' }}
+            </span>
         </div>
 
-        <ul v-else>
-            <li v-for="trip in trips" :key="trip.id">
-                <strong>{{ trip.name }}</strong>
+        <div
+            v-if="trips.length === 0"
+            class="mt-5 border-y border-[var(--vyamap-border)] py-8"
+        >
+            <p class="text-sm text-[var(--vyamap-text-muted)]">
+                No trips yet.
+            </p>
+        </div>
 
-                <span>
-                    {{ trip.start_date }} → {{ trip.end_date }}
-                </span>
+        <div
+            v-else
+            class="mt-5 border-t border-[var(--vyamap-border)]"
+        >
+            <article
+                v-for="trip in trips"
+                :key="trip.id"
+                class="group flex items-center justify-between gap-6 border-b border-[var(--vyamap-border)] py-5"
+            >
+                <div class="min-w-0">
+                    <h3 class="truncate text-base font-semibold">
+                        {{ trip.name }}
+                    </h3>
 
-                <p v-if="trip.description">
-                    {{ trip.description }}
-                </p>
-            </li>
-        </ul>
+                    <p
+                        v-if="trip.description"
+                        class="mt-1 truncate text-sm text-[var(--vyamap-text-muted)]"
+                    >
+                        {{ trip.description }}
+                    </p>
+                </div>
+
+                <div class="flex shrink-0 items-center gap-6">
+                    <span class="text-sm text-[var(--vyamap-text-muted)]">
+                        {{ formatDate(trip.start_date) }}
+                        —
+                        {{ formatDate(trip.end_date) }}
+                    </span>
+
+                    <span
+                        class="text-lg text-[var(--vyamap-text-muted)] transition-transform group-hover:translate-x-1"
+                        aria-hidden="true"
+                    >
+                        →
+                    </span>
+                </div>
+            </article>
+        </div>
     </section>
 </template>

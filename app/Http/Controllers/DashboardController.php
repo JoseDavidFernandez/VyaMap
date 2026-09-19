@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Trip;
 use App\Models\Visit;
 use App\Models\Flight;
+use App\Models\Airport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+
 
 class DashboardController extends Controller
 {
@@ -48,9 +50,42 @@ class DashboardController extends Controller
                 'end_date' => $trip->end_date->format('Y-m-d'),
             ]);
 
+        $cities = Visit::query()
+            ->where('user_id', $userId)
+            ->with('city')
+            ->get()
+            ->map(fn (Visit $visit) => [
+                'id' => $visit->city->id,
+                'name' => $visit->city->name,
+                'latitude' => (float) $visit->city->latitude,
+                'longitude' => (float) $visit->city->longitude,
+            ])
+            ->unique('id')
+            ->values();
+
+        $flights = Flight::query()
+            ->where('user_id', $userId)
+            ->with(['originAirport', 'destinationAirport'])
+            ->get()
+            ->map(fn (Flight $flight) => [
+                'id' => $flight->id,
+                'origin' => [
+                    'name' => $flight->originAirport->name,
+                    'latitude' => (float) $flight->originAirport->latitude,
+                    'longitude' => (float) $flight->originAirport->longitude,
+                ],
+                'destination' => [
+                    'name' => $flight->destinationAirport->name,
+                    'latitude' => (float) $flight->destinationAirport->latitude,
+                    'longitude' => (float) $flight->destinationAirport->longitude,
+                ],
+            ]);
+
         return Inertia::render('Home', [
             'stats' => $stats,
             'trips' => $trips,
+            'cities' => $cities,
+            'flights' => $flights,
         ]);
     }
 }
