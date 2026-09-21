@@ -25,4 +25,30 @@ class TripTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['end_date']);
     }
+
+    public function test_authenticated_user_can_create_trip(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/trips', [
+            'name' => 'Viaje a Barcelona',
+            'description' => 'Viaje creado desde un test.',
+            'start_date' => '2026-09-20',
+            'end_date' => '2026-09-22',
+        ]);
+
+        $trip = $user->trips()->latest('id')->first();
+
+        $response
+            ->assertRedirect(route('trips.show', $trip));
+
+        $this->assertDatabaseHas('trips', [
+            'id' => $trip->id,
+            'user_id' => $user->id,
+            'name' => 'Viaje a Barcelona',
+            'description' => 'Viaje creado desde un test.',
+            'start_date' => '2026-09-20',
+            'end_date' => '2026-09-22',
+        ]);
+    }
 }

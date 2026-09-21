@@ -4,14 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTripRequest;
 use App\Models\Trip;
-use Illuminate\Http\JsonResponse;
-
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TripController extends Controller
 {
-    public function store(StoreTripRequest $request): JsonResponse
+    public function store(StoreTripRequest $request)
     {
         $trip = Trip::create([
             'user_id' => $request->user()->id,
@@ -21,7 +19,7 @@ class TripController extends Controller
             'end_date' => $request->validated('end_date'),
         ]);
 
-        return response()->json($trip, 201);
+        return redirect()->route('trips.show', $trip);
     }
 
     public function show(Trip $trip): Response

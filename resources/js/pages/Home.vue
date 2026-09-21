@@ -131,9 +131,18 @@ const props = defineProps<{
             </section>
 
             <!-- Recent trips -->
-            <section class="mt-12">
-                <RecentTrips :trips="props.trips" />
-            </section>
+            <div class="flex items-end justify-between gap-6">
+                <div class="min-w-0 flex-1">
+                    <RecentTrips :trips="props.trips" />
+                </div>
+
+                <Link
+                    href="/trips/create"
+                    class="shrink-0 rounded-full bg-[var(--vyamap-text)] px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-85"
+                >
+                    + New trip
+                </Link>
+            </div>
 
         </div>
     </AppLayout>
