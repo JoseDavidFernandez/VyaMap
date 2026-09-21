@@ -48,8 +48,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/trips/{trip}', [TripController::class, 'show'])
     ->name('trips.show');
         
-    Route::post('/visits', [VisitController::class, 'store'])
-        ->name('visits.store');
+    Route::post('/trips/{trip}/visits', [VisitController::class, 'store'])
+        ->name('trips.visits.store');
 
     Route::post('/flights', [FlightController::class, 'store'])
         ->name('flights.store');
