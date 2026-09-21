@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
+
 interface Trip {
     id: number;
     name: string;
@@ -7,17 +9,14 @@ interface Trip {
     end_date: string;
 }
 
-defineProps<{
-    trips: Trip[];
-}>();
+defineProps<{ trips: Trip[] }>();
 
-const formatDate = (date: string) => {
-    return new Intl.DateTimeFormat('en-GB', {
+const formatDate = (date: string) =>
+    new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
     }).format(new Date(`${date}T00:00:00`));
-};
 </script>
 
 <template>
@@ -33,10 +32,9 @@ const formatDate = (date: string) => {
                 </h2>
             </div>
 
-            <span
-                class="text-sm text-[var(--vyamap-text-muted)]"
-            >
-                {{ trips.length }} {{ trips.length === 1 ? 'trip' : 'trips' }}
+            <span class="text-sm text-[var(--vyamap-text-muted)]">
+                {{ trips.length }}
+                {{ trips.length === 1 ? 'trip' : 'trips' }}
             </span>
         </div>
 
@@ -49,14 +47,12 @@ const formatDate = (date: string) => {
             </p>
         </div>
 
-        <div
-            v-else
-            class="mt-5 border-t border-[var(--vyamap-border)]"
-        >
-            <article
+        <div v-else class="mt-5 border-t border-[var(--vyamap-border)]">
+            <Link
                 v-for="trip in trips"
                 :key="trip.id"
-                class="group flex items-center justify-between gap-6 border-b border-[var(--vyamap-border)] py-5"
+                :href="`/trips/${trip.id}`"
+                class="group flex items-center justify-between gap-6 border-b border-[var(--vyamap-border)] py-5 transition-colors hover:bg-[var(--vyamap-surface-secondary)]"
             >
                 <div class="min-w-0">
                     <h3 class="truncate text-base font-semibold">
@@ -73,8 +69,7 @@ const formatDate = (date: string) => {
 
                 <div class="flex shrink-0 items-center gap-6">
                     <span class="text-sm text-[var(--vyamap-text-muted)]">
-                        {{ formatDate(trip.start_date) }}
-                        —
+                        {{ formatDate(trip.start_date) }} —
                         {{ formatDate(trip.end_date) }}
                     </span>
 
@@ -85,7 +80,7 @@ const formatDate = (date: string) => {
                         →
                     </span>
                 </div>
-            </article>
+            </Link>
         </div>
     </section>
 </template>

@@ -41,6 +41,9 @@ Route::get('/', DashboardController::class)
 Route::middleware('auth')->group(function () {
     Route::post('/trips', [TripController::class, 'store'])
         ->name('trips.store');
+
+    Route::get('/trips/{trip}', [TripController::class, 'show'])
+    ->name('trips.show');
         
     Route::post('/visits', [VisitController::class, 'store'])
         ->name('visits.store');
