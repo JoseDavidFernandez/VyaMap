@@ -42,6 +42,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/trips', [TripController::class, 'store'])
         ->name('trips.store');
 
+    Route::get('/trips/create', fn () => Inertia::render('Trips/Create'))
+    ->name('trips.create');    
+
     Route::get('/trips/{trip}', [TripController::class, 'show'])
     ->name('trips.show');
         

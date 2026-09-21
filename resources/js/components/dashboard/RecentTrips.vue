@@ -21,7 +21,7 @@ const formatDate = (date: string) =>
 
 <template>
     <section>
-        <div class="flex items-end justify-between">
+        <div class="flex items-end justify-between gap-6">
             <div>
                 <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
                     History
@@ -32,10 +32,19 @@ const formatDate = (date: string) =>
                 </h2>
             </div>
 
-            <span class="text-sm text-[var(--vyamap-text-muted)]">
-                {{ trips.length }}
-                {{ trips.length === 1 ? 'trip' : 'trips' }}
-            </span>
+            <div class="flex shrink-0 items-center gap-4">
+                <span class="text-sm text-[var(--vyamap-text-muted)]">
+                    {{ trips.length }}
+                    {{ trips.length === 1 ? 'trip' : 'trips' }}
+                </span>
+
+                <Link
+                    href="/trips/create"
+                    class="rounded-full bg-[var(--vyamap-text)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
+                >
+                    + New trip
+                </Link>
+            </div>
         </div>
 
         <div
