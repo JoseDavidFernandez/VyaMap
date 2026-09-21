@@ -3,18 +3,28 @@ const fs = require('fs');
 const inputPath = './resources/js/data/world.json';
 const outputPath = './resources/js/data/world-optimized.json';
 
+const isoOverrides = {
+    France: 'FR',
+    Norway: 'NO',
+    Kosovo: 'XK',
+};
+
 const geoJson = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
 
 const optimized = {
     type: 'FeatureCollection',
-    features: geoJson.features.map((feature) => ({
-        type: 'Feature',
-        properties: {
-            ISO_A2: feature.properties.ISO_A2,
-            NAME: feature.properties.NAME,
-        },
-        geometry: feature.geometry,
-    })),
+    features: geoJson.features.map((feature) => {
+        const name = feature.properties.NAME;
+
+        return {
+            type: 'Feature',
+            properties: {
+                ISO_A2: isoOverrides[name] ?? feature.properties.ISO_A2,
+                NAME: name,
+            },
+            geometry: feature.geometry,
+        };
+    }),
 };
 
 fs.writeFileSync(

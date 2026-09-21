@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import TripMap from '../../components/trips/TripMap.vue';
 
@@ -49,11 +49,38 @@ interface Flight {
     };
 }
 
+interface AvailableCity {
+    id: number;
+    name: string;
+    country: string;
+    iso_code: string;
+}
+
 const props = defineProps<{
     trip: Trip;
     visits: Visit[];
     flights: Flight[];
+    availableCities: AvailableCity[];
 }>();
+
+const showAddCityForm = ref(false);
+
+const visitForm = useForm({
+    city_id: '',
+    visited_from: props.trip.start_date ?? '',
+    visited_until: props.trip.end_date ?? '',
+    notes: '',
+});
+
+const submitVisit = () => {
+    visitForm.post(`/trips/${props.trip.id}/visits`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            visitForm.reset('city_id', 'notes');
+            showAddCityForm.value = false;
+        },
+    });
+};
 
 const formatDate = (date: string | null) => {
     if (!date) {
@@ -403,6 +430,158 @@ const timeline = computed<TimelineEvent[]>(() => {
                     </article>
                 </div>
             </section>
+
+            <!-- BTN Add City -->
+            <div class="mt-8 flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
+                        Cities
+                    </p>
+                    <h2 class="mt-1 text-2xl font-semibold tracking-tight">
+                        Visited cities
+                    </h2>
+                </div>
+
+                <button
+                    type="button"
+                    class="rounded-full bg-[var(--vyamap-text)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85"
+                    @click="showAddCityForm = !showAddCityForm"
+                >
+                    + Add city
+                </button>
+            </div>
+
+            <div
+                v-if="showAddCityForm"
+                class="mt-4 rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] p-6"
+            >
+                <form @submit.prevent="submitVisit" class="space-y-6">
+                    <div>
+                        <label
+                            for="visit-city"
+                            class="block text-sm font-medium"
+                        >
+                            City
+                        </label>
+
+                        <select
+                            id="visit-city"
+                            v-model="visitForm.city_id"
+                            class="mt-2 block w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none focus:border-[var(--vyamap-text)]"
+                        >
+                            <option value="" disabled>
+                                Select a city
+                            </option>
+
+                            <option
+                                v-for="city in props.availableCities"
+                                :key="city.id"
+                                :value="city.id"
+                            >
+                                {{ city.name }} — {{ city.country }}
+                            </option>
+                        </select>
+
+                        <p
+                            v-if="visitForm.errors.city_id"
+                            class="mt-2 text-sm text-red-600"
+                        >
+                            {{ visitForm.errors.city_id }}
+                        </p>
+                    </div>
+
+                    <div class="grid gap-6 sm:grid-cols-2">
+                        <div>
+                            <label
+                                for="visit-from"
+                                class="block text-sm font-medium"
+                            >
+                                From
+                            </label>
+
+                            <input
+                                id="visit-from"
+                                v-model="visitForm.visited_from"
+                                type="date"
+                                class="mt-2 block w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none focus:border-[var(--vyamap-text)]"
+                            />
+
+                            <p
+                                v-if="visitForm.errors.visited_from"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ visitForm.errors.visited_from }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="visit-until"
+                                class="block text-sm font-medium"
+                            >
+                                Until
+                            </label>
+
+                            <input
+                                id="visit-until"
+                                v-model="visitForm.visited_until"
+                                type="date"
+                                class="mt-2 block w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none focus:border-[var(--vyamap-text)]"
+                            />
+
+                            <p
+                                v-if="visitForm.errors.visited_until"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ visitForm.errors.visited_until }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            for="visit-notes"
+                            class="block text-sm font-medium"
+                        >
+                            Notes
+                        </label>
+
+                        <textarea
+                            id="visit-notes"
+                            v-model="visitForm.notes"
+                            rows="3"
+                            class="mt-2 block w-full resize-none rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none focus:border-[var(--vyamap-text)]"
+                            placeholder="Optional notes about this visit"
+                        ></textarea>
+
+                        <p
+                            v-if="visitForm.errors.notes"
+                            class="mt-2 text-sm text-red-600"
+                        >
+                            {{ visitForm.errors.notes }}
+                        </p>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3">
+                        <button
+                            type="button"
+                            class="rounded-full px-4 py-2 text-sm font-medium text-[var(--vyamap-text-muted)] transition-colors hover:text-[var(--vyamap-text)]"
+                            @click="showAddCityForm = false"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            :disabled="visitForm.processing"
+                            class="rounded-full bg-[var(--vyamap-text)] px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {{ visitForm.processing ? 'Adding...' : 'Add city' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </AppLayout>
 </template>
