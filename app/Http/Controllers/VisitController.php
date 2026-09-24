@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreVisitRequest;
+use App\Http\Requests\UpdateVisitRequest;
 use App\Models\Trip;
+use App\Models\Visit;
 use Illuminate\Http\RedirectResponse;
 
 class VisitController extends Controller
@@ -19,6 +21,18 @@ class VisitController extends Controller
             'visited_until' => $request->validated('visited_until'),
             'notes' => $request->validated('notes'),
         ]);
+
+        return redirect()->route('trips.show', $trip);
+    }
+
+    public function update(
+        UpdateVisitRequest $request,
+        Trip $trip,
+        Visit $visit
+    ): RedirectResponse {
+        $this->authorize('view', $trip);
+
+        $visit->update($request->validated());
 
         return redirect()->route('trips.show', $trip);
     }
