@@ -16,6 +16,8 @@ class City extends Model
         'name',
         'latitude',
         'longitude',
+        'external_provider',
+        'external_id',
     ];
 
     protected $casts = [

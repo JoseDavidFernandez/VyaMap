@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\CitySearchController;
+use App\Http\Controllers\CityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FlightController;
 use App\Http\Controllers\JournalEntryController;
@@ -48,8 +50,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/trips/{trip}', [TripController::class, 'show'])
     ->name('trips.show');
         
-    Route::post('/trips/{trip}/visits', [VisitController::class, 'store'])
-        ->name('trips.visits.store');
+    Route::scopeBindings()->group(function () {
+        Route::post('/trips/{trip}/visits', [VisitController::class, 'store'])
+            ->name('trips.visits.store');
+
+        Route::put('/trips/{trip}/visits/{visit}', [VisitController::class, 'update'])
+            ->name('trips.visits.update');
+    });
 
     Route::post('/flights', [FlightController::class, 'store'])
         ->name('flights.store');
@@ -59,6 +66,12 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/journal-entries', [JournalEntryController::class, 'store'])
     ->name('journal-entries.store');
+
+    Route::get('/cities/search', CitySearchController::class)
+    ->name('cities.search');
+
+    Route::post('/cities', [CityController::class, 'store'])
+    ->name('cities.store');
 });
 
 

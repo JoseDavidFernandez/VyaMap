@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTripRequest;
 use App\Models\Trip;
-use App\Models\City;
 
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,16 +33,6 @@ class TripController extends Controller
             'flights.destinationAirport.city',
             'journal',
         ]);
-
-        $availableCities = City::with('country')
-            ->orderBy('name')
-            ->get()
-            ->map(fn ($city) => [
-                'id' => $city->id,
-                'name' => $city->name,
-                'country' => $city->country->name,
-                'iso_code' => $city->country->iso_code,
-            ]);
 
         return Inertia::render('Trips/Show', [
             'trip' => [
@@ -91,7 +80,6 @@ class TripController extends Controller
                 ],
             ]),
 
-            'availableCities' => $availableCities,
         ]);
     }
 }
