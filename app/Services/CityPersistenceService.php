@@ -28,6 +28,7 @@ class CityPersistenceService
                 [
                     'country_id' => $country->id,
                     'name' => $data['name'],
+                    'region_code' => $data['region_code'] ?? null,
                     'latitude' => $data['latitude'],
                     'longitude' => $data['longitude'],
                 ],

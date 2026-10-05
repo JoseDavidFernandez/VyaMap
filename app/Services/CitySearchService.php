@@ -19,6 +19,7 @@ class CitySearchService
                 'name' => $city->name,
                 'country' => $city->country->name,
                 'iso_code' => $city->country->iso_code,
+                'region_code' => $city->region_code,
                 'latitude' => (float) $city->latitude,
                 'longitude' => (float) $city->longitude,
             ])->values()->all();
@@ -72,11 +73,14 @@ class CitySearchService
                     'iso_code' => isset($result['country_code'])
                         ? strtoupper($result['country_code'])
                         : null,
+                    'region_code' => isset($result['state_code'])
+                        ? strtoupper($result['state_code'])
+                        : null,
                     'latitude' => $result['lat'] ?? null,
                     'longitude' => $result['lon'] ?? null,
                     'external_id' => $result['place_id'] ?? null,
                     '_exact_match' => $name !== null
-                        && mb_strtolower(trim($name)) === $normalizedQuery,
+                        && mb_strtolower($name) === $normalizedQuery,
                     '_importance' => $result['rank']['importance'] ?? 0,
                 ];
             })
@@ -100,7 +104,11 @@ class CitySearchService
             ->sortByDesc('_importance')
             ->unique(
                 fn (array $result) =>
-                    strtolower($result['name']) . '|' . strtolower($result['country'])
+                    strtolower($result['name'])
+                    . '|'
+                    . strtolower($result['country'])
+                    . '|'
+                    . strtolower($result['region_code'] ?? '')
             )
             ->take(5)
             ->map(function (array $result) {

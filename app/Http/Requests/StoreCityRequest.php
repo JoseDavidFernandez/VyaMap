@@ -17,6 +17,7 @@ class StoreCityRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'country' => ['required', 'string', 'max:100'],
             'iso_code' => ['required', 'string', 'size:2'],
+            'region_code' => ['nullable', 'string', 'max:20'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'external_provider' => ['required', 'string', 'in:geoapify'],

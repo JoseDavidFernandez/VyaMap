@@ -1,17 +1,10 @@
 <script setup lang="ts">
 
-// Imports
-
-import { computed, ref } from 'vue';
-
-import { Link, useForm } from '@inertiajs/vue3';
-
 import AppLayout from '../../layouts/AppLayout.vue';
-
 import TripMap from '../../components/trips/TripMap.vue';
 
-
-// Types
+import { useForm } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 interface Trip {
     id: number;
@@ -21,19 +14,29 @@ interface Trip {
     end_date: string | null;
 }
 
+interface City {
+    id: number;
+    name: string;
+    country: string;
+    iso_code: string;
+    latitude: number | null;
+    longitude: number | null;
+}
+
 interface Visit {
     id: number;
-    city: {
-        id: number;
-        name: string;
-        country: string;
-        iso_code: string;
-        latitude: number | null;
-        longitude: number | null;
-    };
+    city: City;
     visited_from: string | null;
     visited_until: string | null;
     notes: string | null;
+}
+
+interface FlightAirport {
+    id: number;
+    name: string;
+    city: string;
+    latitude: number;
+    longitude: number;
 }
 
 interface Flight {
@@ -42,20 +45,8 @@ interface Flight {
     airline: string | null;
     departure: string | null;
     arrival: string | null;
-    origin: {
-        id: number;
-        name: string;
-        city: string;
-        latitude: number;
-        longitude: number;
-    };
-    destination: {
-        id: number;
-        name: string;
-        city: string;
-        latitude: number;
-        longitude: number;
-    };
+    origin: FlightAirport;
+    destination: FlightAirport;
 }
 
 interface CitySearchResult {
@@ -64,127 +55,69 @@ interface CitySearchResult {
     name: string;
     country: string;
     iso_code: string;
+    region_code: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    external_id?: string | null;
+}
+
+interface AirportSearchResult {
+    id: number;
+    name: string;
+    iata_code: string | null;
+    icao_code: string | null;
+    city: string | null;
+    country: string | null;
     latitude: number;
     longitude: number;
-    external_id?: string;
 }
 
-interface TimelineEvent {
-    id: string;
-    type: 'visit' | 'flight';
-    date: string;
-    visit?: Visit;
-    flight?: Flight;
+interface DestinationGroup {
+    country: string;
+    iso_code: string;
+    cities: string[];
 }
 
-
-// Props
 const props = defineProps<{
     trip: Trip;
     visits: Visit[];
     flights: Flight[];
 }>();
 
+/*
+|--------------------------------------------------------------------------
+| City search
+|--------------------------------------------------------------------------
+*/
 
-// State
-
-const showAddCityForm = ref(false);
-
-const citySearchQuery = ref('');
-const citySearchResults = ref<CitySearchResult[]>([]);
-const citySearchLoading = ref(false);
-const citySaving = ref(false);
-
-const selectedCity = ref<CitySearchResult | null>(null);
-
-const editingVisitId = ref<number | null>(null);
-
-const editVisitForm = useForm({
-    city_id: '',
-    visited_from: '',
-    visited_until: '',
-    notes: '',
-});
-
-// Forms
-
-const visitForm = useForm({
-    city_id: '',
-    visited_from: props.trip.start_date ?? '',
-    visited_until: props.trip.end_date ?? '',
-    notes: '',
-});
-
-
-// Computed / Derived data
-
-const countryCount = new Set(
-    props.visits.map((visit) => visit.city.iso_code),
-).size;
-
-const cityCount = new Set(
-    props.visits.map((visit) => visit.city.id),
-).size;
-
-const timeline = computed<TimelineEvent[]>(() => {
-    const events: TimelineEvent[] = [];
-
-    props.visits.forEach((visit) => {
-        const date = visit.visited_from ?? props.trip.start_date;
-
-        if (!date) {
-            return;
-        }
-
-        events.push({
-            id: `visit-${visit.id}`,
-            type: 'visit',
-            date,
-            visit,
-        });
-    });
-
-    props.flights.forEach((flight) => {
-        if (!flight.departure) {
-            return;
-        }
-
-        events.push({
-            id: `flight-${flight.id}`,
-            type: 'flight',
-            date: flight.departure,
-            flight,
-        });
-    });
-
-    return events.sort(
-        (a, b) =>
-            new Date(a.date).getTime() -
-            new Date(b.date).getTime(),
-    );
-});
-
-
-// City search
+const citySearch = ref('');
+const cityResults = ref<CitySearchResult[]>([]);
 
 let citySearchTimeout: ReturnType<typeof setTimeout> | null = null;
+let citySearchRequestId = 0;
+
+const visitForm = useForm({
+    city_id: 0,
+    visited_from: props.trip.start_date ?? '',
+    visited_until: props.trip.start_date ?? '',
+    notes: '',
+});
 
 const searchCities = () => {
     if (citySearchTimeout) {
         clearTimeout(citySearchTimeout);
     }
 
-    const query = citySearchQuery.value.trim();
+    const query = citySearch.value.trim();
 
     if (query.length < 2) {
-        citySearchResults.value = [];
-        citySearchLoading.value = false;
+        cityResults.value = [];
         return;
     }
 
-    citySearchTimeout = setTimeout(async () => {
-        citySearchLoading.value = true;
+    const requestId = ++citySearchRequestId;
 
+    citySearchTimeout = setTimeout(async () => {
         try {
             const response = await fetch(
                 `/cities/search?q=${encodeURIComponent(query)}`,
@@ -195,32 +128,37 @@ const searchCities = () => {
                 },
             );
 
-            if (!response.ok) {
-                throw new Error('Unable to search cities.');
-            }
-
             const data = await response.json();
 
-            citySearchResults.value = data.results;
+            if (requestId !== citySearchRequestId) {
+                return;
+            }
+
+            cityResults.value = data.results ?? [];
         } catch (error) {
-            console.error(error);
-            citySearchResults.value = [];
-        } finally {
-            citySearchLoading.value = false;
+            if (requestId !== citySearchRequestId) {
+                return;
+            }
+
+            console.error('Error searching cities:', error);
+            cityResults.value = [];
         }
     }, 300);
 };
 
-
-// Actions
-
-const selectCity = async (city: CitySearchResult) => {
-    citySearchResults.value = [];
-
+const addCityToTrip = (city: CitySearchResult) => {
     if (city.source === 'local' && city.id !== null) {
-        selectedCity.value = city;
-        citySearchQuery.value = city.name;
-        visitForm.city_id = String(city.id);
+        visitForm.city_id = city.id;
+
+        visitForm.post(`/trips/${props.trip.id}/visits`, {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                citySearch.value = '';
+                cityResults.value = [];
+                visitForm.reset();
+            },
+        });
 
         return;
     }
@@ -229,876 +167,1375 @@ const selectCity = async (city: CitySearchResult) => {
         return;
     }
 
-    citySaving.value = true;
-
-    try {
-        const response = await fetch('/cities', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN':
-                    document
-                        .querySelector('meta[name="csrf-token"]')
-                        ?.getAttribute('content') ?? '',
-            },
-            body: JSON.stringify({
-                name: city.name,
-                country: city.country,
-                iso_code: city.iso_code,
-                latitude: city.latitude,
-                longitude: city.longitude,
-                external_provider: city.source,
-                external_id: city.external_id,
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Unable to save city.');
-        }
-
-        const data = await response.json();
-
-        selectedCity.value = {
-            ...city,
-            id: data.city.id,
-        };
-
-        citySearchQuery.value = city.name;
-        visitForm.city_id = String(data.city.id);
-    } catch (error) {
-        console.error(error);
-    } finally {
-        citySaving.value = false;
-    }
-};
-
-const clearSelectedCity = () => {
-    selectedCity.value = null;
-    citySearchQuery.value = '';
-    citySearchResults.value = [];
-    visitForm.city_id = '';
-};
-
-const resetCitySearch = () => {
-    citySearchQuery.value = '';
-    citySearchResults.value = [];
-    citySearchLoading.value = false;
-    selectedCity.value = null;
-    visitForm.reset('city_id');
-};
-
-const submitVisit = () => {
-    visitForm.post(`/trips/${props.trip.id}/visits`, {
-        preserveScroll: true,
-        onSuccess: () => {
-            visitForm.reset('city_id', 'notes');
-            selectedCity.value = null;
-            citySearchQuery.value = '';
-            citySearchResults.value = [];
-            showAddCityForm.value = false;
+    fetch('/cities', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-CSRF-TOKEN':
+                document
+                    .querySelector('meta[name="csrf-token"]')
+                    ?.getAttribute('content') ?? '',
         },
-    });
+        body: JSON.stringify({
+            name: city.name,
+            country: city.country,
+            iso_code: city.iso_code,
+            latitude: city.latitude,
+            longitude: city.longitude,
+            region_code: city.region_code,
+            external_provider: 'geoapify',
+            external_id: city.external_id,
+        }),
+    })
+        .then(async (response) => {
+            if (!response.ok) {
+                throw new Error('Unable to create city.');
+            }
+
+            return response.json();
+        })
+        .then((data) => {
+            visitForm.city_id = data.city.id;
+
+            visitForm.post(`/trips/${props.trip.id}/visits`, {
+                preserveScroll: true,
+
+                onSuccess: () => {
+                    citySearch.value = '';
+                    cityResults.value = [];
+                    visitForm.reset();
+                },
+            });
+        })
+        .catch((error) => {
+            console.error('Error creating city:', error);
+        });
 };
+
+/*
+|--------------------------------------------------------------------------
+| Visit editing
+|--------------------------------------------------------------------------
+*/
+
+const editingVisitId = ref<number | null>(null);
+
+const editVisitForm = useForm({
+    city_id: 0,
+    visited_from: '',
+    visited_until: '',
+    notes: '',
+});
 
 const startEditingVisit = (visit: Visit) => {
     editingVisitId.value = visit.id;
 
-    editVisitForm.city_id = String(visit.city.id);
+    editVisitForm.city_id = visit.city.id;
     editVisitForm.visited_from = visit.visited_from ?? '';
     editVisitForm.visited_until = visit.visited_until ?? '';
     editVisitForm.notes = visit.notes ?? '';
-
-    editVisitForm.clearErrors();
 };
 
 const cancelEditingVisit = () => {
     editingVisitId.value = null;
     editVisitForm.reset();
-    editVisitForm.clearErrors();
 };
 
-const submitEditVisit = () => {
-    if (editingVisitId.value === null) {
-        return;
-    }
+const saveVisit = (visit: Visit) => {
+    editVisitForm.put(`/trips/${props.trip.id}/visits/${visit.id}`, {
+        preserveScroll: true,
 
-    editVisitForm.put(
-        `/trips/${props.trip.id}/visits/${editingVisitId.value}`,
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                editingVisitId.value = null;
-                editVisitForm.reset();
-            },
+        onSuccess: () => {
+            editingVisitId.value = null;
+            editVisitForm.reset();
+
+            visitForm.visited_from = props.trip.start_date ?? '';
+            visitForm.visited_until = props.trip.start_date ?? '';
         },
-    );
+    });
 };
 
-const toggleAddCityForm = () => {
-    if (showAddCityForm.value) {
-        showAddCityForm.value = false;
-        resetCitySearch();
+/*
+|--------------------------------------------------------------------------
+| Flights
+|--------------------------------------------------------------------------
+*/
+
+const showFlightForm = ref(false);
+
+const flightForm = useForm({
+    origin_airport_id: 0,
+    destination_airport_id: 0,
+    flight_number: '',
+    departure_at: '',
+    arrival_at: '',
+    airline: '',
+});
+
+watch(
+    () => flightForm.departure_at,
+    (departure) => {
+        if (!departure) {
+            return;
+        }
+
+        if (
+            !flightForm.arrival_at ||
+            flightForm.arrival_at < departure
+        ) {
+            flightForm.arrival_at = departure;
+        }
+    },
+);
+
+const originSearch = ref('');
+const destinationSearch = ref('');
+
+const originResults = ref<AirportSearchResult[]>([]);
+const destinationResults = ref<AirportSearchResult[]>([]);
+
+const searchAirports = async (
+    query: string,
+    type: 'origin' | 'destination'
+) => {
+    if (query.trim().length < 2) {
+        if (type === 'origin') {
+            originResults.value = [];
+        } else {
+            destinationResults.value = [];
+        }
+
         return;
     }
 
-    showAddCityForm.value = true;
+    try {
+        const response = await fetch(
+            `/airports/search?q=${encodeURIComponent(query)}`
+        );
+
+        const data = await response.json();
+
+        if (type === 'origin') {
+            originResults.value = data.results ?? [];
+        } else {
+            destinationResults.value = data.results ?? [];
+        }
+    } catch (error) {
+        console.error('Error searching airports:', error);
+
+        if (type === 'origin') {
+            originResults.value = [];
+        } else {
+            destinationResults.value = [];
+        }
+    }
 };
 
+const selectOrigin = (airport: AirportSearchResult) => {
+    flightForm.origin_airport_id = airport.id;
+    originSearch.value = formatAirport(airport);
+    originResults.value = [];
+};
 
-// Formatters
+const selectDestination = (airport: AirportSearchResult) => {
+    flightForm.destination_airport_id = airport.id;
+    destinationSearch.value = formatAirport(airport);
+    destinationResults.value = [];
+};
+
+const resetFlightForm = () => {
+    flightForm.reset();
+
+    flightForm.departure_at = tripStartDateTime.value;
+    flightForm.arrival_at = tripStartDateTime.value;
+
+    originSearch.value = '';
+    destinationSearch.value = '';
+
+    originResults.value = [];
+    destinationResults.value = [];
+};
+
+const cancelFlightForm = () => {
+    showFlightForm.value = false;
+    resetFlightForm();
+};
+
+const submitFlight = () => {
+    flightForm.post(`/trips/${props.trip.id}/flights`, {
+        preserveScroll: true,
+
+        onSuccess: () => {
+            showFlightForm.value = false;
+            resetFlightForm();
+        },
+    });
+};
+
+const flagEmoji = (isoCode: string) => {
+    return isoCode
+        .toUpperCase()
+        .split('')
+        .map((letter) =>
+            String.fromCodePoint(
+                letter.charCodeAt(0) + 127397,
+            ),
+        )
+        .join('');
+};
+
+const tripStartDateTime = computed(() => {
+    if (!props.trip.start_date) {
+        return '';
+    }
+
+    return `${props.trip.start_date}T00:00`;
+});
+
+/*
+|--------------------------------------------------------------------------
+| Derived data
+|--------------------------------------------------------------------------
+*/
+
+const timeline = computed<Visit[]>(() => {
+    return [...props.visits].sort((a, b) => {
+        const dateA = a.visited_from
+            ? new Date(a.visited_from).getTime()
+            : 0;
+
+        const dateB = b.visited_from
+            ? new Date(b.visited_from).getTime()
+            : 0;
+
+        return dateA - dateB;
+    });
+});
+
+const destinationsByCountry = computed<DestinationGroup[]>(() => {
+    const groups = new Map<string, DestinationGroup>();
+
+    props.visits.forEach((visit) => {
+        const key = visit.city.iso_code;
+
+        if (!groups.has(key)) {
+            groups.set(key, {
+                country: visit.city.country,
+                iso_code: visit.city.iso_code,
+                cities: [],
+            });
+        }
+
+        const group = groups.get(key)!;
+
+        if (!group.cities.includes(visit.city.name)) {
+            group.cities.push(visit.city.name);
+        }
+    });
+
+    return Array.from(groups.values()).sort((a, b) =>
+        a.country.localeCompare(b.country)
+    );
+});
+
+const cityCount = computed(() => {
+    return new Set(
+        props.visits.map((visit) => visit.city.id)
+    ).size;
+});
+
+const countryCount = computed(() => {
+    return destinationsByCountry.value.length;
+});
+
+const flightCount = computed(() => props.flights.length);
+
+const tripDays = computed(() => {
+    if (!props.trip.start_date || !props.trip.end_date) {
+        return null;
+    }
+
+    const start = new Date(props.trip.start_date);
+    const end = new Date(props.trip.end_date);
+
+    const difference =
+        end.getTime() - start.getTime();
+
+    return Math.round(
+        difference / (1000 * 60 * 60 * 24)
+    ) + 1;
+});
+
+/*
+|--------------------------------------------------------------------------
+| Formatting
+|--------------------------------------------------------------------------
+*/
 
 const formatDate = (date: string | null) => {
     if (!date) {
-        return '';
-    }
-
-    const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-        console.warn('Invalid date:', date);
-        return '';
+        return '—';
     }
 
     return new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
-    }).format(parsedDate);
+    }).format(new Date(date));
 };
 
-const formatShortDate = (date: string | null) => {
+const formatDateShort = (date: string | null) => {
     if (!date) {
-        return '';
-    }
-
-    const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-        return '';
+        return '—';
     }
 
     return new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',
         month: 'short',
-    }).format(parsedDate);
+    }).format(new Date(date));
 };
 
-const formatVisitDateRange = (
-    from: string | null,
-    until: string | null,
-) => {
-    if (!from && !until) {
-        return '';
-    }
-
-    if (from && until && from === until) {
-        return formatShortDate(from);
-    }
-
-    if (from && until) {
-        return `${formatShortDate(from)} — ${formatShortDate(until)}`;
-    }
-
-    return formatShortDate(from ?? until);
-};
-
-const formatDateTime = (date: string | null) => {
+const formatTime = (date: string | null) => {
     if (!date) {
-        return '';
-    }
-
-    const parsedDate = new Date(date);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-        return '';
+        return '—';
     }
 
     return new Intl.DateTimeFormat('en-GB', {
-        day: '2-digit',
-        month: 'short',
         hour: '2-digit',
         minute: '2-digit',
-    }).format(parsedDate);
+    }).format(new Date(date));
 };
 
-const tripDuration = computed(() => {
-    if (!props.trip.start_date || !props.trip.end_date) {
-        return null;
-    }
+const formatAirport = (airport: AirportSearchResult) => {
+    const code = airport.iata_code || airport.icao_code || '';
 
-    const start = new Date(`${props.trip.start_date}T00:00:00`);
-    const end = new Date(`${props.trip.end_date}T00:00:00`);
-
-    return (
-        Math.round(
-            (end.getTime() - start.getTime()) / 86400000,
-        ) + 1
-    );
-});
+    return `${code} — ${airport.city ?? airport.name}`;
+};
 
 </script>
 
 <template>
-    <AppLayout>
-        <div class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
+    <AppLayout :title="trip.name">
 
-            <!-- ========================================================= -->
-            <!-- Trip header                                               -->
-            <!-- ========================================================= -->
+        <div class="vyamap-page">
 
-            <div class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-                <div>
-                    <Link
-                        href="/"
-                        class="text-sm text-[var(--vyamap-text-muted)] transition hover:text-[var(--vyamap-text)]"
-                    >
-                        ← Back to dashboard
-                    </Link>
+            <div
+                class="relative mx-auto max-w-[1500px] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
+            >
 
-                    <div class="mt-4">
-                        <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
-                            Trip
-                        </p>
+                <!-- =====================================================
+                     TRIP HEADER
+                ====================================================== -->
 
-                        <h1 class="mt-1 text-3xl font-semibold tracking-tight">
-                            {{ props.trip.name }}
-                        </h1>
+                <section class="vyamap-section mb-7">
 
-                        <p
-                            v-if="props.trip.description"
-                            class="mt-3 max-w-2xl text-sm leading-6 text-[var(--vyamap-text-muted)]"
+                    <div class="vyamap-card-lg p-7 sm:p-9 lg:p-10">
+
+                        <div
+                            class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
                         >
-                            {{ props.trip.description }}
-                        </p>
-                    </div>
-                </div>
 
-                <div class="text-sm text-[var(--vyamap-text-muted)] md:text-right">
-                    <p>
-                        {{ formatDate(props.trip.start_date) }}
-                        <span v-if="props.trip.end_date">
-                            — {{ formatDate(props.trip.end_date) }}
-                        </span>
-                    </p>
+                            <!-- Trip information -->
 
-                    <p
-                        v-if="tripDuration"
-                        class="mt-1"
-                    >
-                        {{ tripDuration }}
-                    </p>
-                </div>
-            </div>
+                            <div>
 
+                                <div class="mb-4 flex items-center gap-3 vyamap-eyebrow">
 
-            <!-- ========================================================= -->
-            <!-- Trip summary                                               -->
-            <!-- ========================================================= -->
+                                    <span>
+                                        {{ formatDateShort(trip.start_date) }}
+                                    </span>
 
-            <div class="mt-8 grid gap-4 sm:grid-cols-3">
-                <div
-                    class="rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] p-5"
-                >
-                    <p class="text-sm text-[var(--vyamap-text-muted)]">
-                        Cities
-                    </p>
+                                    <span class="text-white/15">
+                                        —
+                                    </span>
 
-                    <p class="mt-2 text-2xl font-semibold">
-                        {{ cityCount }}
-                    </p>
-                </div>
+                                    <span>
+                                        {{ formatDateShort(trip.end_date) }}
+                                    </span>
 
-                <div
-                    class="rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] p-5"
-                >
-                    <p class="text-sm text-[var(--vyamap-text-muted)]">
-                        Countries
-                    </p>
-
-                    <p class="mt-2 text-2xl font-semibold">
-                        {{ countryCount }}
-                    </p>
-                </div>
-
-                <div
-                    class="rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] p-5"
-                >
-                    <p class="text-sm text-[var(--vyamap-text-muted)]">
-                        Flights
-                    </p>
-
-                    <p class="mt-2 text-2xl font-semibold">
-                        {{ props.flights.length }}
-                    </p>
-                </div>
-            </div>
-
-
-            <!-- ========================================================= -->
-            <!-- Map                                                        -->
-            <!-- ========================================================= -->
-
-            <section class="mt-8">
-                <div>
-                    <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
-                        Route
-                    </p>
-
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight">
-                        Trip map
-                    </h2>
-                </div>
-
-                <div
-                    class="mt-4 overflow-hidden rounded-2xl border border-[var(--vyamap-border)]"
-                >
-                    <TripMap
-                        :visits="props.visits"
-                        :flights="props.flights"
-                    />
-                </div>
-            </section>
-
-
-            <!-- ========================================================= -->
-            <!-- Timeline                                                    -->
-            <!-- ========================================================= -->
-
-            <section class="mt-8">
-                <div>
-                    <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
-                        Journey
-                    </p>
-
-                    <h2 class="mt-1 text-2xl font-semibold tracking-tight">
-                        Timeline
-                    </h2>
-                </div>
-
-                <div
-                    v-if="timeline.length > 0"
-                    class="mt-4 overflow-hidden rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]"
-                >
-                    <div
-                        v-for="(event, index) in timeline"
-                        :key="event.id"
-                        class="relative px-5 py-5"
-                        :class="{
-                            'border-b border-[var(--vyamap-border)]':
-                                index < timeline.length - 1,
-                        }"
-                    >
-                        <!-- Visit -->
-                        <template v-if="event.type === 'visit' && event.visit">
-                            <div class="flex items-start gap-4">
-                                <div
-                                    class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--vyamap-text)]"
-                                />
-
-                                <div class="min-w-0">
-                                    <p class="text-sm font-medium">
-                                        {{ event.visit.city.name }}
-                                    </p>
-
-                                    <p class="mt-1 text-xs text-[var(--vyamap-text-muted)]">
-                                        {{ event.visit.city.country }}
-                                    </p>
-
-                                    <p class="mt-2 text-xs text-[var(--vyamap-text-muted)]">
-                                        {{
-                                            formatVisitDateRange(
-                                                event.visit.visited_from,
-                                                event.visit.visited_until,
-                                            )
-                                        }}
-                                    </p>
-
-                                    <p
-                                        v-if="event.visit.notes"
-                                        class="mt-2 text-sm leading-6 text-[var(--vyamap-text-muted)]"
-                                    >
-                                        {{ event.visit.notes }}
-                                    </p>
                                 </div>
-                            </div>
-                        </template>
 
-                        <!-- Flight -->
-                        <template v-else-if="event.type === 'flight' && event.flight">
-                            <div class="flex items-start gap-4">
-                                <div
-                                    class="mt-1 flex h-2.5 w-2.5 shrink-0 items-center justify-center"
+
+                                <h1
+                                    class="max-w-4xl text-5xl font-semibold tracking-[-0.065em] sm:text-6xl lg:text-7xl"
                                 >
-                                    <span class="h-2 w-2 rounded-full border border-[var(--vyamap-text-muted)]" />
-                                </div>
+                                    {{ trip.name }}
+                                </h1>
 
-                                <div class="min-w-0">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <p class="text-sm font-medium">
-                                            {{ event.flight.origin.city }}
-                                            →
-                                            {{ event.flight.destination.city }}
-                                        </p>
 
-                                        <span
-                                            v-if="event.flight.flight_number"
-                                            class="rounded-full bg-[var(--vyamap-surface-muted)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[var(--vyamap-text-muted)]"
-                                        >
-                                            {{ event.flight.flight_number }}
-                                        </span>
+                                <p
+                                    v-if="trip.description"
+                                    class="mt-4 max-w-2xl text-sm leading-6 text-white/40 sm:text-base"
+                                >
+                                    {{ trip.description }}
+                                </p>
+
+                            </div>
+
+
+                            <!-- Statistics -->
+
+                            <div
+                                class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[460px]"
+                            >
+
+                                <div class="vyamap-stat">
+
+                                    <div class="text-2xl font-semibold">
+                                        {{ tripDays ?? '—' }}
                                     </div>
 
-                                    <p class="mt-1 text-xs text-[var(--vyamap-text-muted)]">
-                                        {{ event.flight.origin.name }}
-                                        →
-                                        {{ event.flight.destination.name }}
-                                    </p>
+                                    <div class="mt-1 vyamap-eyebrow">
+                                        Days
+                                    </div>
 
-                                    <p
-                                        v-if="event.flight.departure"
-                                        class="mt-2 text-xs text-[var(--vyamap-text-muted)]"
-                                    >
-                                        {{ formatDateTime(event.flight.departure) }}
-                                    </p>
-
-                                    <p
-                                        v-if="event.flight.airline"
-                                        class="mt-1 text-xs text-[var(--vyamap-text-muted)]"
-                                    >
-                                        {{ event.flight.airline }}
-                                    </p>
                                 </div>
+
+
+                                <div class="vyamap-stat">
+
+                                    <div class="text-2xl font-semibold">
+                                        {{ cityCount }}
+                                    </div>
+
+                                    <div class="mt-1 vyamap-eyebrow">
+                                        Cities
+                                    </div>
+
+                                </div>
+
+
+                                <div class="vyamap-stat">
+
+                                    <div class="text-2xl font-semibold">
+                                        {{ countryCount }}
+                                    </div>
+
+                                    <div class="mt-1 vyamap-eyebrow">
+                                        Countries
+                                    </div>
+
+                                </div>
+
+
+                                <div class="vyamap-stat">
+
+                                    <div class="text-2xl font-semibold">
+                                        {{ flightCount }}
+                                    </div>
+
+                                    <div class="mt-1 vyamap-eyebrow">
+                                        Flights
+                                    </div>
+
+                                </div>
+
                             </div>
-                        </template>
-                    </div>
-                </div>
 
-                <div
-                    v-else
-                    class="mt-4 rounded-2xl border border-dashed border-[var(--vyamap-border)] px-6 py-10 text-center"
-                >
-                    <p class="text-sm text-[var(--vyamap-text-muted)]">
-                        No events have been added to this trip yet.
-                    </p>
-                </div>
-            </section>
+                        </div>
 
-
-            <!-- ========================================================= -->
-            <!-- Visited cities                                             -->
-            <!-- ========================================================= -->
-
-            <section class="mt-8">
-
-                <!-- Section header -->
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
-                            Cities
-                        </p>
-
-                        <h2 class="mt-1 text-2xl font-semibold tracking-tight">
-                            Visited cities
-                        </h2>
                     </div>
 
-                    <button
-                        type="button"
-                        class="rounded-xl border border-[var(--vyamap-border)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--vyamap-surface-muted)]"
-                        @click="toggleAddCityForm"
-                    >
-                        {{ showAddCityForm ? 'Cancel' : '+ Add city' }}
-                    </button>
-                </div>
+                </section>
 
 
-                <!-- Add city panel -->
-                <div
-                    v-if="showAddCityForm"
-                    class="mt-4 rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] p-6"
+                <!-- =====================================================
+                     MAP + PHOTOS + DESTINATIONS
+                ====================================================== -->
+
+                <section
+                    class="mb-7 grid gap-7 lg:grid-cols-[1.75fr_0.85fr]"
                 >
-                    <form
-                        class="space-y-6"
-                        @submit.prevent="submitVisit"
-                    >
 
-                        <!-- City search -->
-                        <div>
-                            <label
-                                for="visit-city"
-                                class="block text-sm font-medium"
+                    <!-- MAIN MAP -->
+
+                    <div class="vyamap-map-card min-h-[530px]">
+
+                        <div class="h-[530px] w-full">
+
+                            <TripMap
+                                :visits="visits"
+                                :flights="[]"
+                                :interactive="false"
+                            />
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- RIGHT COLUMN -->
+
+                    <div class="grid gap-7 sm:grid-cols-2 lg:grid-cols-1">
+
+                        <!-- PHOTOS -->
+
+                        <div class="vyamap-memory group">
+
+                            <div class="vyamap-memory-content">
+
+                                <div class="flex justify-between">
+
+                                    <div class="vyamap-memory-label">
+                                        Memories
+                                    </div>
+
+
+                                    <span
+                                        class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl"
+                                    >
+                                        +
+                                    </span>
+
+                                </div>
+
+
+                                <div>
+
+                                    <div
+                                        class="text-3xl font-semibold tracking-[-0.05em]"
+                                    >
+                                        Photos
+                                    </div>
+
+                                    <p
+                                        class="mt-2 text-xs leading-5 text-white/40"
+                                    >
+                                        Your visual story will live here.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- DESTINATIONS -->
+
+                        <!-- DESTINATIONS -->
+
+                        <div class="vyamap-card-lg p-6 sm:p-7">
+
+                            <div class="mb-5 vyamap-section-title">
+                                Destinations
+                            </div>
+
+
+                            <div
+                                v-if="destinationsByCountry.length"
+                                class="space-y-5"
                             >
-                                City
-                            </label>
 
-                            <div class="relative mt-2">
+                                <div
+                                    v-for="group in destinationsByCountry"
+                                    :key="group.iso_code"
+                                >
+
+                                    <div class="vyamap-destination">
+
+                                        <div
+                                            class="flex h-10 w-10 shrink-0 items-center justify-center text-2xl leading-none"
+                                            :title="group.country"
+                                        >
+                                            {{ flagEmoji(group.iso_code) }}
+                                        </div>
+
+
+                                        <div class="min-w-0">
+
+                                            <div class="truncate text-sm font-medium">
+                                                {{ group.country }}
+                                            </div>
+
+
+                                            <div
+                                                class="mt-0.5 text-[10px] text-white/25"
+                                            >
+                                                {{ group.cities.join(' · ') }}
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <div
+                                v-else
+                                class="text-sm text-white/25"
+                            >
+                                No destinations yet.
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                <!-- =====================================================
+                     ITINERARY + FLIGHTS
+                ====================================================== -->
+
+                <section
+                    class="mb-7 grid gap-7 lg:grid-cols-[0.85fr_1.15fr]"
+                >
+
+                    <!-- ITINERARY -->
+
+                    <div class="vyamap-card-lg p-6 sm:p-8">
+
+                        <div class="mb-7 flex items-start justify-between">
+
+                            <div>
+
+                                <div class="vyamap-section-title">
+                                    Journey
+                                </div>
+
+                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
+                                    Itinerary
+                                </h2>
+
+                            </div>
+
+
+                            <!-- Add city -->
+
+                            <div class="relative">
+
                                 <input
-                                    id="visit-city"
-                                    v-model="citySearchQuery"
+                                    v-model="citySearch"
                                     type="text"
-                                    autocomplete="off"
-                                    placeholder="Search a city..."
-                                    class="w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
+                                    placeholder="+"
+                                    aria-label="Add city"
+                                    class="h-9 w-9 cursor-text rounded-full border border-white/10 bg-white/[0.05] text-center text-sm text-white outline-none transition placeholder:text-white/30 focus:w-36 focus:px-4 focus:text-left"
                                     @input="searchCities"
                                 />
 
-                                <!-- Loading -->
-                                <div
-                                    v-if="citySearchLoading || citySaving"
-                                    class="absolute inset-y-0 right-4 flex items-center"
-                                >
-                                    <span class="text-xs text-[var(--vyamap-text-muted)]">
-                                        {{ citySaving ? 'Saving city...' : 'Searching...' }}
-                                    </span>
-                                </div>
 
-                                <!-- Search results -->
                                 <div
-                                    v-if="citySearchResults.length > 0"
-                                    class="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] shadow-lg"
+                                    v-if="cityResults.length"
+                                    class="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#11171d] shadow-2xl"
                                 >
+
                                     <button
-                                        v-for="city in citySearchResults"
-                                        :key="`${city.source}-${city.external_id ?? city.id}-${city.name}`"
+                                        v-for="city in cityResults"
+                                        :key="`${city.source}-${city.id ?? city.external_id ?? city.name}`"
                                         type="button"
-                                        :disabled="citySaving"
-                                        class="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-[var(--vyamap-surface-muted)]"
-                                        @click="selectCity(city)"
+                                        class="block w-full px-4 py-3 text-left transition hover:bg-white/[0.06]"
+                                        @click="addCityToTrip(city)"
                                     >
-                                        <div>
-                                            <p class="text-sm font-medium">
-                                                {{ city.name }}
-                                            </p>
 
-                                            <p class="mt-0.5 text-xs text-[var(--vyamap-text-muted)]">
-                                                {{ city.country }}
-                                            </p>
+                                        <div class="text-sm font-medium">
+                                            {{ city.name }}
                                         </div>
 
-                                        <span
-                                            v-if="city.source === 'geoapify'"
-                                            class="text-[10px] uppercase tracking-wide text-[var(--vyamap-text-muted)]"
-                                        >
-                                            External
-                                        </span>
+                                        <div class="mt-1 text-xs text-white/30">
+                                            {{ city.country }}
+                                            ·
+                                            {{ city.iso_code }}
+                                        </div>
+
                                     </button>
+
                                 </div>
+
                             </div>
 
-                            <!-- Selected city -->
+                            
+
+                        </div>
+
+
+                        <!-- Timeline -->
+
+                        <div
+                            v-if="timeline.length"
+                            class="space-y-0"
+                        >
+
                             <div
-                                v-if="selectedCity"
-                                class="mt-2 flex items-center justify-between rounded-xl border border-[var(--vyamap-border)] px-4 py-3"
+                                v-for="(visit, index) in timeline"
+                                :key="visit.id"
+                                class="relative pb-7 pl-12 last:pb-0"
                             >
+
+                                <div
+                                    v-if="index < timeline.length - 1"
+                                    class="vyamap-timeline-line"
+                                />
+
+
+                                <div class="vyamap-timeline-node">
+                                    {{ String(index + 1).padStart(2, '0') }}
+                                </div>
+
+
                                 <div>
-                                    <p class="text-sm font-medium">
-                                        {{ selectedCity.name }}
+
+                                    <div
+                                        class="flex items-start justify-between gap-4"
+                                    >
+
+                                        <div>
+
+                                            <div class="vyamap-eyebrow">
+
+                                                {{ formatDate(visit.visited_from) }}
+
+                                                <span
+                                                    v-if="visit.visited_until"
+                                                    class="mx-1"
+                                                >
+                                                    —
+                                                </span>
+
+                                                <span v-if="visit.visited_until">
+                                                    {{ formatDate(visit.visited_until) }}
+                                                </span>
+
+                                            </div>
+
+
+                                            <div class="mt-2 flex items-center gap-2">
+
+                                                <h3
+                                                    class="text-xl font-semibold tracking-[-0.035em]"
+                                                >
+                                                    {{ visit.city.name }}
+                                                </h3>
+
+
+                                                <span
+                                                    class="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[8px] font-semibold text-white/40"
+                                                >
+                                                    {{ visit.city.iso_code }}
+                                                </span>
+
+                                            </div>
+
+
+                                            <div
+                                                class="mt-1 text-xs text-white/30"
+                                            >
+                                                {{ visit.city.country }}
+                                            </div>
+
+                                        </div>
+
+
+                                        <button
+                                            v-if="editingVisitId !== visit.id"
+                                            type="button"
+                                            class="text-[10px] text-white/25 transition hover:text-white"
+                                            @click="startEditingVisit(visit)"
+                                        >
+                                            Edit
+                                        </button>
+
+                                    </div>
+
+
+                                    <!-- Notes -->
+
+                                    <p
+                                        v-if="editingVisitId !== visit.id && visit.notes"
+                                        class="mt-4 text-sm leading-6 text-white/35"
+                                    >
+                                        {{ visit.notes }}
                                     </p>
 
-                                    <p class="mt-0.5 text-xs text-[var(--vyamap-text-muted)]">
-                                        {{ selectedCity.country }}
-                                    </p>
+
+                                    <!-- Edit visit -->
+
+                                    <form
+                                        v-if="editingVisitId === visit.id"
+                                        class="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4"
+                                        @submit.prevent="saveVisit(visit)"
+                                    >
+
+                                        <div class="grid gap-3 sm:grid-cols-2">
+
+                                            <div>
+
+                                                <label class="vyamap-label">
+                                                    From
+                                                </label>
+
+                                                <input
+                                                    v-model="editVisitForm.visited_from"
+                                                    type="date"
+                                                    :min="trip.start_date ?? undefined"
+                                                    :max="trip.end_date ?? undefined"
+                                                    class="vyamap-input"
+                                                />
+
+                                            </div>
+
+
+                                            <div>
+
+                                                <label class="vyamap-label">
+                                                    Until
+                                                </label>
+
+                                                <input
+                                                    v-model="editVisitForm.visited_until"
+                                                    type="date"
+                                                    :min="editVisitForm.visited_from || trip.start_date || undefined"
+                                                    :max="trip.end_date ?? undefined"
+                                                    class="vyamap-input"
+                                                />
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <label class="vyamap-label mt-3">
+                                            Notes
+                                        </label>
+
+                                        <textarea
+                                            v-model="editVisitForm.notes"
+                                            rows="4"
+                                            placeholder="What did you see?"
+                                            class="vyamap-textarea"
+                                        />
+
+
+                                        <div class="mt-3 flex gap-2">
+
+                                            <button
+                                                type="submit"
+                                                :disabled="editVisitForm.processing"
+                                                class="vyamap-button"
+                                            >
+                                                Save
+                                            </button>
+
+
+                                            <button
+                                                type="button"
+                                                class="vyamap-button-secondary"
+                                                @click="cancelEditingVisit"
+                                            >
+                                                Cancel
+                                            </button>
+
+                                        </div>
+
+                                    </form>
+
                                 </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            v-else
+                            class="vyamap-empty"
+                        >
+
+                            <p class="text-sm text-white/25">
+                                Add cities to build your itinerary.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- FLIGHTS -->
+
+                    <div class="grid gap-7">
+
+                        <!-- FLIGHT MAP -->
+
+                        <div class="vyamap-map-card min-h-[330px]">
+
+                            <div class="h-[330px] w-full">
+
+                                <TripMap
+                                    :visits="[]"
+                                    :flights="flights"
+                                />
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- FLIGHT INFORMATION -->
+
+                        <div class="vyamap-card-lg p-5 sm:p-6">
+
+                            <div class="mb-4 flex items-center justify-between">
+
+                                <div>
+
+                                    <div class="vyamap-section-title">
+                                        Transport
+                                    </div>
+
+                                    <h2
+                                        class="mt-1 text-xl font-semibold tracking-[-0.04em]"
+                                    >
+                                        Flight information
+                                    </h2>
+
+                                </div>
+
 
                                 <button
+                                    v-if="!showFlightForm"
                                     type="button"
-                                    class="text-xs text-[var(--vyamap-text-muted)] transition hover:text-[var(--vyamap-text)]"
-                                    @click="clearSelectedCity"
+                                    class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-base text-white/50 transition hover:bg-white/[0.1] hover:text-white"
+                                    @click="showFlightForm = true"
                                 >
-                                    Change
+                                    +
                                 </button>
+
                             </div>
 
-                            <p
-                                v-if="visitForm.errors.city_id"
-                                class="mt-2 text-sm text-red-500"
+
+                            <div
+                                v-if="flights.length"
+                                class="space-y-2"
                             >
-                                {{ visitForm.errors.city_id }}
-                            </p>
+
+                                <div
+                                    v-for="flight in flights"
+                                    :key="flight.id"
+                                    class="vyamap-flight"
+                                >
+
+                                    <div
+                                        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+
+                                        <!-- Flight identity -->
+
+                                        <div class="flex items-center gap-3">
+
+                                            <div>
+
+                                                <div class="text-sm font-semibold">
+                                                    {{ flight.flight_number }}
+                                                </div>
+
+                                                <div
+                                                    class="mt-0.5 text-[10px] text-white/30"
+                                                >
+                                                    {{ flight.airline || 'Flight' }}
+                                                </div>
+
+                                            </div>
+
+
+                                            <div
+                                                class="h-7 w-px bg-white/[0.08]"
+                                            />
+
+
+                                            <!-- Route -->
+
+                                            <div class="text-xs text-white/60">
+
+                                                {{ flight.origin.city }}
+
+                                                <span class="mx-1 text-white/20">
+                                                    →
+                                                </span>
+
+                                                {{ flight.destination.city }}
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <!-- Date / time -->
+
+                                        <div
+                                            class="flex items-center gap-4 text-right"
+                                        >
+
+                                            <div>
+
+                                                <div class="vyamap-eyebrow">
+                                                    Departure
+                                                </div>
+
+                                                <div
+                                                    class="mt-0.5 text-xs text-white/55"
+                                                >
+                                                    {{ formatDateShort(flight.departure) }}
+                                                    ·
+                                                    {{ formatTime(flight.departure) }}
+                                                </div>
+
+                                            </div>
+
+
+                                            <div class="text-white/15">
+                                                →
+                                            </div>
+
+
+                                            <div>
+
+                                                <div class="vyamap-eyebrow">
+                                                    Arrival
+                                                </div>
+
+                                                <div
+                                                    class="mt-0.5 text-xs text-white/55"
+                                                >
+                                                    {{ formatDateShort(flight.arrival) }}
+                                                    ·
+                                                    {{ formatTime(flight.arrival) }}
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <div
+                                v-else
+                                class="vyamap-empty"
+                            >
+
+                                <p class="text-sm text-white/25">
+                                    No flights yet.
+                                </p>
+
+                            </div>
+
                         </div>
 
+                    </div>
 
-                        <!-- Dates -->
-                        <div class="grid gap-6 md:grid-cols-2">
+                </section>
 
-                            <div>
-                                <label
-                                    for="visited-from"
-                                    class="block text-sm font-medium"
-                                >
-                                    From
+
+                <!-- =====================================================
+                     FLIGHT FORM
+                ====================================================== -->
+
+                <section
+                    v-if="showFlightForm"
+                    class="vyamap-card-lg mb-7 p-6 sm:p-8"
+                >
+
+                    <div class="mb-6">
+
+                        <div class="vyamap-section-title">
+                            Transport
+                        </div>
+
+                        <h2 class="vyamap-section-heading">
+                            Add flight
+                        </h2>
+
+                    </div>
+
+
+                    <form
+                        class="space-y-4"
+                        @submit.prevent="submitFlight"
+                    >
+
+                        <!-- Airports -->
+
+                        <div class="grid gap-4 md:grid-cols-2">
+
+                            <div class="relative">
+
+                                <label class="vyamap-label">
+                                    Origin airport
                                 </label>
 
                                 <input
-                                    id="visited-from"
-                                    v-model="visitForm.visited_from"
-                                    type="date"
-                                    class="mt-2 w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
+                                    v-model="originSearch"
+                                    type="text"
+                                    placeholder="Madrid, MAD..."
+                                    class="vyamap-input"
+                                    @input="searchAirports(originSearch, 'origin')"
                                 />
 
-                                <p
-                                    v-if="visitForm.errors.visited_from"
-                                    class="mt-2 text-sm text-red-500"
+
+                                <div
+                                    v-if="originResults.length"
+                                    class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
                                 >
-                                    {{ visitForm.errors.visited_from }}
-                                </p>
+
+                                    <button
+                                        v-for="airport in originResults"
+                                        :key="airport.id"
+                                        type="button"
+                                        class="block w-full px-4 py-3 text-left transition hover:bg-white/[0.06]"
+                                        @click="selectOrigin(airport)"
+                                    >
+
+                                        <div class="text-sm">
+
+                                            {{ airport.iata_code || airport.icao_code }}
+
+                                            ·
+
+                                            {{ airport.city }}
+
+                                        </div>
+
+                                        <div class="mt-1 text-xs text-white/30">
+                                            {{ airport.name }}
+                                        </div>
+
+                                    </button>
+
+                                </div>
+
                             </div>
 
-                            <div>
-                                <label
-                                    for="visited-until"
-                                    class="block text-sm font-medium"
-                                >
-                                    Until
+
+                            <div class="relative">
+
+                                <label class="vyamap-label">
+                                    Destination airport
                                 </label>
 
                                 <input
-                                    id="visited-until"
-                                    v-model="visitForm.visited_until"
-                                    type="date"
-                                    class="mt-2 w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
+                                    v-model="destinationSearch"
+                                    type="text"
+                                    placeholder="Skopje, SKP..."
+                                    class="vyamap-input"
+                                    @input="searchAirports(destinationSearch, 'destination')"
                                 />
 
-                                <p
-                                    v-if="visitForm.errors.visited_until"
-                                    class="mt-2 text-sm text-red-500"
+
+                                <div
+                                    v-if="destinationResults.length"
+                                    class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
                                 >
-                                    {{ visitForm.errors.visited_until }}
-                                </p>
+
+                                    <button
+                                        v-for="airport in destinationResults"
+                                        :key="airport.id"
+                                        type="button"
+                                        class="block w-full px-4 py-3 text-left transition hover:bg-white/[0.06]"
+                                        @click="selectDestination(airport)"
+                                    >
+
+                                        <div class="text-sm">
+
+                                            {{ airport.iata_code || airport.icao_code }}
+
+                                            ·
+
+                                            {{ airport.city }}
+
+                                        </div>
+
+                                        <div class="mt-1 text-xs text-white/30">
+                                            {{ airport.name }}
+                                        </div>
+
+                                    </button>
+
+                                </div>
+
                             </div>
+
                         </div>
 
 
-                        <!-- Notes -->
-                        <div>
-                            <label
-                                for="visit-notes"
-                                class="block text-sm font-medium"
-                            >
-                                Notes
-                            </label>
+                        <!-- Flight information -->
 
-                            <textarea
-                                id="visit-notes"
-                                v-model="visitForm.notes"
-                                rows="3"
-                                placeholder="Optional notes about this visit..."
-                                class="mt-2 w-full resize-none rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
-                            />
+                        <div class="grid gap-4 md:grid-cols-2">
 
-                            <p
-                                v-if="visitForm.errors.notes"
-                                class="mt-2 text-sm text-red-500"
-                            >
-                                {{ visitForm.errors.notes }}
-                            </p>
+                            <div>
+
+                                <label class="vyamap-label">
+                                    Flight number
+                                </label>
+
+                                <input
+                                    v-model="flightForm.flight_number"
+                                    type="text"
+                                    placeholder="Flight number"
+                                    class="vyamap-input"
+                                />
+
+                            </div>
+
+
+                            <div>
+
+                                <label class="vyamap-label">
+                                    Airline
+                                </label>
+
+                                <input
+                                    v-model="flightForm.airline"
+                                    type="text"
+                                    placeholder="Airline"
+                                    class="vyamap-input"
+                                />
+
+                            </div>
+
                         </div>
 
 
-                        <!-- Form actions -->
-                        <div class="flex items-center justify-end gap-3">
+                        <!-- Date / time -->
+
+                        <div class="grid gap-4 md:grid-cols-2">
+
+                            <div>
+
+                                <label class="vyamap-label">
+                                    Departure
+                                </label>
+
+                                <input
+                                    v-model="flightForm.departure_at"
+                                    type="datetime-local"
+                                    :min="`${trip.start_date}T00:00`"
+                                    :max="`${trip.end_date}T23:59`"
+                                    class="vyamap-input"
+                                />
+
+                            </div>
+
+
+                            <div>
+
+                                <label class="vyamap-label">
+                                    Arrival
+                                </label>
+
+                                <input
+                                    v-model="flightForm.arrival_at"
+                                    type="datetime-local"
+                                    :min="flightForm.departure_at || `${trip.start_date}T00:00`"
+                                    :max="`${trip.end_date}T23:59`"
+                                    class="vyamap-input"
+                                />
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- Actions -->
+
+                        <div class="flex gap-2">
+
+                            <button
+                                type="submit"
+                                :disabled="flightForm.processing"
+                                class="vyamap-button"
+                            >
+                                Add flight
+                            </button>
+
                             <button
                                 type="button"
-                                class="rounded-xl px-4 py-2 text-sm font-medium text-[var(--vyamap-text-muted)] transition hover:text-[var(--vyamap-text)]"
-                                @click="showAddCityForm = false"
+                                class="vyamap-button-secondary"
+                                @click="cancelFlightForm"
                             >
                                 Cancel
                             </button>
 
-                            <button
-                                type="submit"
-                                :disabled="visitForm.processing"
-                                class="rounded-xl bg-[var(--vyamap-text)] px-4 py-2 text-sm font-medium text-[var(--vyamap-background)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {{ visitForm.processing ? 'Adding...' : 'Add city' }}
-                            </button>
                         </div>
 
                     </form>
-                </div>
+
+                </section>
 
 
-                <!-- Visited cities list -->
-                <div
-                    v-if="props.visits.length > 0"
-                    class="mt-4 grid gap-4 md:grid-cols-2"
-                >
-                    <div
-                        v-for="visit in props.visits"
-                        :key="visit.id"
-                        class="rounded-2xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] p-5"
-                    >
-                        <!-- Header -->
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <p class="text-base font-medium">
-                                    {{ visit.city.name }}
-                                </p>
+                <!-- =====================================================
+                     GOOGLE MAPS
+                ====================================================== -->
 
-                                <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">
-                                    {{ visit.city.country }}
-                                </p>
-                            </div>
+                <section class="vyamap-section">
 
-                            <span
-                                class="rounded-full bg-[var(--vyamap-surface-muted)] px-2.5 py-1 text-xs text-[var(--vyamap-text-muted)]"
-                            >
-                                {{ visit.city.iso_code }}
-                            </span>
-                        </div>
+                    <div class="vyamap-card-lg p-7 sm:p-8">
 
-                        <!-- Edit form -->
                         <div
-                            v-if="editingVisitId === visit.id"
-                            class="mt-5 space-y-5"
+                            class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
                         >
-                            <!-- Dates -->
-                            <div class="grid gap-4 md:grid-cols-2">
-                                <div>
-                                    <label
-                                        :for="`edit-visited-from-${visit.id}`"
-                                        class="block text-sm font-medium"
-                                    >
-                                        From
-                                    </label>
 
-                                    <input
-                                        :id="`edit-visited-from-${visit.id}`"
-                                        v-model="editVisitForm.visited_from"
-                                        type="date"
-                                        class="mt-2 w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
-                                    />
-
-                                    <p
-                                        v-if="editVisitForm.errors.visited_from"
-                                        class="mt-2 text-sm text-red-500"
-                                    >
-                                        {{ editVisitForm.errors.visited_from }}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label
-                                        :for="`edit-visited-until-${visit.id}`"
-                                        class="block text-sm font-medium"
-                                    >
-                                        Until
-                                    </label>
-
-                                    <input
-                                        :id="`edit-visited-until-${visit.id}`"
-                                        v-model="editVisitForm.visited_until"
-                                        type="date"
-                                        class="mt-2 w-full rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
-                                    />
-
-                                    <p
-                                        v-if="editVisitForm.errors.visited_until"
-                                        class="mt-2 text-sm text-red-500"
-                                    >
-                                        {{ editVisitForm.errors.visited_until }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Notes -->
                             <div>
-                                <label
-                                    :for="`edit-visit-notes-${visit.id}`"
-                                    class="block text-sm font-medium"
-                                >
-                                    Notes
-                                </label>
 
-                                <textarea
-                                    :id="`edit-visit-notes-${visit.id}`"
-                                    v-model="editVisitForm.notes"
-                                    rows="3"
-                                    class="mt-2 w-full resize-none rounded-xl border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text-muted)]"
-                                />
+                                <div class="vyamap-section-title">
+                                    Planning
+                                </div>
+
+                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
+                                    Google Maps
+                                </h2>
 
                                 <p
-                                    v-if="editVisitForm.errors.notes"
-                                    class="mt-2 text-sm text-red-500"
+                                    class="mt-2 max-w-xl text-sm text-white/30"
                                 >
-                                    {{ editVisitForm.errors.notes }}
+                                    Maps and lists used while planning the trip.
                                 </p>
+
                             </div>
 
-                            <!-- Actions -->
-                            <div class="flex justify-end gap-3">
-                                <button
-                                    type="button"
-                                    class="rounded-xl px-4 py-2 text-sm font-medium text-[var(--vyamap-text-muted)] transition hover:text-[var(--vyamap-text)]"
-                                    @click="cancelEditingVisit"
-                                >
-                                    Cancel
-                                </button>
 
-                                <button
-                                    type="button"
-                                    :disabled="editVisitForm.processing"
-                                    class="rounded-xl bg-[var(--vyamap-text)] px-4 py-2 text-sm font-medium text-[var(--vyamap-background)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                                    @click="submitEditVisit"
-                                >
-                                    {{ editVisitForm.processing ? 'Saving...' : 'Save changes' }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Visit information -->
-                        <div
-                            v-if="
-                                editingVisitId !== visit.id &&
-                                (visit.visited_from || visit.visited_until)
-                            "
-                            class="mt-4 text-xs text-[var(--vyamap-text-muted)]"
-                        > {{
-                            formatVisitDateRange(
-                                visit.visited_from,
-                                visit.visited_until,
-                            )
-                        }}
-                        </div>
-
-                        <p
-                            v-if="
-                                editingVisitId !== visit.id &&
-                                visit.notes
-                            "
-                            class="mt-3 text-sm leading-6 text-[var(--vyamap-text-muted)]"
-                        >
-                            {{ visit.notes }}
-                        </p>
-
-                        <!-- Edit button -->
-                        <div
-                            v-if="editingVisitId !== visit.id"
-                            class="mt-4 flex justify-end"
-                        >
                             <button
                                 type="button"
-                                class="text-xs font-medium text-[var(--vyamap-text-muted)] transition hover:text-[var(--vyamap-text)]"
-                                @click="startEditingVisit(visit)"
+                                disabled
+                                class="vyamap-button-secondary"
                             >
-                                Edit
+                                + Add map
                             </button>
+
                         </div>
+
+
+                        <div class="vyamap-empty mt-7">
+
+                            <div class="text-center">
+
+                                <div class="text-2xl text-white/10">
+                                    ↗
+                                </div>
+
+                                <p class="mt-2 text-xs text-white/25">
+                                    Google Maps links will appear here.
+                                </p>
+
+                            </div>
+
+                        </div>
+
                     </div>
-                </div>
 
-                <div
-                    v-if="props.visits.length === 0"
-                    class="mt-4 rounded-2xl border border-dashed border-[var(--vyamap-border)] px-6 py-10 text-center"
-                >
-                   <p class="text-sm text-[var(--vyamap-text-muted)]">
-                        No cities have been added to this trip yet.
-                    </p>
-                </div>
+                </section>
 
-            </section>
+            </div>
 
         </div>
+
     </AppLayout>
 </template>

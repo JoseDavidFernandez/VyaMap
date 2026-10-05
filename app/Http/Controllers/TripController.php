@@ -62,8 +62,8 @@ class TripController extends Controller
                 'id' => $flight->id,
                 'flight_number' => $flight->flight_number,
                 'airline' => $flight->airline,
-                'departure' => $flight->departure?->toISOString(),
-                'arrival' => $flight->arrival?->toISOString(),
+                'departure' => $flight->departure_at?->toISOString(),
+                'arrival' => $flight->arrival_at?->toISOString(),
                 'origin' => [
                     'id' => $flight->originAirport->id,
                     'name' => $flight->originAirport->name,

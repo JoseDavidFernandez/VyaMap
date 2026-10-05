@@ -16,7 +16,7 @@ class CreateNewUser implements CreatesNewUsers
     /**
      * Validate and create a newly registered user.
      *
-     * @param  array<string, string>  $input
+     * @param array<string, mixed> $input
      *
      * @throws ValidationException
      */
@@ -32,12 +32,20 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
         ])->validate();
+
+        $avatar = null;
+
+        if (isset($input['avatar'])) {
+            $avatar = $input['avatar']->store('avatars', 'public');
+        }
 
         return User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
+            'avatar' => $avatar,
         ]);
     }
 }
