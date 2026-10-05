@@ -12,7 +12,11 @@ use App\Models\Trip;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+
 
 class PhotoTest extends TestCase
 {
@@ -22,6 +26,8 @@ class PhotoTest extends TestCase
     {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
+
+        Queue::fake();
 
         $country = Country::create([
             'name' => 'Spain',
@@ -42,9 +48,12 @@ class PhotoTest extends TestCase
 
         $response = $this
             ->actingAs($user2)
-            ->postJson('/photos', [
+            ->withHeaders([
+                'Accept' => 'application/json',
+            ])
+            ->post('/photos', [
                 'trip_id' => $trip->id,
-                'path' => 'photos/test.jpg',
+                'photo' => UploadedFile::fake()->image('test.jpg'),
             ]);
 
         $response
@@ -60,6 +69,8 @@ class PhotoTest extends TestCase
     {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
+
+        Queue::fake();
 
         $country = Country::create([
             'name' => 'Spain',
@@ -80,9 +91,12 @@ class PhotoTest extends TestCase
 
         $response = $this
             ->actingAs($user2)
-            ->postJson('/photos', [
+            ->withHeaders([
+                'Accept' => 'application/json',
+            ])
+            ->post('/photos', [
                 'visit_id' => $visit->id,
-                'path' => 'photos/test.jpg',
+                'photo' => UploadedFile::fake()->image('test.jpg'),
             ]);
 
         $response
@@ -94,6 +108,8 @@ class PhotoTest extends TestCase
     {
         $user1 = User::factory()->create();
         $user2 = User::factory()->create();
+
+        Queue::fake();
 
         $country = Country::create([
             'name' => 'Spain',
@@ -133,13 +149,85 @@ class PhotoTest extends TestCase
 
         $response = $this
             ->actingAs($user2)
-            ->postJson('/photos', [
+            ->withHeaders([
+                'Accept' => 'application/json',
+            ])
+            ->post('/photos', [
                 'journal_entry_id' => $entry->id,
-                'path' => 'photos/test.jpg',
+                'photo' => UploadedFile::fake()->image('test.jpg'),
             ]);
 
         $response
             ->assertStatus(422)
             ->assertJsonValidationErrors(['journal_entry_id']);
     }
+
+    public function test_user_can_upload_photo(): void
+    {
+        $user = User::factory()->create();
+
+        Queue::fake();
+
+        $response = $this
+            ->actingAs($user)
+            ->withHeaders([
+                'Accept' => 'application/json',
+            ])
+            ->post('/photos', [
+                'photo' => UploadedFile::fake()->image('holiday.jpg', 1200, 800),
+            ]);
+
+        $response
+            ->assertStatus(201)
+            ->assertJsonPath('processing_status', 'pending');
+
+        $this->assertDatabaseHas('photos', [
+            'user_id' => $user->id,
+            'original_filename' => 'holiday.jpg',
+            'processing_status' => 'pending',
+        ]);
+
+        Queue::assertPushed(\App\Jobs\ProcessPhoto::class);
+    }
+
+    public function test_process_photo_creates_optimized_image_and_thumbnail(): void
+    {
+        $user = User::factory()->create();
+
+        $photo = Photo::create([
+            'user_id' => $user->id,
+            'path' => '',
+            'original_filename' => 'holiday.jpg',
+            'mime_type' => 'image/jpeg',
+            'processing_status' => 'pending',
+        ]);
+
+        $temporaryPath = 'photo-processing/' . $photo->id . '/source.jpg';
+
+        $image = UploadedFile::fake()->image('source.jpg', 1200, 800);
+
+        Storage::disk('local')->putFileAs(
+            dirname($temporaryPath),
+            $image,
+            basename($temporaryPath)
+        );
+
+        (new \App\Jobs\ProcessPhoto(
+            $photo->id,
+            $temporaryPath
+        ))->handle();
+
+        $photo->refresh();
+
+        $this->assertSame('ready', $photo->processing_status);
+
+        $this->assertNotEmpty($photo->path);
+        $this->assertNotEmpty($photo->thumbnail_path);
+
+        Storage::disk('public')->assertExists($photo->path);
+        Storage::disk('public')->assertExists($photo->thumbnail_path);
+
+        Storage::disk('local')->assertMissing($temporaryPath);
+    }
+
 }

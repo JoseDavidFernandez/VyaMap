@@ -17,6 +17,7 @@ class Photo extends Model
         'place_id',
         'journal_entry_id',
         'path',
+        'thumbnail_path',
         'original_filename',
         'mime_type',
         'size',
@@ -26,6 +27,7 @@ class Photo extends Model
         'latitude',
         'longitude',
         'metadata',
+        'processing_status',
     ];
 
     protected $casts = [
