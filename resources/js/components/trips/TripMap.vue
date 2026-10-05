@@ -37,6 +37,7 @@ interface Flight {
 const props = defineProps<{
     visits: Visit[];
     flights: Flight[];
+    interactive?: boolean;
 }>();
 
 const mapElement = ref<HTMLElement | null>(null);
@@ -55,11 +56,14 @@ onMounted(() => {
         minZoom: 2,
         maxZoom: 8,
         worldCopyJump: true,
+        scrollWheelZoom: props.interactive ?? true,
     });
 
-    L.control.zoom({
-        position: 'topright',
-    }).addTo(map);
+    if (props.interactive ?? true) {
+        L.control.zoom({
+            position: 'topright',
+        }).addTo(map);
+    }
 
     L.tileLayer(
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -192,6 +196,11 @@ onMounted(() => {
         padding: [50, 50],
         maxZoom: 6,
     });
+
+        requestAnimationFrame(() => {
+            map?.invalidateSize();
+        });
+
 });
 
 onBeforeUnmount(() => {
@@ -205,8 +214,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div
-        ref="mapElement"
-        class="h-[420px] w-full"
-    />
+    <div ref="mapElement" class="h-full w-full"></div>
 </template>

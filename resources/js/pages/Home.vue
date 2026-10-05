@@ -1,149 +1,971 @@
 <script setup lang="ts">
-import StatCard from '../components/dashboard/StatCard.vue';
-import RecentTrips from '../components/dashboard/RecentTrips.vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import CountryMap from '../components/dashboard/CountryMap.vue';
+import TravelMap from '../components/dashboard/TravelMap.vue';
 
+import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
-interface DashboardStats {
+interface User {
+    name: string;
+}
+
+interface Stats {
     countries: number;
     cities: number;
     trips: number;
     flights: number;
 }
 
-interface Trip {
+interface NextTrip {
     id: number;
     name: string;
     description: string | null;
-    start_date: string;
-    end_date: string;
+    start_date: string | null;
+    end_date: string | null;
+    days_until: number;
 }
 
-interface MapCity {
+interface Visit {
     id: number;
-    name: string;
-    latitude: number;
-    longitude: number;
-}
-
-interface MapFlight {
-    id: number;
-    origin: {
+    city: {
+        id: number;
         name: string;
+        country: string;
+        iso_code: string;
+        latitude: number | null;
+        longitude: number | null;
+    };
+    visited_from: string | null;
+    visited_until: string | null;
+    notes: string | null;
+}
+
+interface Flight {
+    id: number;
+    flight_number: string;
+    airline: string | null;
+    departure: string | null;
+    arrival: string | null;
+    origin: {
+        id: number;
+        name: string;
+        city: string;
         latitude: number;
         longitude: number;
     };
     destination: {
+        id: number;
         name: string;
+        city: string;
         latitude: number;
         longitude: number;
     };
 }
 
-interface Country {
+interface RecentTrip {
     id: number;
     name: string;
-    iso_code: string;
+    description: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    cities: string[];
+    countries: string[];
+}
+
+interface TripsByYear {
+    year: number;
+    count: number;
 }
 
 const props = defineProps<{
-    stats: DashboardStats;
-    trips: Trip[];
-    countries: Country[];
-    cities: MapCity[];
-    flights: MapFlight[];
+    user: User;
+    stats: Stats;
+    nextTrip: NextTrip | null;
+    map: {
+        visits: Visit[];
+        flights: Flight[];
+    };
+    recentFlights: Flight[];
+    recentTrips: RecentTrip[];
+    tripsByYear: TripsByYear[];
 }>();
+
+const formatDate = (date: string | null) => {
+    if (!date) {
+        return '—';
+    }
+
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(new Date(`${date}T00:00:00`));
+};
+
+const formatDateShort = (date: string | null) => {
+    if (!date) {
+        return '—';
+    }
+
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+    }).format(new Date(`${date}T00:00:00`));
+};
+
+const formatDateTime = (date: string | null) => {
+    if (!date) {
+        return '—';
+    }
+
+    return new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(new Date(date));
+};
+
+const nextTripLabel = computed(() => {
+    if (!props.nextTrip) {
+        return 'No upcoming trips';
+    }
+
+    if (props.nextTrip.days_until === 0) {
+        return 'Today';
+    }
+
+    if (props.nextTrip.days_until === 1) {
+        return 'Tomorrow';
+    }
+
+    return `In ${props.nextTrip.days_until} days`;
+});
+
+/*
+|--------------------------------------------------------------------------
+| Countries
+|--------------------------------------------------------------------------
+*/
+
+const visitedCountries = computed(() => {
+    const countries = new Map<
+        string,
+        {
+            id: number;
+            name: string;
+            iso_code: string;
+        }
+    >();
+
+    props.map.visits.forEach((visit) => {
+        if (!countries.has(visit.city.iso_code)) {
+            countries.set(visit.city.iso_code, {
+                id: visit.city.id,
+                name: visit.city.country,
+                iso_code: visit.city.iso_code,
+            });
+        }
+    });
+
+    return Array.from(countries.values());
+});
+
+/*
+|--------------------------------------------------------------------------
+| Countries overview
+|--------------------------------------------------------------------------
+*/
+
+const totalCountries: number = 251;
+
+const countriesPercentage = computed(() => {
+    return Math.round(
+        (props.stats.countries / totalCountries) * 100,
+    );
+});
+
+const countriesRingStyle = computed(() => {
+    const percentage = Math.min(
+        100,
+        Math.max(
+            0,
+            (props.stats.countries / totalCountries) * 100,
+        ),
+    );
+
+    return {
+        background: `conic-gradient(
+            rgba(255,255,255,0.16) 0% ${percentage}%,
+            rgba(255,255,255,0.04) ${percentage}% 100%
+        )`,
+    };
+});
+
+/*
+|--------------------------------------------------------------------------
+| Trips by year
+|--------------------------------------------------------------------------
+*/
+
+const maxTripsByYear = computed(() => {
+    return Math.max(
+        1,
+        ...props.tripsByYear.map((item) => item.count),
+    );
+});
+
 
 </script>
 
 <template>
     <AppLayout title="Dashboard">
-        <div class="mx-auto max-w-7xl px-6 py-10">
+        <div class="vyamap-page">
+            <main
+                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
+            >
+                <!-- =====================================================
+                     WELCOME / NEXT TRIP
+                ====================================================== -->
 
-            <!-- Header -->
-            <section class="max-w-2xl">
-                <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
-                    Your journey
-                </p>
+                <section class="mb-7">
+                    <div class="vyamap-card-lg overflow-hidden">
+                        <div class="grid lg:grid-cols-[1.2fr_0.8fr]">
+                            <!-- Welcome -->
 
-                <h1 class="mt-2 text-4xl font-semibold tracking-tight text-[var(--vyamap-text)]">
-                    My Travel History
-                </h1>
+                            <div class="p-7 sm:p-9 lg:p-10">
+                                <div class="vyamap-eyebrow">
+                                    VyaMap
+                                </div>
 
-                <p class="mt-3 text-base leading-7 text-[var(--vyamap-text-muted)]">
-                    A personal space to build, visualize and explore your travel history.
-                </p>
-            </section>
+                                <h1
+                                    class="mt-3 max-w-3xl text-4xl font-semibold tracking-[-0.06em] sm:text-5xl lg:text-6xl"
+                                >
+                                    Your travel history,
+                                    <br class="hidden sm:block" />
+                                    in one place.
+                                </h1>
 
-            <!-- Stats -->
-            <section class="mt-10 border-y border-[var(--vyamap-border)] py-6">
-                <div class="grid grid-cols-4 divide-x divide-[var(--vyamap-border)]">
-                    <div class="px-6 first:pl-0">
-                        <StatCard
-                            :value="props.stats.countries"
-                            label="Countries visited"
-                        />
+                                <p
+                                    class="mt-5 max-w-xl text-sm leading-6 vyamap-muted sm:text-base"
+                                >
+                                    Build your travel history, explore the places
+                                    you've visited and keep your upcoming trips
+                                    organized.
+                                </p>
+                            </div>
+
+                            <!-- Next trip -->
+
+                            <div
+                                class="relative flex min-h-[260px] flex-col justify-between overflow-hidden border-t border-[var(--vyamap-border)] bg-gradient-to-br from-cyan-200/[0.08] via-violet-400/[0.06] to-transparent p-7 sm:p-9 lg:border-l lg:border-t-0 lg:p-10"
+                            >
+                                <div
+                                    class="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-cyan-300/[0.08] blur-3xl"
+                                />
+
+                                <div
+                                    class="absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-violet-400/[0.08] blur-3xl"
+                                />
+
+                                <div class="relative z-10">
+                                    <div class="vyamap-section-title">
+                                        Next trip
+                                    </div>
+
+                                    <div
+                                        class="mt-4 text-sm font-medium text-white/45"
+                                    >
+                                        {{ nextTripLabel }}
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="nextTrip"
+                                    class="relative z-10"
+                                >
+                                    <Link
+                                        :href="`/trips/${nextTrip.id}`"
+                                        class="group block"
+                                    >
+                                        <h2
+                                            class="text-3xl font-semibold tracking-[-0.05em] transition group-hover:text-white/80 sm:text-4xl"
+                                        >
+                                            {{ nextTrip.name }}
+                                        </h2>
+
+                                        <p
+                                            class="mt-2 text-xs text-white/30"
+                                        >
+                                            {{ formatDate(nextTrip.start_date) }}
+
+                                            <span v-if="nextTrip.end_date">
+                                                —
+                                                {{ formatDate(nextTrip.end_date) }}
+                                            </span>
+                                        </p>
+                                    </Link>
+                                </div>
+
+                                <div
+                                    v-else
+                                    class="relative z-10"
+                                >
+                                    <h2
+                                        class="text-2xl font-semibold tracking-[-0.04em]"
+                                    >
+                                        Nothing planned yet.
+                                    </h2>
+
+                                    <p
+                                        class="mt-2 text-xs text-white/30"
+                                    >
+                                        Your next adventure will appear here.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </section>
 
-                    <div class="px-6">
-                        <StatCard
-                            :value="props.stats.cities"
-                            label="Cities visited"
-                        />
+                <!-- =====================================================
+                     STATS
+                ====================================================== -->
+
+                <section class="mb-7">
+                    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div class="vyamap-stat">
+                            <div class="text-3xl font-semibold">
+                                {{ stats.countries }}
+                            </div>
+
+                            <div class="mt-1 vyamap-eyebrow">
+                                Countries
+                            </div>
+                        </div>
+
+                        <div class="vyamap-stat">
+                            <div class="text-3xl font-semibold">
+                                {{ stats.cities }}
+                            </div>
+
+                            <div class="mt-1 vyamap-eyebrow">
+                                Cities
+                            </div>
+                        </div>
+
+                        <div class="vyamap-stat">
+                            <div class="text-3xl font-semibold">
+                                {{ stats.trips }}
+                            </div>
+
+                            <div class="mt-1 vyamap-eyebrow">
+                                Trips
+                            </div>
+                        </div>
+
+                        <div class="vyamap-stat">
+                            <div class="text-3xl font-semibold">
+                                {{ stats.flights }}
+                            </div>
+
+                            <div class="mt-1 vyamap-eyebrow">
+                                Flights
+                            </div>
+                        </div>
                     </div>
+                </section>
 
-                    <div class="px-6">
-                        <StatCard
-                            :value="props.stats.trips"
-                            label="Trips"
-                        />
-                    </div>
+                <!-- =====================================================
+                     WORLD / COUNTRIES
+                ====================================================== -->
 
-                    <div class="px-6 last:pr-0">
-                        <StatCard
-                            :value="props.stats.flights"
-                            label="Flights"
-                        />
-                    </div>
-                </div>
-            </section>
-
-            <!-- Map -->
-            <section class="mt-10">
-                <div class="flex items-end justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-[var(--vyamap-text-muted)]">
-                            Explore
-                        </p>
-
-                        <h2 class="mt-1 text-2xl font-semibold tracking-tight">
-                            Your world
-                        </h2>
-                    </div>
-                </div>
-
-                <div
-                    class="mt-5 overflow-hidden rounded-[var(--vyamap-radius-xl)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]"
+                <section
+                    class="mb-7 grid gap-7 lg:grid-cols-[2.35fr_1fr]"
                 >
-                    <CountryMap :countries="props.countries" />
-                </div>
-            </section>
+                    <!-- WORLD MAP -->
 
-            <!-- Recent trips -->
-            <div class="flex items-end justify-between gap-6">
-                <div class="min-w-0 flex-1">
-                    <RecentTrips :trips="props.trips" />
-                </div>
+                    <div class="vyamap-map-card overflow-hidden">
+                        <div
+                            class="flex items-center justify-between border-b border-[var(--vyamap-border)] px-6 py-5 sm:px-7"
+                        >
+                            <div>
+                                <div class="vyamap-section-title">
+                                    Exploration
+                                </div>
 
-                <Link
-                    href="/trips/create"
-                    class="shrink-0 rounded-full bg-[var(--vyamap-text)] px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-85"
+                                <h2
+                                    class="vyamap-section-heading"
+                                >
+                                    Your world
+                                </h2>
+                            </div>
+
+                            <div class="text-[10px] vyamap-muted">
+                                {{ stats.countries }} countries
+                            </div>
+                        </div>
+
+                        <div class="h-[500px] w-full">
+                            <CountryMap
+                                :countries="visitedCountries"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- COUNTRIES VISITED -->
+
+                    <div
+                        class="vyamap-card-lg flex min-h-[585px] flex-col p-6 sm:p-7"
+                    >
+                        <div>
+                            <div class="vyamap-section-title">
+                                Exploration
+                            </div>
+
+                            <h2 class="vyamap-section-heading">
+                                Countries visited
+                            </h2>
+                        </div>
+
+                        <div
+                            class="flex flex-1 flex-col justify-center"
+                        >
+                            <div class="flex justify-center">
+                                <div
+                                    class="relative flex h-44 w-44 items-center justify-center rounded-full"
+                                    :style="countriesRingStyle"
+                                >
+                                    <div
+                                        class="flex h-36 w-36 flex-col items-center justify-center rounded-full bg-[#11151c]"
+                                    >
+                                        <span
+                                            class="text-3xl font-semibold tracking-[-0.05em]"
+                                        >
+                                            {{ countriesPercentage }}%
+                                        </span>
+
+                                        <span
+                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] vyamap-text-subtle"
+                                        >
+                                            visited
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="mt-8 grid grid-cols-2 gap-3"
+                            >
+                                <div class="vyamap-card p-4">
+                                    <div class="text-2xl font-semibold">
+                                        {{ stats.countries }}
+                                    </div>
+
+                                    <div
+                                        class="mt-1 text-[10px] vyamap-text-subtle"
+                                    >
+                                        Visited
+                                    </div>
+                                </div>
+
+                                <div class="vyamap-card p-4">
+                                    <div class="text-2xl font-semibold">
+                                        {{ totalCountries - stats.countries }}
+                                    </div>
+
+                                    <div
+                                        class="mt-1 text-[10px] vyamap-text-subtle"
+                                    >
+                                        Remaining
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- =====================================================
+                     RECENT TRIPS / PHOTOS / TRIPS BY YEAR
+                ====================================================== -->
+
+                <section
+                    class="mb-7 grid gap-7 lg:grid-cols-[2.25fr_1fr]"
                 >
-                    + New trip
-                </Link>
-            </div>
+                    <!-- RECENT TRIPS -->
 
+                    <div class="vyamap-card-lg p-6 sm:p-7">
+                        <div
+                            class="mb-6 flex items-end justify-between gap-4"
+                        >
+                            <div>
+                                <div class="vyamap-section-title">
+                                    History
+                                </div>
+
+                                <h2 class="vyamap-section-heading">
+                                    Recent trips
+                                </h2>
+                            </div>
+
+                            <Link
+                                href="/trips/create"
+                                class="vyamap-button-secondary"
+                            >
+                                + Trip
+                            </Link>
+                        </div>
+
+                        <div
+                            v-if="recentTrips.length"
+                            class="space-y-2"
+                        >
+                            <Link
+                                v-for="trip in recentTrips"
+                                :key="trip.id"
+                                :href="`/trips/${trip.id}`"
+                                class="vyamap-trip-card group p-4"
+                            >
+                                <div
+                                    class="flex items-start justify-between gap-4"
+                                >
+                                    <div class="min-w-0">
+                                        <h3
+                                            class="truncate text-sm font-medium transition group-hover:text-white"
+                                        >
+                                            {{ trip.name }}
+                                        </h3>
+
+                                        <div
+                                            class="mt-2 text-[10px] vyamap-text-subtle"
+                                        >
+                                            {{ formatDateShort(trip.start_date) }}
+
+                                            <span v-if="trip.end_date">
+                                                —
+                                                {{ formatDateShort(trip.end_date) }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <span
+                                        class="shrink-0 text-white/20 transition group-hover:text-white/50"
+                                    >
+                                        →
+                                    </span>
+                                </div>
+
+                                <div
+                                    v-if="trip.cities.length"
+                                    class="mt-3 truncate text-[10px] vyamap-text-subtle"
+                                >
+                                    {{ trip.cities.join(' · ') }}
+                                </div>
+                            </Link>
+                        </div>
+
+                        <div
+                            v-else
+                            class="vyamap-empty"
+                        >
+                            <div class="text-center">
+                                <div class="text-sm vyamap-text-subtle">
+                                    No trips yet.
+                                </div>
+
+                                <Link
+                                    href="/trips/create"
+                                    class="vyamap-link mt-3 inline-flex text-xs"
+                                >
+                                    Create your first trip →
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN -->
+
+                    <div class="grid gap-7">
+                        <!-- PHOTOS -->
+
+                        <div class="vyamap-memory">
+                            <div class="vyamap-memory-content">
+                                <div>
+                                    <div class="vyamap-memory-label">
+                                        Memories
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div
+                                        class="text-2xl font-semibold tracking-[-0.05em]"
+                                    >
+                                        Photos
+                                    </div>
+
+                                    <p
+                                        class="mt-2 text-xs leading-5 vyamap-muted"
+                                    >
+                                        Your visual travel history will live
+                                        here.
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="mt-5 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.015] px-4 py-6 text-center"
+                                >
+                                    <div class="text-xs text-white/20">
+                                        Photo albums coming later.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TRIPS BY YEAR -->
+
+                        <div class="vyamap-card-lg p-6 sm:p-7">
+                            <div class="vyamap-section-title">
+                                History
+                            </div>
+
+                            <h2 class="vyamap-section-heading">
+                                Trips by year
+                            </h2>
+
+                            <div
+                                v-if="tripsByYear.length"
+                                class="mt-7 space-y-4"
+                            >
+                                <div
+                                    v-for="item in tripsByYear"
+                                    :key="item.year"
+                                    class="flex items-center gap-3"
+                                >
+                                    <span
+                                        class="w-10 shrink-0 text-[10px] vyamap-text-subtle"
+                                    >
+                                        {{ item.year }}
+                                    </span>
+
+                                    <div
+                                        class="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.05]"
+                                    >
+                                        <div
+                                            class="h-full rounded-full bg-white/30 transition-all"
+                                            :style="{
+                                                width: `${(item.count / maxTripsByYear) * 100}%`,
+                                            }"
+                                        />
+                                    </div>
+
+                                    <span
+                                        class="w-5 shrink-0 text-right text-xs font-medium"
+                                    >
+                                        {{ item.count }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                v-else
+                                class="mt-7 text-xs vyamap-text-subtle"
+                            >
+                                No trips recorded yet.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- =====================================================
+                     AT A GLANCE
+                ====================================================== -->
+
+                <section class="mb-7">
+                    <div
+                        class="grid gap-7 lg:grid-cols-[0.8fr_2.2fr]"
+                    >
+                        <!-- AT A GLANCE -->
+
+                        <div class="vyamap-card-lg p-6 sm:p-7">
+                            <div class="vyamap-section-title">
+                                Overview
+                            </div>
+
+                            <h2 class="vyamap-section-heading">
+                                At a glance
+                            </h2>
+
+                            <div
+                                class="mt-7 grid grid-cols-2 gap-3"
+                            >
+                                <div class="vyamap-card p-4">
+                                    <div class="vyamap-eyebrow">
+                                        Countries
+                                    </div>
+
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        {{ stats.countries }}
+                                    </div>
+
+                                    <div
+                                        class="mt-1 text-[10px] vyamap-text-subtle"
+                                    >
+                                        visited
+                                    </div>
+                                </div>
+
+                                <div class="vyamap-card p-4">
+                                    <div class="vyamap-eyebrow">
+                                        Cities
+                                    </div>
+
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        {{ stats.cities }}
+                                    </div>
+
+                                    <div
+                                        class="mt-1 text-[10px] vyamap-text-subtle"
+                                    >
+                                        visited
+                                    </div>
+                                </div>
+
+                                <div class="vyamap-card p-4">
+                                    <div class="vyamap-eyebrow">
+                                        Trips
+                                    </div>
+
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        {{ stats.trips }}
+                                    </div>
+
+                                    <div
+                                        class="mt-1 text-[10px] vyamap-text-subtle"
+                                    >
+                                        recorded
+                                    </div>
+                                </div>
+
+                                <div class="vyamap-card p-4">
+                                    <div class="vyamap-eyebrow">
+                                        Flights
+                                    </div>
+
+                                    <div class="mt-2 text-2xl font-semibold">
+                                        {{ stats.flights }}
+                                    </div>
+
+                                    <div
+                                        class="mt-1 text-[10px] vyamap-text-subtle"
+                                    >
+                                        recorded
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="mt-5 border-t border-[var(--vyamap-border)] pt-5"
+                            >
+                                <div
+                                    class="flex items-center justify-between"
+                                >
+                                    <div>
+                                        <div class="text-xs font-medium">
+                                            Travel footprint
+                                        </div>
+
+                                        <div
+                                            class="mt-1 text-[10px] vyamap-text-subtle"
+                                        >
+                                            {{ countriesPercentage }}% of
+                                            countries visited
+                                        </div>
+                                    </div>
+
+                                    <div class="text-xs vyamap-muted">
+                                        {{ totalCountries - stats.countries }}
+                                        remaining
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.05]"
+                                >
+                                    <div
+                                        class="h-full rounded-full bg-white/30 transition-all"
+                                        :style="{
+                                            width: `${Math.min(countriesPercentage, 100)}%`,
+                                        }"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TRAVEL HISTORY -->
+
+                        <div class="vyamap-memory">
+                            <div class="vyamap-memory-content">
+                                <div>
+                                    <div class="vyamap-memory-label">
+                                        Travel history
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div
+                                        class="text-2xl font-semibold tracking-[-0.05em]"
+                                    >
+                                        Keep exploring
+                                    </div>
+
+                                    <p
+                                        class="mt-2 max-w-xl text-xs leading-5 vyamap-muted"
+                                    >
+                                        Your trips, destinations and flights
+                                        will continue building your travel
+                                        history here.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- =====================================================
+                     FLIGHTS
+                ====================================================== -->
+
+                <section>
+                    <div
+                        class="grid gap-7 lg:grid-cols-[0.9fr_2fr]"
+                    >
+                        <!-- FLIGHT DETAILS -->
+
+                        <div class="vyamap-card-lg p-6 sm:p-7">
+                            <div>
+                                <div class="vyamap-section-title">
+                                    Transport
+                                </div>
+
+                                <h2 class="vyamap-section-heading">
+                                    Flights
+                                </h2>
+                            </div>
+
+                            <Link
+                                href="/flight-history"
+                                class="vyamap-link text-xs"
+                            >
+                                View full history →
+                            </Link>
+
+                            <div
+                                v-if="recentFlights.length"
+                                class="mt-6 space-y-3"
+                            >
+                                <div
+                                    v-for="flight in recentFlights"
+                                    :key="flight.id"
+                                    class="vyamap-flight"
+                                >
+                                    <div
+                                        class="flex items-start justify-between gap-4"
+                                    >
+                                        <div>
+                                            <div
+                                                class="text-sm font-semibold"
+                                            >
+                                                {{ flight.flight_number }}
+                                            </div>
+
+                                            <div
+                                                v-if="flight.airline"
+                                                class="mt-1 text-[10px] vyamap-muted"
+                                            >
+                                                {{ flight.airline }}
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="text-right text-[10px] vyamap-text-subtle"
+                                        >
+                                            {{ flight.origin.city }}
+                                            →
+                                            {{ flight.destination.city }}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="mt-4 grid grid-cols-2 gap-4 border-t border-[var(--vyamap-border)] pt-3"
+                                    >
+                                        <div>
+                                            <div class="vyamap-eyebrow">
+                                                Departure
+                                            </div>
+
+                                            <div
+                                                class="mt-1 text-[10px] text-white/45"
+                                            >
+                                                {{ formatDateTime(flight.departure) }}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div class="vyamap-eyebrow">
+                                                Arrival
+                                            </div>
+
+                                            <div
+                                                class="mt-1 text-[10px] text-white/45"
+                                            >
+                                                {{ formatDateTime(flight.arrival) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                v-else
+                                class="mt-8 text-sm vyamap-text-subtle"
+                            >
+                                No flights recorded yet.
+                            </div>
+                        </div>
+
+                        <!-- FLIGHT MAP -->
+
+                        <div class="vyamap-map-card overflow-hidden">
+                            <div
+                                class="flex items-center justify-between border-b border-[var(--vyamap-border)] px-6 py-5 sm:px-7"
+                            >
+                                <div>
+                                    <div class="vyamap-section-title">
+                                        Routes
+                                    </div>
+
+                                    <h2 class="vyamap-section-heading">
+                                        Flight map
+                                    </h2>
+                                </div>
+
+                                <div class="text-[10px] vyamap-text-subtle">
+                                    {{ stats.flights }}
+                                    {{ stats.flights === 1 ? 'flight' : 'flights' }}
+                                </div>
+                            </div>
+
+                            <div class="h-[500px] w-full">
+                                <TravelMap
+                                    :cities="[]"
+                                    :flights="map.flights"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
     </AppLayout>
 </template>

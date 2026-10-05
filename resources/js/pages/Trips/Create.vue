@@ -16,11 +16,13 @@ const submit = () => {
 
 <template>
     <AppLayout title="Create trip">
-        <div class="mx-auto max-w-3xl px-6 py-10 lg:px-8">
+        <div
+            class="mx-auto max-w-3xl px-6 py-10 lg:px-8"
+        >
             <!-- Back -->
             <Link
                 href="/"
-                class="inline-flex items-center gap-2 text-sm font-medium text-[var(--vyamap-text-muted)] transition-colors hover:text-[var(--vyamap-text)]"
+                class="vyamap-link inline-flex items-center gap-2"
             >
                 <span aria-hidden="true">←</span>
                 My history
@@ -28,21 +30,17 @@ const submit = () => {
 
             <!-- Header -->
             <header class="mt-8">
-                <p
-                    class="text-sm font-medium uppercase tracking-wider text-[var(--vyamap-text-muted)]"
-                >
+                <p class="vyamap-eyebrow">
                     New trip
                 </p>
 
                 <h1
-                    class="mt-2 text-4xl font-semibold tracking-tight"
+                    class="mt-3 text-4xl font-semibold tracking-[-0.06em]"
                 >
                     Create a trip
                 </h1>
 
-                <p
-                    class="mt-3 text-base leading-7 text-[var(--vyamap-text-muted)]"
-                >
+                <p class="mt-4 text-base leading-7 vyamap-muted">
                     Start building your travel history.
                 </p>
             </header>
@@ -56,7 +54,7 @@ const submit = () => {
                 <div>
                     <label
                         for="name"
-                        class="block text-sm font-medium"
+                        class="vyamap-label"
                     >
                         Name
                     </label>
@@ -67,13 +65,13 @@ const submit = () => {
                         type="text"
                         maxlength="150"
                         autocomplete="off"
-                        class="mt-2 block w-full rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text)]"
+                        class="vyamap-input"
                         placeholder="e.g. Balkans 2026"
                     />
 
                     <p
                         v-if="form.errors.name"
-                        class="mt-2 text-sm text-red-600"
+                        class="vyamap-error"
                     >
                         {{ form.errors.name }}
                     </p>
@@ -83,7 +81,7 @@ const submit = () => {
                 <div>
                     <label
                         for="description"
-                        class="block text-sm font-medium"
+                        class="vyamap-label"
                     >
                         Description
                     </label>
@@ -92,13 +90,13 @@ const submit = () => {
                         id="description"
                         v-model="form.description"
                         rows="4"
-                        class="mt-2 block w-full resize-none rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text)]"
+                        class="vyamap-input resize-none"
                         placeholder="A short description of the trip..."
                     />
 
                     <p
                         v-if="form.errors.description"
-                        class="mt-2 text-sm text-red-600"
+                        class="vyamap-error"
                     >
                         {{ form.errors.description }}
                     </p>
@@ -109,7 +107,7 @@ const submit = () => {
                     <div>
                         <label
                             for="start_date"
-                            class="block text-sm font-medium"
+                            class="vyamap-label"
                         >
                             Start date
                         </label>
@@ -118,12 +116,12 @@ const submit = () => {
                             id="start_date"
                             v-model="form.start_date"
                             type="date"
-                            class="mt-2 block w-full rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text)]"
+                            class="vyamap-input"
                         />
 
                         <p
                             v-if="form.errors.start_date"
-                            class="mt-2 text-sm text-red-600"
+                            class="vyamap-error"
                         >
                             {{ form.errors.start_date }}
                         </p>
@@ -132,7 +130,7 @@ const submit = () => {
                     <div>
                         <label
                             for="end_date"
-                            class="block text-sm font-medium"
+                            class="vyamap-label"
                         >
                             End date
                         </label>
@@ -141,12 +139,12 @@ const submit = () => {
                             id="end_date"
                             v-model="form.end_date"
                             type="date"
-                            class="mt-2 block w-full rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm outline-none transition focus:border-[var(--vyamap-text)]"
+                            class="vyamap-input"
                         />
 
                         <p
                             v-if="form.errors.end_date"
-                            class="mt-2 text-sm text-red-600"
+                            class="vyamap-error"
                         >
                             {{ form.errors.end_date }}
                         </p>
@@ -159,7 +157,7 @@ const submit = () => {
                 >
                     <Link
                         href="/"
-                        class="rounded-full px-4 py-2 text-sm font-medium text-[var(--vyamap-text-muted)] transition-colors hover:text-[var(--vyamap-text)]"
+                        class="vyamap-button-secondary"
                     >
                         Cancel
                     </Link>
@@ -167,7 +165,7 @@ const submit = () => {
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="rounded-full bg-[var(--vyamap-text)] px-5 py-2.5 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+                        class="vyamap-button"
                     >
                         {{
                             form.processing

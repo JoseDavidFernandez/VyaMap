@@ -26,6 +26,7 @@ class CitySearchTest extends TestCase
         $city = City::create([
             'country_id' => $country->id,
             'name' => 'Madrid',
+            'region_code' => 'MD',
             'latitude' => 40.4168,
             'longitude' => -3.7038,
         ]);
@@ -40,7 +41,9 @@ class CitySearchTest extends TestCase
             ->assertJsonPath('results.0.id', $city->id)
             ->assertJsonPath('results.0.name', 'Madrid')
             ->assertJsonPath('results.0.country', 'Spain')
-            ->assertJsonPath('results.0.iso_code', 'ES');
+            ->assertJsonPath('results.0.iso_code', 'ES')
+            ->assertJsonPath('results.0.region_code', 'MD');
+
     }
 
     public function test_city_search_requires_at_least_two_characters(): void
@@ -66,6 +69,7 @@ class CitySearchTest extends TestCase
                         'city' => 'Skopje',
                         'country' => 'North Macedonia',
                         'country_code' => 'mk',
+                        'state_code' => 'MK',
                         'lat' => 41.9962164,
                         'lon' => 21.4318935,
                         'place_id' => 'test-geoapify-id',
@@ -91,7 +95,8 @@ class CitySearchTest extends TestCase
             ->assertJsonPath('results.0.iso_code', 'MK')
             ->assertJsonPath('results.0.latitude', 41.9962164)
             ->assertJsonPath('results.0.longitude', 21.4318935)
-            ->assertJsonPath('results.0.external_id', 'test-geoapify-id');
+            ->assertJsonPath('results.0.external_id', 'test-geoapify-id')
+            ->assertJsonPath('results.0.region_code', 'MK');
 
         Http::assertSent(function ($request) {
             return str_contains(
@@ -173,6 +178,7 @@ class CitySearchTest extends TestCase
                 'name' => 'Skopje',
                 'country' => 'North Macedonia',
                 'iso_code' => 'MK',
+                'region_code' => 'SK',
                 'latitude' => 41.9962164,
                 'longitude' => 21.4318935,
                 'external_provider' => 'geoapify',
@@ -193,6 +199,7 @@ class CitySearchTest extends TestCase
             'name' => 'Skopje',
             'external_provider' => 'geoapify',
             'external_id' => 'test-geoapify-skpoje',
+            'region_code' => 'SK',
         ]);
     }
 
