@@ -23,25 +23,21 @@ class StorePhotoRequest extends FormRequest
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
-    {
-        return [
-            'trip_id' => ['nullable', 'integer', 'exists:trips,id'],
-            'visit_id' => ['nullable', 'integer', 'exists:visits,id'],
-            'place_id' => ['nullable', 'integer', 'exists:places,id'],
-            'journal_entry_id' => ['nullable', 'integer', 'exists:journal_entries,id'],
+        {
+            return [
+                'photo' => [
+                    'required',
+                    'file',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:20480',
+                ],
 
-            'path' => ['required', 'string', 'max:500'],
-            'original_filename' => ['nullable', 'string', 'max:255'],
-            'mime_type' => ['nullable', 'string', 'max:100'],
-            'size' => ['nullable', 'integer', 'min:0'],
-            'width' => ['nullable', 'integer', 'min:1'],
-            'height' => ['nullable', 'integer', 'min:1'],
-            'taken_at' => ['nullable', 'date'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'metadata' => ['nullable', 'array'],
-        ];
-    }
+                'trip_id' => ['nullable', 'integer', 'exists:trips,id'],
+                'visit_id' => ['nullable', 'integer', 'exists:visits,id'],
+                'place_id' => ['nullable', 'integer', 'exists:places,id'],
+                'journal_entry_id' => ['nullable', 'integer', 'exists:journal_entries,id'],
+            ];
+        }
 
     /**
      * Add business rules after the basic validation.
