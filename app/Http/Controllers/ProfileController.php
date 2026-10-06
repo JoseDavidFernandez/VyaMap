@@ -20,6 +20,11 @@ class ProfileController extends Controller
             ->where('user_id', $user->id)
             ->with([
                 'visits.city.country',
+                'photos' => function ($query) {
+                    $query
+                        ->where('processing_status', 'ready')
+                        ->orderBy('id');
+                },
             ])
             ->orderByDesc('start_date')
             ->get();
@@ -74,7 +79,8 @@ class ProfileController extends Controller
                     'name' => $trip->name,
                     'location' => $firstCountry?->city?->country?->name ?? 'Trip',
                     'year' => $trip->start_date?->format('Y'),
-                    'cover' => null,
+                    'cover' => $trip->photos->first()?->thumbnail_path
+                        ?? $trip->photos->first()?->path,
                 ];
             })->values(),
         ]);

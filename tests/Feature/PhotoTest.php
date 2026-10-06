@@ -217,6 +217,7 @@ class PhotoTest extends TestCase
             $temporaryPath
         ))->handle();
 
+
         $photo->refresh();
 
         $this->assertSame('ready', $photo->processing_status);
@@ -229,5 +230,73 @@ class PhotoTest extends TestCase
 
         Storage::disk('local')->assertMissing($temporaryPath);
     }
+
+    public function test_photo_exif_service_extracts_date_and_coordinates(): void
+    {
+        $path = storage_path('app/photo-exif-test.jpg');
+
+        $this->assertFileExists($path);
+
+        $data = app(\App\Services\PhotoExifService::class)->extract($path);
+
+        $this->assertNotNull($data['taken_at']);
+        $this->assertSame('2026-08-31 18:31:22', $data['taken_at']->format('Y-m-d H:i:s'));
+        $this->assertEqualsWithDelta(41.3285167, $data['latitude'], 0.0000001);
+        $this->assertEqualsWithDelta(19.8187, $data['longitude'], 0.0000001);
+    }
+
+    public function test_process_photo_extracts_and_saves_exif_data(): void
+    {
+        $user = User::factory()->create();
+
+        $photo = Photo::create([
+            'user_id' => $user->id,
+            'path' => '',
+            'original_filename' => 'photo-exif-test.jpg',
+            'mime_type' => 'image/jpeg',
+            'processing_status' => 'pending',
+        ]);
+
+        $temporaryPath = 'photo-processing/' . $photo->id . '/source.jpg';
+
+        Storage::disk('local')->put(
+            $temporaryPath,
+            file_get_contents(base_path('tests/Fixtures/photo-exif-test.jpg'))
+        );
+
+        (new \App\Jobs\ProcessPhoto(
+            $photo->id,
+            $temporaryPath
+        ))->handle();
+
+        $photo->refresh();
+
+        $this->assertSame('ready', $photo->processing_status);
+        $this->assertNotNull($photo->taken_at);
+        $this->assertSame(
+            '2026-08-31 18:31:22',
+            $photo->taken_at->format('Y-m-d H:i:s')
+        );
+        $this->assertEqualsWithDelta(
+            41.3285167,
+            (float) $photo->latitude,
+            0.0000001
+        );
+        $this->assertEqualsWithDelta(
+            19.8187,
+            (float) $photo->longitude,
+            0.0000001
+        );
+
+        $this->assertNotEmpty($photo->path);
+        $this->assertNotEmpty($photo->thumbnail_path);
+
+        Storage::disk('public')->assertExists($photo->path);
+        Storage::disk('public')->assertExists($photo->thumbnail_path);
+
+        Storage::disk('local')->assertMissing($temporaryPath);
+    }
+
+
 
 }

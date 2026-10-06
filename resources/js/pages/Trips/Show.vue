@@ -3,7 +3,7 @@
 import AppLayout from '../../layouts/AppLayout.vue';
 import TripMap from '../../components/trips/TripMap.vue';
 
-import { useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 interface Trip {
@@ -49,6 +49,16 @@ interface Flight {
     destination: FlightAirport;
 }
 
+interface Photo {
+    id: number;
+    path: string;
+    thumbnail_path: string | null;
+    original_filename: string;
+    width: number | null;
+    height: number | null;
+    taken_at: string | null;
+}
+
 interface CitySearchResult {
     source: 'local' | 'geoapify';
     id: number | null;
@@ -82,6 +92,7 @@ const props = defineProps<{
     trip: Trip;
     visits: Visit[];
     flights: Flight[];
+    photos: Photo[];
 }>();
 
 /*
@@ -393,6 +404,138 @@ const tripStartDateTime = computed(() => {
     return `${props.trip.start_date}T00:00`;
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| PHOTOS
+|--------------------------------------------------------------------------
+*/
+
+/*
+|--------------------------------------------------------------------------
+| PHOTOS
+|--------------------------------------------------------------------------
+*/
+
+const photoInput = ref<HTMLInputElement | null>(null);
+
+const isPhotosHovered = ref(false);
+const isUploadingPhotos = ref(false);
+const photoUploadMessage = ref('');
+const photoUploadSuccess = ref(false);
+
+const openPhotoPicker = () => {
+    if (isUploadingPhotos.value) {
+        return;
+    }
+
+    photoInput.value?.click();
+};
+
+const selectedPhotos = ref<File[]>([]);
+
+const handlePhotoSelection = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+
+    if (!input.files || !input.files.length) {
+        return;
+    }
+
+    selectedPhotos.value = Array.from(input.files);
+
+    const totalPhotos = selectedPhotos.value.length;
+
+    isUploadingPhotos.value = true;
+    photoUploadSuccess.value = false;
+    photoUploadMessage.value =
+        totalPhotos === 1
+            ? 'Uploading 1 photo...'
+            : `Uploading ${totalPhotos} photos...`;
+
+    let uploadedCount = 0;
+
+    try {
+        for (const photo of selectedPhotos.value) {
+            try {
+                await uploadPhoto(photo);
+                uploadedCount++;
+
+                photoUploadMessage.value =
+                    totalPhotos === 1
+                        ? 'Uploading photo...'
+                        : `Uploading ${uploadedCount} of ${totalPhotos} photos...`;
+            } catch (error) {
+                console.error(
+                    `Error subiendo ${photo.name}:`,
+                    error,
+                );
+            }
+        }
+
+        if (uploadedCount > 0) {
+            photoUploadSuccess.value = uploadedCount === totalPhotos;
+
+            photoUploadMessage.value =
+                uploadedCount === totalPhotos
+                    ? uploadedCount === 1
+                        ? '1 photo uploaded successfully'
+                        : `${uploadedCount} photos uploaded successfully`
+                    : `${uploadedCount} of ${totalPhotos} photos uploaded`;
+
+            router.reload({
+                only: ['photos'],
+            });
+
+            setTimeout(() => {
+                photoUploadMessage.value = '';
+                photoUploadSuccess.value = false;
+            }, 3000);
+        }
+    } finally {
+        isUploadingPhotos.value = false;
+        input.value = '';
+        selectedPhotos.value = [];
+    }
+};
+
+const uploadPhoto = async (file: File) => {
+    const formData = new FormData();
+
+    formData.append('photo', file);
+    formData.append('trip_id', String(props.trip.id));
+
+    const csrfToken =
+        document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content') ?? '';
+
+    const response = await fetch('/photos', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            Accept: 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+    });
+
+    if (!response.ok) {
+        let errorData = null;
+
+        try {
+            errorData = await response.json();
+        } catch {
+            // Ignore non-JSON responses.
+        }
+
+        console.error('Respuesta de Laravel:', errorData);
+
+        throw new Error(`Error al subir ${file.name}`);
+    }
+
+    return response.json();
+};
+
+
 /*
 |--------------------------------------------------------------------------
 | Derived data
@@ -672,50 +815,136 @@ const formatAirport = (airport: AirportSearchResult) => {
                         <!-- PHOTOS -->
 
                         <div class="vyamap-memory group">
-
                             <div class="vyamap-memory-content">
-
-                                <div class="flex justify-between">
-
+                                <!-- HEADER -->
+                                <div class="flex items-center justify-between">
                                     <div class="vyamap-memory-label">
                                         Memories
                                     </div>
 
-
-                                    <span
-                                        class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl"
+                                    <button
+                                        type="button"
+                                        class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl transition hover:bg-white/[0.12] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        :disabled="isUploadingPhotos"
+                                        @click="openPhotoPicker"
                                     >
-                                        +
-                                    </span>
+                                        <span v-if="!isUploadingPhotos">+</span>
 
+                                        <span
+                                            v-else
+                                            class="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white"
+                                        ></span>
+                                    </button>
                                 </div>
 
+                                <div
+                                    v-if="photoUploadMessage"
+                                    class="mt-4 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-xs text-white/60 transition-all"
+                                >
+                                    <div class="flex items-center gap-3">
+                                        <span
+                                            v-if="isUploadingPhotos"
+                                            class="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-white/20 border-t-white"
+                                        ></span>
 
-                                <div>
+                                        <span
+                                            v-else-if="photoUploadSuccess"
+                                            class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-bold text-black"
+                                        >
+                                            ✓
+                                        </span>
 
+                                        <span>
+                                            {{ photoUploadMessage }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <input
+                                    ref="photoInput"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                    multiple
+                                    class="hidden"
+                                    @change="handlePhotoSelection"
+                                />
+
+                                <!-- PHOTOS -->
+                                <div
+                                    v-if="photos.length"
+                                    class="relative mt-5 h-[300px] overflow-hidden rounded-2xl"
+                                    @mouseenter="isPhotosHovered = true"
+                                    @mouseleave="isPhotosHovered = false"
+                                >
                                     <div
-                                        class="text-3xl font-semibold tracking-[-0.05em]"
+                                        v-for="(photo, index) in photos.slice(0, 3)"
+                                        :key="photo.id"
+                                        class="absolute left-1/2 top-1/2 aspect-square w-[210px] overflow-hidden rounded-[22px] border-[6px] border-white bg-white shadow-2xl transition-transform duration-500 ease-out"
+                                        :style="{
+                                            zIndex: 10 - index,
+                                            transform: `
+                                                translate(-50%, -50%)
+                                                translateX(${
+                                                    isPhotosHovered
+                                                        ? [-75, 0, 75][index]
+                                                        : [-50, 0, 50][index]
+                                                }px)
+                                                rotate(${[-7, 2, 8][index]}deg)
+                                            `,
+                                        }"
                                     >
-                                        Photos
+                                        <img
+                                            :src="`/storage/${photo.thumbnail_path ?? photo.path}`"
+                                            :alt="photo.original_filename"
+                                            class="h-full w-full object-cover"
+                                            loading="lazy"
+                                        />
                                     </div>
 
-                                    <p
-                                        class="mt-2 text-xs leading-5 text-white/40"
+                                    <!-- VIEW MORE -->
+                                    <a
+                                        :href="`/trips/${props.trip.id}/photos`"
+                                        class="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.92] px-7 py-3 text-sm font-semibold tracking-[-0.02em] text-black shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-white"
                                     >
+                                        View More
+                                    </a>
+                                </div>
+
+                                <!-- EMPTY STATE -->
+                                <div
+                                    v-else
+                                    class="mt-5 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] px-5 py-8 text-center"
+                                >
+                                    <div class="text-2xl text-white/15">
+                                        +
+                                    </div>
+
+                                    <p class="mt-2 text-xs text-white/30">
                                         Your visual story will live here.
                                     </p>
 
+                                    <button
+                                        type="button"
+                                        class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl transition hover:bg-white/[0.12] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        :disabled="isUploadingPhotos"
+                                        @click="openPhotoPicker"
+                                    >
+                                        <span v-if="!isUploadingPhotos">
+                                            +
+                                        </span>
+
+                                        <span
+                                            v-else
+                                            class="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white"
+                                        ></span>
+                                    </button>
                                 </div>
-
                             </div>
-
                         </div>
 
-
+                        
                         <!-- DESTINATIONS -->
-
-                        <!-- DESTINATIONS -->
-
+                         
                         <div class="vyamap-card-lg p-6 sm:p-7">
 
                             <div class="mb-5 vyamap-section-title">
