@@ -10,6 +10,7 @@ use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 use Throwable;
+use App\Services\PhotoExifService;
 
 class ProcessPhoto implements ShouldQueue
 {
@@ -34,6 +35,14 @@ class ProcessPhoto implements ShouldQueue
             $publicDisk = Storage::disk('public');
 
             $sourcePath = $sourceDisk->path($this->temporaryPath);
+
+            $exif = app(PhotoExifService::class)->extract($sourcePath);
+
+            $photo->update([
+                'taken_at' => $exif['taken_at'],
+                'latitude' => $exif['latitude'],
+                'longitude' => $exif['longitude'],
+            ]);
 
             $manager = new ImageManager(new Driver());
 

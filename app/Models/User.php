@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -11,7 +12,7 @@ use App\Models\Flight;
 use App\Models\Photo;
 use App\Models\Trip;
 use App\Models\Visit;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Album;
 
 class User extends Authenticatable
 {
@@ -67,5 +68,10 @@ class User extends Authenticatable
     public function photos(): HasMany
     {
         return $this->hasMany(Photo::class);
+    }
+
+    public function albums(): HasMany
+    {
+        return $this->hasMany(Album::class);
     }
 }

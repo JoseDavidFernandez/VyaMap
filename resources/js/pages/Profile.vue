@@ -248,7 +248,7 @@ const initials = (name: string) => {
                             class="group relative aspect-square overflow-hidden rounded-[var(--vyamap-radius-md)] bg-[var(--vyamap-surface)]"
                         >
                             <img
-                                :src="trip.cover || '/images/trip-placeholder.jpg'"
+                                :src="trip.cover ? `/storage/${trip.cover}` : '/images/trip-placeholder.jpg'"
                                 :alt="trip.name"
                                 class="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                             />

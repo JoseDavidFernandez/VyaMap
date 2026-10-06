@@ -6,6 +6,7 @@ use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\Visit;
 use App\Models\Country;
+use App\Models\Photo;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -129,12 +130,25 @@ class DashboardController extends Controller
         $recentTrips = $trips
             ->take(4)
             ->values();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Photos
+        |--------------------------------------------------------------------------
+        */
+
+        $recentPhotos = Photo::query()
+            ->where('user_id', $user->id)
+            ->where('processing_status', 'ready')
+            ->latest()
+            ->take(7)
+            ->get();
+
         /*
         |--------------------------------------------------------------------------
         | Trips by year
         |--------------------------------------------------------------------------
         */
-
 
         /*
         |--------------------------------------------------------------------------
@@ -167,6 +181,13 @@ class DashboardController extends Controller
             ],
 
             'tripsByYear' => $tripsByYear,
+
+            'recentPhotos' => $recentPhotos->map(fn ($photo) => [
+                'id' => $photo->id,
+                'path' => $photo->path,
+                'thumbnail_path' => $photo->thumbnail_path,
+                'original_filename' => $photo->original_filename,
+            ])->values(),
 
             /*
             |--------------------------------------------------------------------------
@@ -219,6 +240,7 @@ class DashboardController extends Controller
             */
 
             'map' => [
+
                 /*
                 |--------------------------------------------------------------------------
                 | Visits
@@ -284,35 +306,37 @@ class DashboardController extends Controller
                 })->values(),
             ],
 
-            'recentFlights' => $recentFlights->map(function ($flight) {
-                    return [
-                        'id' => $flight->id,
-                        'flight_number' => $flight->flight_number,
-                        'airline' => $flight->airline,
-                        'departure' => $flight->departure_at?->toISOString(),
-                        'arrival' => $flight->arrival_at?->toISOString(),
-                        'origin' => [
-                            'id' => $flight->originAirport->id,
-                            'name' => $flight->originAirport->name,
-                            'city' => $flight->originAirport->city->name,
-                            'latitude' => (float) $flight->originAirport->latitude,
-                            'longitude' => (float) $flight->originAirport->longitude,
-                        ],
-                        'destination' => [
-                            'id' => $flight->destinationAirport->id,
-                            'name' => $flight->destinationAirport->name,
-                            'city' => $flight->destinationAirport->city->name,
-                            'latitude' => (float) $flight->destinationAirport->latitude,
-                            'longitude' => (float) $flight->destinationAirport->longitude,
-                        ],
-                    ];
-                })->values(),
-
             /*
             |--------------------------------------------------------------------------
-            | Charts
+            | Recent flights
             |--------------------------------------------------------------------------
             */
+
+            'recentFlights' => $recentFlights->map(function ($flight) {
+                return [
+                    'id' => $flight->id,
+                    'flight_number' => $flight->flight_number,
+                    'airline' => $flight->airline,
+                    'departure' => $flight->departure_at?->toISOString(),
+                    'arrival' => $flight->arrival_at?->toISOString(),
+
+                    'origin' => [
+                        'id' => $flight->originAirport->id,
+                        'name' => $flight->originAirport->name,
+                        'city' => $flight->originAirport->city->name,
+                        'latitude' => (float) $flight->originAirport->latitude,
+                        'longitude' => (float) $flight->originAirport->longitude,
+                    ],
+
+                    'destination' => [
+                        'id' => $flight->destinationAirport->id,
+                        'name' => $flight->destinationAirport->name,
+                        'city' => $flight->destinationAirport->city->name,
+                        'latitude' => (float) $flight->destinationAirport->latitude,
+                        'longitude' => (float) $flight->destinationAirport->longitude,
+                    ],
+                ];
+            })->values(),
 
             /*
             |--------------------------------------------------------------------------

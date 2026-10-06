@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\AirportSearchController;
 use App\Http\Controllers\CitySearchController;
 use App\Http\Controllers\CityController;
@@ -14,7 +15,6 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-
 
 
 /*
@@ -53,6 +53,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/trips/{trip}', [TripController::class, 'show'])
     ->name('trips.show');
+
+    Route::get('/trips/{trip}/photos', [TripController::class, 'photos'])
+    ->name('trips.photos');
         
     Route::scopeBindings()->group(function () {
         Route::post('/trips/{trip}/visits', [VisitController::class, 'store'])
@@ -89,6 +92,29 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/flight-history', FlightHistoryController::class)
     ->name('flight-history');
+
+    Route::get('/photos', [PhotoController::class, 'index'])->name('photos.index');
+
+    Route::post('/photos', [PhotoController::class, 'store'])
+    ->name('photos.store');
+
+    Route::delete('/photos/{photo}', [PhotoController::class, 'destroy'])
+    ->name('photos.destroy');
+    
+    Route::post('/albums', [AlbumController::class, 'store'])
+    ->name('albums.store');
+
+    Route::put('/albums/{album}', [AlbumController::class, 'update'])
+        ->name('albums.update');
+
+    Route::delete('/albums/{album}', [AlbumController::class, 'destroy'])
+        ->name('albums.destroy');
+
+    Route::post('/albums/{album}/photos', [AlbumController::class, 'addPhotos'])
+        ->name('albums.photos.store');
+
+    Route::delete('/albums/{album}/photos/{photo}', [AlbumController::class, 'removePhoto'])
+        ->name('albums.photos.destroy');
     
 });
 

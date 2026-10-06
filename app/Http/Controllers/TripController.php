@@ -32,6 +32,7 @@ class TripController extends Controller
             'flights.originAirport.city',
             'flights.destinationAirport.city',
             'journal',
+            'photos',
         ]);
 
         return Inertia::render('Trips/Show', [
@@ -80,6 +81,47 @@ class TripController extends Controller
                 ],
             ]),
 
+            'photos' => $trip->photos->map(fn ($photo) => [
+                'id' => $photo->id,
+                'path' => $photo->path,
+                'thumbnail_path' => $photo->thumbnail_path,
+                'original_filename' => $photo->original_filename,
+                'width' => $photo->width,
+                'height' => $photo->height,
+                'taken_at' => $photo->taken_at?->toISOString(),
+            ]),
+
+        ]);
+    }
+
+    public function photos(Trip $trip): Response
+    {
+        $this->authorize('view', $trip);
+
+        $trip->load([
+            'photos',
+        ]);
+
+        return Inertia::render('Trips/Photos', [
+            'trip' => [
+                'id' => $trip->id,
+                'name' => $trip->name,
+                'start_date' => $trip->start_date?->format('Y-m-d'),
+                'end_date' => $trip->end_date?->format('Y-m-d'),
+            ],
+
+            'photos' => $trip->photos
+                ->where('processing_status', 'ready')
+                ->map(fn ($photo) => [
+                    'id' => $photo->id,
+                    'path' => $photo->path,
+                    'thumbnail_path' => $photo->thumbnail_path,
+                    'original_filename' => $photo->original_filename,
+                    'width' => $photo->width,
+                    'height' => $photo->height,
+                    'taken_at' => $photo->taken_at?->toISOString(),
+                ])
+                ->values(),
         ]);
     }
 }
