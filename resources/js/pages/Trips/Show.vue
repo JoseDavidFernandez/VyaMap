@@ -87,12 +87,19 @@ interface DestinationGroup {
     iso_code: string;
     cities: string[];
 }
+interface GoogleMapList {
+    id: number;
+    name: string;
+    url: string;
+}
 
 const props = defineProps<{
     trip: Trip;
     visits: Visit[];
     flights: Flight[];
     photos: Photo[];
+    google_map_lists: GoogleMapList[];
+    available_google_map_lists: GoogleMapList[];
 }>();
 
 /*
@@ -535,6 +542,64 @@ const uploadPhoto = async (file: File) => {
     return response.json();
 };
 
+/*
+|--------------------------------------------------------------------------
+| GOOGLE MAPS
+|--------------------------------------------------------------------------
+*/
+
+const showGoogleMapForm = ref(false);
+const googleMapMode = ref<'create' | 'existing'>('create');
+const selectedGoogleMapListId = ref<number | null>(null);
+
+const googleMapForm = useForm({
+    name: '',
+    url: '',
+});
+
+const availableGoogleMapLists = computed(() =>
+    props.available_google_map_lists.filter(
+        (list) =>
+            !props.google_map_lists.some(
+                (attachedList) => attachedList.id === list.id
+            )
+    )
+);
+
+const submitGoogleMap = () => {
+    googleMapForm.post(`/trips/${props.trip.id}/google-maps`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showGoogleMapForm.value = false;
+            googleMapForm.reset();
+        },
+    });
+};
+
+const attachExistingGoogleMap = () => {
+    if (!selectedGoogleMapListId.value) {
+        return;
+    }
+
+    router.post(
+        `/trips/${props.trip.id}/google-maps/${selectedGoogleMapListId.value}`,
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                showGoogleMapForm.value = false;
+                selectedGoogleMapListId.value = null;
+            },
+        }
+    );
+};
+
+const cancelGoogleMapForm = () => {
+    showGoogleMapForm.value = false;
+    googleMapForm.reset();
+    selectedGoogleMapListId.value = null;
+    googleMapMode.value = 'create';
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -1705,15 +1770,9 @@ const formatAirport = (airport: AirportSearchResult) => {
                 ====================================================== -->
 
                 <section class="vyamap-section">
-
                     <div class="vyamap-card-lg p-7 sm:p-8">
-
-                        <div
-                            class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
-                        >
-
+                        <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-
                                 <div class="vyamap-section-title">
                                     Planning
                                 </div>
@@ -1722,44 +1781,249 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     Google Maps
                                 </h2>
 
-                                <p
-                                    class="mt-2 max-w-xl text-sm text-white/30"
-                                >
+                                <p class="mt-2 max-w-xl text-sm text-white/30">
                                     Maps and lists used while planning the trip.
                                 </p>
-
                             </div>
-
 
                             <button
                                 type="button"
-                                disabled
                                 class="vyamap-button-secondary"
+                                @click="
+                                    showGoogleMapForm = !showGoogleMapForm;
+                                    googleMapMode = 'create';
+                                "
                             >
                                 + Add map
                             </button>
-
                         </div>
 
+                        <div
+                            v-if="showGoogleMapForm"
+                            class="mt-7 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5"
+                        >
+                            <div class="flex rounded-xl border border-white/[0.06] bg-black/20 p-1">
+                                <button
+                                    type="button"
+                                    class="flex-1 rounded-lg px-4 py-2.5 text-xs font-medium transition"
+                                    :class="
+                                        googleMapMode === 'create'
+                                            ? 'bg-white text-black'
+                                            : 'text-white/40 hover:text-white'
+                                    "
+                                    @click="googleMapMode = 'create'"
+                                >
+                                    Create new list
+                                </button>
 
-                        <div class="vyamap-empty mt-7">
+                                <button
+                                    type="button"
+                                    class="flex-1 rounded-lg px-4 py-2.5 text-xs font-medium transition"
+                                    :class="
+                                        googleMapMode === 'existing'
+                                            ? 'bg-white text-black'
+                                            : 'text-white/40 hover:text-white'
+                                    "
+                                    @click="googleMapMode = 'existing'"
+                                >
+                                    Use existing list
+                                </button>
+                            </div>
 
+                            <form
+                                v-if="googleMapMode === 'create'"
+                                class="mt-6"
+                                @submit.prevent="submitGoogleMap"
+                            >
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label class="vyamap-label">
+                                            List name
+                                        </label>
+
+                                        <input
+                                            v-model="googleMapForm.name"
+                                            type="text"
+                                            placeholder="Italy"
+                                            class="vyamap-input"
+                                        />
+
+                                        <p
+                                            v-if="googleMapForm.errors.name"
+                                            class="mt-2 text-xs text-red-400"
+                                        >
+                                            {{ googleMapForm.errors.name }}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label class="vyamap-label">
+                                            Google Maps URL
+                                        </label>
+
+                                        <input
+                                            v-model="googleMapForm.url"
+                                            type="url"
+                                            placeholder="https://maps.app.goo.gl/..."
+                                            class="vyamap-input"
+                                        />
+
+                                        <p
+                                            v-if="googleMapForm.errors.url"
+                                            class="mt-2 text-xs text-red-400"
+                                        >
+                                            {{ googleMapForm.errors.url }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 flex gap-2">
+                                    <button
+                                        type="submit"
+                                        class="vyamap-button"
+                                        :disabled="googleMapForm.processing"
+                                    >
+                                        Add list
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="vyamap-button-secondary"
+                                        @click="cancelGoogleMapForm"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div
+                                v-else
+                                class="mt-6"
+                            >
+                                <div v-if="availableGoogleMapLists.length">
+                                    <label class="vyamap-label">
+                                        Select a Google Maps list
+                                    </label>
+
+                                    <select
+                                        v-model="selectedGoogleMapListId"
+                                        class="vyamap-input"
+                                    >
+                                        <option :value="null">
+                                            Select a list...
+                                        </option>
+
+                                        <option
+                                            v-for="mapList in availableGoogleMapLists"
+                                            :key="mapList.id"
+                                            :value="mapList.id"
+                                        >
+                                            {{ mapList.name }}
+                                        </option>
+                                    </select>
+
+                                    <div class="mt-5 flex gap-2">
+                                        <button
+                                            type="button"
+                                            class="vyamap-button"
+                                            :disabled="!selectedGoogleMapListId"
+                                            @click="attachExistingGoogleMap"
+                                        >
+                                            Add list
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="vyamap-button-secondary"
+                                            @click="cancelGoogleMapForm"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-else
+                                    class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
+                                >
+                                    <p class="text-xs text-white/30">
+                                        You don't have any other Google Maps lists available.
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        class="mt-4 text-xs font-medium text-white/60 transition hover:text-white"
+                                        @click="googleMapMode = 'create'"
+                                    >
+                                        + Create a new list
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="props.google_map_lists.length"
+                            class="mt-7 grid gap-3"
+                        >
+                            <div
+                                v-for="mapList in props.google_map_lists"
+                                :key="mapList.id"
+                                class="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4"
+                            >
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-lg">
+                                            ↗
+                                        </span>
+
+                                        <div class="min-w-0">
+                                            <div class="truncate text-sm font-medium text-white">
+                                                {{ mapList.name }}
+                                            </div>
+
+                                            <div class="mt-1 truncate text-xs text-white/25">
+                                                Google Maps list
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex shrink-0 items-center gap-2">
+                                    <a
+                                        :href="mapList.url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[10px] font-medium text-white/60 transition hover:bg-white/[0.08] hover:text-white"
+                                    >
+                                        Open
+                                    </a>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-full px-3 py-2 text-[10px] text-white/25 transition hover:text-red-400"
+                                        @click="router.delete(`/trips/${props.trip.id}/google-maps/${mapList.id}`, { preserveScroll: true })"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-else-if="!showGoogleMapForm"
+                            class="vyamap-empty mt-7"
+                        >
                             <div class="text-center">
-
                                 <div class="text-2xl text-white/10">
                                     ↗
                                 </div>
 
                                 <p class="mt-2 text-xs text-white/25">
-                                    Google Maps links will appear here.
+                                    No Google Maps lists linked to this trip yet.
                                 </p>
-
                             </div>
-
                         </div>
-
                     </div>
-
                 </section>
 
             </div>

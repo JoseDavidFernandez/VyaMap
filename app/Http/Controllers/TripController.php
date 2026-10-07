@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTripRequest;
+use App\Models\GoogleMapList;
 use App\Models\Trip;
-
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +24,7 @@ class TripController extends Controller
         return redirect()->route('trips.show', $trip);
     }
 
-    public function show(Trip $trip): Response
+    public function show(Request $request, Trip $trip): Response
     {
         $this->authorize('view', $trip);
 
@@ -33,6 +34,7 @@ class TripController extends Controller
             'flights.destinationAirport.city',
             'journal',
             'photos',
+            'googleMapLists',
         ]);
 
         return Inertia::render('Trips/Show', [
@@ -90,6 +92,17 @@ class TripController extends Controller
                 'height' => $photo->height,
                 'taken_at' => $photo->taken_at?->toISOString(),
             ]),
+
+            'google_map_lists' => $trip->googleMapLists->map(fn ($list) => [
+                'id' => $list->id,
+                'name' => $list->name,
+                'url' => $list->url,
+            ]),
+
+            'available_google_map_lists' => GoogleMapList::query()
+                ->where('user_id', $request->user()->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'url']),
 
         ]);
     }

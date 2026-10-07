@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('google_map_list_trip', function (Blueprint $table) {
+            $table->foreignId('google_map_list_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('trip_id')->constrained()->cascadeOnDelete();
+
+            $table->primary(['google_map_list_id', 'trip_id']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('google_map_list_trip');
+    }
+};

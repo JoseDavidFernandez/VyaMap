@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Trip extends Model
 {
@@ -48,5 +49,10 @@ class Trip extends Model
     public function journal(): HasOne
     {
         return $this->hasOne(Journal::class);
+    }
+
+    public function googleMapLists(): BelongsToMany
+    {
+        return $this->belongsToMany(GoogleMapList::class);
     }
 }
