@@ -7,6 +7,7 @@ use App\Http\Controllers\CityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FlightController;
 use App\Http\Controllers\FlightHistoryController;
+use App\Http\Controllers\GoogleMapListController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\PassportController;
 use App\Http\Controllers\PhotoController;
@@ -67,6 +68,16 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/trips/{trip}/flights', [FlightController::class, 'store'])
     ->name('trips.flights.store');
+
+    Route::post('/trips/{trip}/google-maps', [GoogleMapListController::class, 'store'])
+    ->name('trips.google-maps.store');
+
+    Route::post('/trips/{trip}/google-maps/{googleMapList}', [GoogleMapListController::class, 'attach'])
+        ->name('trips.google-maps.attach');
+
+    Route::delete('/trips/{trip}/google-maps/{googleMapList}', [GoogleMapListController::class, 'detach'])
+        ->name('trips.google-maps.detach');
+
 
     Route::post('/photos', [PhotoController::class, 'store'])
         ->name('photos.store');
