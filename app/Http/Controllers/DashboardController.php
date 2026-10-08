@@ -259,6 +259,7 @@ class DashboardController extends Controller
                             'id' => $visit->city->id,
                             'name' => $visit->city->name,
                             'country' => $visit->city->country->name,
+                            'country_id' => $visit->city->country->id,
                             'iso_code' => $visit->city->country->iso_code,
                             'latitude' => $visit->city->latitude,
                             'longitude' => $visit->city->longitude,

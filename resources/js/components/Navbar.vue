@@ -7,10 +7,12 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user);
 
 const avatar = computed(() => {
-    console.log('Navbar avatar:', user.value?.avatar);
     return user.value?.avatar ?? null;
 });
-const userName = computed(() => user.value?.name ?? 'Profile');
+
+const userName = computed(() => {
+    return user.value?.name ?? 'Profile';
+});
 
 const logout = () => {
     router.post('/logout');
@@ -81,6 +83,100 @@ const logout = () => {
                         </span>
                     </Link>
 
+                    <!-- Trips -->
+                    <Link
+                        href="/trips"
+                        class="flex h-12 w-full items-center rounded-xl px-3 transition-colors"
+                        :class="
+                            page.url.startsWith('/trips')
+                                ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]'
+                                : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'
+                        "
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="h-6 w-6 shrink-0"
+                        >
+                            <path d="M3 6.5 12 3l9 3.5-9 3.5L3 6.5Z" />
+                            <path d="M3 6.5V17.5L12 21l9-3.5V6.5" />
+                            <path d="M12 10v11" />
+                        </svg>
+
+                        <span
+                            class="ml-4 whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                        >
+                            Trips
+                        </span>
+                    </Link>
+
+                    <!-- Countries -->
+                    <Link
+                        href="/countries"
+                        class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/45 transition hover:bg-white/[0.05] hover:text-white"
+                    >
+                        <span
+                            class="flex h-5 w-5 shrink-0 items-center justify-center text-base"
+                        >
+                            ◉
+                        </span>
+
+                        <span
+                            class="whitespace-nowrap opacity-0 transition duration-200 group-hover:opacity-100"
+                        >
+                            Countries
+                        </span>
+                    </Link>
+
+                    <!-- Photos -->
+                    <Link
+                        href="/photos"
+                        class="flex h-12 w-full items-center rounded-xl px-3 transition-colors"
+                        :class="
+                            page.url.startsWith('/photos')
+                                ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]'
+                                : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'
+                        "
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="h-6 w-6 shrink-0"
+                        >
+                            <rect
+                                x="3"
+                                y="4"
+                                width="18"
+                                height="16"
+                                rx="2"
+                            />
+
+                            <circle
+                                cx="8.5"
+                                cy="9"
+                                r="1.5"
+                            />
+
+                            <path d="m3 17 5-5 4 4 2.5-2.5L21 18" />
+                        </svg>
+
+                        <span
+                            class="ml-4 whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                        >
+                            Photos
+                        </span>
+                    </Link>
+
                     <!-- Passport -->
                     <Link
                         href="/passport"
@@ -108,11 +204,13 @@ const logout = () => {
                                 height="18"
                                 rx="2"
                             />
+
                             <circle
                                 cx="12"
                                 cy="10"
                                 r="3"
                             />
+
                             <path d="M8 17h8" />
                         </svg>
 
@@ -128,9 +226,7 @@ const logout = () => {
                         href="/flight-history"
                         class="flex h-12 w-full items-center rounded-xl px-3 transition-colors"
                         :class="
-                            page.url.startsWith(
-                                '/flight-history',
-                            )
+                            page.url.startsWith('/flight-history')
                                 ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]'
                                 : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'
                         "
@@ -200,6 +296,38 @@ const logout = () => {
                         </span>
                     </Link>
 
+                </div>
+
+                <!-- New trip -->
+                <div class="mt-6">
+                    <Link
+                        href="/trips/create"
+                        class="flex h-12 w-full items-center rounded-xl bg-[var(--vyamap-text)] px-3 text-[var(--vyamap-background)] transition-opacity hover:opacity-90"
+                    >
+                        <span
+                            class="flex h-6 w-6 shrink-0 items-center justify-center"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="h-5 w-5"
+                            >
+                                <path d="M12 5v14" />
+                                <path d="M5 12h14" />
+                            </svg>
+                        </span>
+
+                        <span
+                            class="ml-4 whitespace-nowrap text-sm font-semibold opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                        >
+                            New trip
+                        </span>
+                    </Link>
                 </div>
 
                 <!-- Logout -->

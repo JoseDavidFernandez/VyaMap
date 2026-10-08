@@ -4,6 +4,7 @@ use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\AirportSearchController;
 use App\Http\Controllers\CitySearchController;
 use App\Http\Controllers\CityController;
+use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FlightController;
 use App\Http\Controllers\FlightHistoryController;
@@ -16,6 +17,10 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+
+use App\Models\Trip;
+
 
 
 /*
@@ -49,6 +54,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/trips', [TripController::class, 'store'])
         ->name('trips.store');
 
+    Route::get('/trips', [TripController::class, 'index'])
+    ->name('trips.index');
+    
     Route::get('/trips/create', fn () => Inertia::render('Trips/Create'))
     ->name('trips.create');    
 
@@ -77,7 +85,6 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/trips/{trip}/google-maps/{googleMapList}', [GoogleMapListController::class, 'detach'])
         ->name('trips.google-maps.detach');
-
 
     Route::post('/photos', [PhotoController::class, 'store'])
         ->name('photos.store');
@@ -126,6 +133,12 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/albums/{album}/photos/{photo}', [AlbumController::class, 'removePhoto'])
         ->name('albums.photos.destroy');
+
+    Route::get('/countries', [CountryController::class, 'index'])
+    ->name('countries.index');
+
+    Route::get('/countries/{country}', [CountryController::class, 'show'])
+        ->name('countries.show');
     
 });
 
