@@ -96,7 +96,7 @@ const getTripGradient = (index: number) => {
                 <section class="mb-10">
 
                     <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
+                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
                     >
 
                         <div
@@ -116,13 +116,13 @@ const getTripGradient = (index: number) => {
                             </div>
 
                             <div
-                                class="mt-3 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between"
+                                class="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
                             >
 
-                                <div class="flex items-center gap-5">
+                                <div class="flex items-center gap-3 sm:gap-5">
 
                                     <div
-                                        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-4xl shadow-2xl sm:h-20 sm:w-20 sm:text-5xl"
+                                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-3xl shadow-2xl sm:h-20 sm:w-20 sm:text-5xl"
                                     >
                                         {{ flagEmoji(country.iso_code) }}
                                     </div>
@@ -130,13 +130,13 @@ const getTripGradient = (index: number) => {
                                     <div>
 
                                         <h1
-                                            class="text-4xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
+                                            class="text-3xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
                                         >
                                             {{ country.name }}
                                         </h1>
 
                                         <p
-                                            class="mt-4 text-sm leading-6 text-white/40 sm:text-base"
+                                            class="mt-3 max-w-xl text-xs leading-5 text-white/40 sm:mt-4 sm:text-base sm:leading-6"
                                         >
                                             A record of the places and trips you've experienced here.
                                         </p>
@@ -146,13 +146,13 @@ const getTripGradient = (index: number) => {
                                 </div>
 
                                 <div
-                                    class="flex shrink-0 gap-8"
+                                    class="grid grid-cols-2 gap-4 sm:flex sm:shrink-0 sm:gap-8"
                                 >
 
                                     <div>
 
                                         <div
-                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
                                             {{ cities.length }}
                                         </div>
@@ -168,7 +168,7 @@ const getTripGradient = (index: number) => {
                                     <div>
 
                                         <div
-                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
                                             {{ trips.length }}
                                         </div>
@@ -196,7 +196,7 @@ const getTripGradient = (index: number) => {
 
                 <section class="mb-12">
 
-                    <div class="mb-5 flex items-end justify-between">
+                    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 
                         <div>
 
@@ -281,7 +281,7 @@ const getTripGradient = (index: number) => {
 
                 <section>
 
-                    <div class="mb-5 flex items-end justify-between">
+                    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 
                         <div>
 

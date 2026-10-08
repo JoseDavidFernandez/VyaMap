@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { router, Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const page = usePage();
+const mobileMenuOpen = ref(false);
+
+const closeMobileMenu = () => {
+    mobileMenuOpen.value = false;
+};
 
 const user = computed(() => page.props.auth?.user);
 
@@ -16,10 +21,184 @@ const userName = computed(() => {
 
 const logout = () => {
     router.post('/logout');
+    closeMobileMenu();
 };
 </script>
 
 <template>
+    <!-- Mobile navbar -->
+    <header class="fixed inset-x-0 top-0 z-50 border-b border-[var(--vyamap-border)] bg-[var(--vyamap-background)] lg:hidden">
+        <div class="flex h-16 items-center justify-between px-4">
+            <Link
+                href="/"
+                class="flex items-center gap-3"
+                @click="closeMobileMenu"
+            >
+                <span
+                    class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--vyamap-text)] text-sm font-semibold text-[var(--vyamap-background)]"
+                >
+                    V
+                </span>
+
+                <span class="text-base font-semibold tracking-tight text-[var(--vyamap-text)]">
+                    VyaMap
+                </span>
+            </Link>
+
+            <button
+                type="button"
+                class="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--vyamap-text-muted)] transition-colors hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]"
+                :aria-expanded="mobileMenuOpen"
+                aria-label="Toggle navigation menu"
+                @click="mobileMenuOpen = !mobileMenuOpen"
+            >
+                <svg
+                    v-if="!mobileMenuOpen"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="h-6 w-6"
+                >
+                    <path d="M4 7h16" />
+                    <path d="M4 12h16" />
+                    <path d="M4 17h16" />
+                </svg>
+
+                <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="h-6 w-6"
+                >
+                    <path d="M6 6l12 12" />
+                    <path d="M18 6 6 18" />
+                </svg>
+            </button>
+        </div>
+
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-2"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 -translate-y-2"
+        >
+            <div
+                v-if="mobileMenuOpen"
+                class="border-t border-[var(--vyamap-border)] bg-[var(--vyamap-background)] px-3 pb-4 pt-3 shadow-2xl"
+            >
+                <nav class="space-y-1.5">
+                    <Link
+                        href="/"
+                        class="flex h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url === '/' ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        Home
+                    </Link>
+
+                    <Link
+                        href="/trips"
+                        class="flex h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url.startsWith('/trips') ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        Trips
+                    </Link>
+
+                    <Link
+                        href="/countries"
+                        class="flex h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url.startsWith('/countries') ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        Countries
+                    </Link>
+
+                    <Link
+                        href="/photos"
+                        class="flex h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url.startsWith('/photos') ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        Photos
+                    </Link>
+
+                    <Link
+                        href="/passport"
+                        class="flex h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url.startsWith('/passport') ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        Passport
+                    </Link>
+
+                    <Link
+                        href="/flight-history"
+                        class="flex h-11 items-center rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url.startsWith('/flight-history') ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        Flight History
+                    </Link>
+
+                    <Link
+                        href="/profile"
+                        class="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors"
+                        :class="page.url.startsWith('/profile') ? 'bg-[var(--vyamap-surface-strong)] text-[var(--vyamap-text)]' : 'text-[var(--vyamap-text-muted)] hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]'"
+                        @click="closeMobileMenu"
+                    >
+                        <span class="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-[var(--vyamap-surface-strong)]">
+                            <img
+                                v-if="avatar"
+                                :src="`/storage/${avatar}`"
+                                :alt="userName"
+                                class="h-full w-full object-cover"
+                            />
+                            <span
+                                v-else
+                                class="flex h-full w-full items-center justify-center text-[10px] font-semibold text-[var(--vyamap-text)]"
+                            >
+                                {{ userName.charAt(0).toUpperCase() }}
+                            </span>
+                        </span>
+                        Profile
+                    </Link>
+
+                    <div class="pt-2">
+                        <Link
+                            href="/trips/create"
+                            class="flex h-11 items-center justify-center rounded-xl bg-[var(--vyamap-text)] px-3 text-sm font-semibold text-[var(--vyamap-background)] transition-opacity hover:opacity-90"
+                            @click="closeMobileMenu"
+                        >
+                            + New trip
+                        </Link>
+                    </div>
+
+                    <div class="border-t border-[var(--vyamap-border)] pt-2">
+                        <button
+                            type="button"
+                            class="flex h-11 w-full items-center rounded-xl px-3 text-sm font-medium text-[var(--vyamap-text-muted)] transition-colors hover:bg-[var(--vyamap-surface)] hover:text-[var(--vyamap-text)]"
+                            @click="logout"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                </nav>
+            </div>
+        </Transition>
+    </header>
+
     <aside
         class="group fixed inset-y-0 left-0 z-50 hidden w-[72px] border-r border-[var(--vyamap-border)] bg-[var(--vyamap-background)] transition-[width] duration-300 ease-out hover:w-[240px] lg:block"
     >

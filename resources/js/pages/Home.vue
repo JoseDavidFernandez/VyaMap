@@ -328,7 +328,7 @@ const photoPositions = computed(() => {
     if (count === 0) {
         return [];
     }
-    const spacing = 100;
+    const spacing = 42;
     const center = (count - 1) / 2;
 
     return Array.from({ length: count }, (_, index) => {
@@ -342,7 +342,7 @@ const photoHoverPositions = computed(() => {
     if (count === 0) {
         return [];
     }
-    const spacing = 140;
+    const spacing = 65;
     const center = (count - 1) / 2;
 
     return Array.from({ length: count }, (_, index) => {
@@ -364,7 +364,7 @@ const photoHoverPositions = computed(() => {
                 ====================================================== -->
                 
                 <section class="mb-7">
-                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
+                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
                         <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
                         <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
 
@@ -374,7 +374,7 @@ const photoHoverPositions = computed(() => {
                                     VyaMap
                                 </div>
 
-                                <h1 class="mt-3 max-w-2xl text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
+                                <h1 class="mt-3 max-w-2xl text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
                                     Your travel history, in one place.
                                 </h1>
 
@@ -404,7 +404,7 @@ const photoHoverPositions = computed(() => {
                                                 :href="`/trips/${nextTrip.id}`"
                                                 class="group mt-8 block"
                                             >
-                                                <h2 class="text-3xl font-semibold tracking-[-0.04em] text-white transition group-hover:text-cyan-200 sm:text-4xl">
+                                                <h2 class="text-2xl font-semibold tracking-[-0.04em] text-white transition group-hover:text-cyan-200 sm:text-4xl">
                                                     {{ nextTrip.name }}
                                                 </h2>
 
@@ -527,7 +527,7 @@ const photoHoverPositions = computed(() => {
                             </div>
                         </div>
 
-                        <div class="h-[500px] w-full">
+                        <div class="h-[380px] w-full sm:h-[500px]">
                             <CountryMap
                                 :countries="visitedCountries"
                             />
@@ -535,7 +535,7 @@ const photoHoverPositions = computed(() => {
                     </div>
                     
                     <!-- TOP COUNTRIES -->
-                    <div class="vyamap-card-lg flex min-h-[585px] flex-col p-6 sm:p-7">
+                    <div class="vyamap-card-lg flex flex-col p-5 sm:min-h-[585px] sm:p-7">
                         <div class="flex items-start justify-between gap-4">
                             <div>
                                 <div class="vyamap-section-title">Explore</div>
@@ -660,14 +660,14 @@ const photoHoverPositions = computed(() => {
                                 travel memories.
                             </h2>
 
-                            <div v-if="recentPhotos.length" class="relative mt-7 h-[250px] w-full max-w-[850px] sm:mt-9 sm:h-[280px]"
+                            <div v-if="recentPhotos.length" class="relative mt-6 h-[170px] w-full max-w-[850px] sm:mt-9 sm:h-[280px]"
                                 @mouseenter="isPhotosHovered = true"
                                 @mouseleave="isPhotosHovered = false"
                                 >
                                 <div
                                     v-for="(photo, index) in recentPhotos.slice(0, 7)"
                                     :key="photo.id"
-                                    class="absolute left-1/2 top-1/2 h-[250px] w-[200px] overflow-hidden rounded-[20px] border-[5px] border-white bg-white shadow-2xl transition-all duration-500 ease-out"
+                                    class="absolute left-1/2 top-1/2 h-[150px] w-[110px] overflow-hidden rounded-[14px] border-[4px] border-white bg-white shadow-2xl transition-all duration-500 ease-out sm:h-[250px] sm:w-[200px] sm:rounded-[20px] sm:border-[5px]"
                                     :style="{
                                         zIndex: 20 - index,
                                         transform: `translate(-50%, -50%) translateX(${
@@ -676,8 +676,8 @@ const photoHoverPositions = computed(() => {
                                                 : photoPositions[index]
                                         }px) translateY(${
                                             isPhotosHovered
-                                                ? [20, 8, -2, -8, -2, 8, 20][index]
-                                                : [18, 8, 0, -4, 0, 8, 18][index]
+                                                ? [14, 6, -2, -7, -2, 6, 14][index]
+                                                : [12, 6, 0, -4, 0, 6, 12][index]
                                         }px) rotate(${
                                             [-8, -5, -2, 0, 2, 5, 8][index]
                                         }deg)`
@@ -700,7 +700,7 @@ const photoHoverPositions = computed(() => {
 
                             </div>
 
-                            <div v-else class="flex h-[250px] items-center justify-center">
+                            <div v-else class="flex h-[190px] items-center justify-center sm:h-[250px]">
                                 <div class="text-sm text-white/30">
                                     Your visual travel history will appear here.
                                 </div>
@@ -757,9 +757,9 @@ const photoHoverPositions = computed(() => {
                             v-for="trip in recentHomeTrips"
                             :key="trip.id"
                             :href="`/trips/${trip.id}`"
-                            class="group grid h-[220px] overflow-hidden rounded-[26px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] transition hover:border-[var(--vyamap-border-strong)] lg:grid-cols-[260px_1fr]"
+                            class="group overflow-hidden rounded-[26px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] transition hover:border-[var(--vyamap-border-strong)] lg:grid lg:h-[220px] lg:grid-cols-[260px_1fr]"
                         >
-                            <div class="relative h-full overflow-hidden border-b border-[var(--vyamap-border)] bg-[#151b20] lg:border-b-0 lg:border-r">
+                            <div class="relative h-[180px] overflow-hidden border-b border-[var(--vyamap-border)] bg-[#151b20] lg:h-full lg:border-b-0 lg:border-r">
 
                                 <img
                                     v-if="tripCoverUrl(trip)"
@@ -803,7 +803,7 @@ const photoHoverPositions = computed(() => {
                                             {{ trip.countries.join(' · ') }}
                                         </div>
 
-                                        <h3 class="mt-2 text-2xl font-semibold tracking-[-0.045em] transition group-hover:text-white/80">
+                                        <h3 class="mt-2 text-xl font-semibold tracking-[-0.045em] transition group-hover:text-white/80 sm:text-2xl">
                                             {{ trip.name }}
                                         </h3>
 
@@ -989,7 +989,7 @@ const photoHoverPositions = computed(() => {
                                 </span>
                             </div>
 
-                            <div class="h-[500px] w-full">
+                            <div class="h-[380px] w-full sm:h-[500px]">
                                 <TravelMap :cities="[]" :flights="map.flights" />
                             </div>
                         </div>

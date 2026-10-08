@@ -202,6 +202,11 @@ const selectAlbum = (albumId: number | null) => {
     selectedPhotos.value = [];
 };
 
+const handleMobileAlbumChange = (event: Event) => {
+    const value = (event.target as HTMLSelectElement).value;
+    selectAlbum(value ? Number(value) : null);
+};
+
 const toggleFilters = () => {
     showFilters.value = !showFilters.value;
 };
@@ -508,7 +513,7 @@ const formatDate = (date: string | null | undefined) => {
                 <!-- HEADER -->
                 <section class="mb-8">
                     <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
+                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
                     >
                         <div
                             class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
@@ -530,7 +535,7 @@ const formatDate = (date: string | null | undefined) => {
                             >
                                 <div>
                                     <h1
-                                        class="text-4xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
+                                        class="text-3xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
                                     >
                                         Your travel
                                         <br class="hidden sm:block" />
@@ -538,7 +543,7 @@ const formatDate = (date: string | null | undefined) => {
                                     </h1>
 
                                     <p
-                                        class="mt-5 max-w-xl text-sm leading-6 text-white/40 sm:text-base"
+                                        class="mt-4 max-w-xl text-sm leading-6 text-white/40 sm:mt-5 sm:text-base"
                                     >
                                         Every place you've visited, captured
                                         in one place.
@@ -705,8 +710,38 @@ const formatDate = (date: string | null | undefined) => {
 
                 <!-- MAIN CONTENT -->
                 <div class="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-7">
+                    <!-- MOBILE ALBUM FILTER -->
+                    <div class="mb-5 lg:hidden">
+                        <label
+                            for="mobile-album"
+                            class="mb-2 block text-[9px] uppercase tracking-[0.22em] text-white/25"
+                        >
+                            Album
+                        </label>
+
+                        <select
+                            id="mobile-album"
+                            :value="activeAlbumId ?? ''"
+                            class="w-full appearance-none rounded-[16px] border border-white/[0.08] bg-[#151923] px-4 py-3 text-xs text-white/60 outline-none transition focus:border-white/[0.16]"
+                            @change="handleMobileAlbumChange"
+                        >
+                            <option value="">
+                                All photos · {{ photos.length }}
+                            </option>
+
+                            <option
+                                v-for="album in albums"
+                                :key="album.id"
+                                :value="album.id"
+                            >
+                                {{ album.name }} · {{ album.photos_count ?? 0 }}
+                                {{ (album.photos_count ?? 0) === 1 ? 'photo' : 'photos' }}
+                            </option>
+                        </select>
+                    </div>
+
                     <!-- ALBUMS SIDEBAR -->
-                    <aside class="mb-6 lg:mb-0">
+                    <aside class="mb-6 hidden lg:mb-0 lg:block">
                         <div
                             class="lg:sticky lg:top-6"
                         >
@@ -914,7 +949,7 @@ const formatDate = (date: string | null | undefined) => {
                     <section class="min-w-0">
                         <!-- ACTIVE ALBUM HEADER -->
                         <div
-                            class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                            class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                         >
                             <div>
                                 <div
@@ -1052,7 +1087,7 @@ const formatDate = (date: string | null | undefined) => {
                                 v-for="photo in filteredPhotos"
                                 :key="photo.id"
                                 draggable="true"
-                                class="group relative aspect-[4/5] overflow-hidden rounded-[22px] border bg-white/[0.035] shadow-2xl transition duration-300 hover:-translate-y-1"
+                                class="group relative aspect-[4/5] overflow-hidden rounded-[18px] border bg-white/[0.035] shadow-2xl transition duration-300 hover:-translate-y-1 sm:rounded-[22px]"
                                 :class="
                                     isPhotoSelected(photo)
                                         ? 'border-white/[0.35] ring-1 ring-white/20'

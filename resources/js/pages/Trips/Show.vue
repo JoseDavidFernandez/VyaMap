@@ -737,7 +737,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                 <section class="mb-7">
 
                     <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
+                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
                     >
 
                         <div
@@ -763,7 +763,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 <div class="min-w-0">
 
                                     <div
-                                        class="mb-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-white/30"
+                                        class="mb-3 flex items-center gap-3 text-[9px] uppercase tracking-[0.14em] text-white/30 sm:mb-4 sm:text-[10px] sm:tracking-[0.16em]"
                                     >
                                         <span>
                                             {{ formatDateShort(trip.start_date) }}
@@ -779,14 +779,14 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     </div>
 
                                     <h1
-                                        class="max-w-4xl text-4xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
+                                        class="max-w-4xl text-3xl font-semibold leading-[0.98] tracking-[-0.06em] text-white sm:text-5xl lg:text-6xl"
                                     >
                                         {{ trip.name }}
                                     </h1>
 
                                     <p
                                         v-if="trip.description"
-                                        class="mt-5 max-w-2xl text-sm leading-6 text-white/40 sm:text-base"
+                                        class="mt-4 max-w-2xl text-xs leading-5 text-white/40 sm:mt-5 sm:text-base sm:leading-6"
                                     >
                                         {{ trip.description }}
                                     </p>
@@ -797,13 +797,13 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 <!-- STATS -->
 
                                 <div
-                                    class="grid shrink-0 grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4 lg:min-w-[440px]"
+                                    class="grid shrink-0 grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 sm:gap-x-8 sm:gap-y-5 lg:min-w-[440px]"
                                 >
 
                                     <div>
 
                                         <div
-                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
                                             {{ tripDays ?? '—' }}
                                         </div>
@@ -819,7 +819,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     <div>
 
                                         <div
-                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
                                             {{ cityCount }}
                                         </div>
@@ -835,7 +835,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     <div>
 
                                         <div
-                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
                                             {{ countryCount }}
                                         </div>
@@ -851,7 +851,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     <div>
 
                                         <div
-                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
                                             {{ flightCount }}
                                         </div>
@@ -871,7 +871,7 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                             <!-- DESTINATIONS -->
 
-                            <div class="mt-9 border-t border-white/[0.07] pt-7">
+                            <div class="mt-7 border-t border-white/[0.07] pt-6 sm:mt-9 sm:pt-7">
 
                                 <div
                                     class="mb-4 text-[9px] uppercase tracking-[0.24em] text-white/25"
@@ -881,7 +881,7 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                 <div
                                     v-if="destinationsByCountry.length"
-                                    class="flex flex-wrap gap-x-8 gap-y-5"
+                                    class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:gap-x-8 sm:gap-y-5"
                                 >
 
                                     <div
@@ -1032,7 +1032,7 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                 <div
                                     v-if="photos.length"
-                                    class="relative mt-5 h-[300px] overflow-hidden rounded-2xl"
+                                    class="relative mt-5 h-[220px] overflow-hidden rounded-2xl sm:h-[300px]"
                                     @mouseenter="isPhotosHovered = true"
                                     @mouseleave="isPhotosHovered = false"
                                 >
@@ -1040,15 +1040,15 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     <div
                                         v-for="(photo, index) in photos.slice(0, 3)"
                                         :key="photo.id"
-                                        class="absolute left-1/2 top-1/2 aspect-square w-[210px] overflow-hidden rounded-[22px] border-[6px] border-white bg-white shadow-2xl transition-transform duration-500 ease-out"
+                                        class="absolute left-1/2 top-1/2 aspect-square w-[145px] overflow-hidden rounded-[16px] border-[4px] border-white bg-white shadow-2xl transition-transform duration-500 ease-out sm:w-[210px] sm:rounded-[22px] sm:border-[6px]"
                                         :style="{
                                             zIndex: 10 - index,
                                             transform: `
                                                 translate(-50%, -50%)
                                                 translateX(${
                                                     isPhotosHovered
-                                                        ? [-75, 0, 75][index]
-                                                        : [-50, 0, 50][index]
+                                                        ? [-52, 0, 52][index]
+                                                        : [-36, 0, 36][index]
                                                 }px)
                                                 rotate(${[-7, 2, 8][index]}deg)
                                             `,
@@ -1068,7 +1068,7 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                     <a
                                         :href="`/trips/${props.trip.id}/photos`"
-                                        class="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.92] px-7 py-3 text-sm font-semibold tracking-[-0.02em] text-black shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-white"
+                                        class="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.92] px-5 py-2.5 text-xs font-semibold tracking-[-0.02em] text-black shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-white sm:px-7 sm:py-3 sm:text-sm"
                                     >
                                         View More
                                     </a>
