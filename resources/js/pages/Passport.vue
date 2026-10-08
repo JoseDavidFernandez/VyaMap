@@ -429,7 +429,7 @@ const formatDate = (
                 ====================================================== -->
 
                 <section class="mb-7">
-                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
+                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
                         <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
                         <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
 
@@ -440,20 +440,20 @@ const formatDate = (
 
                             <div class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
                                 <div class="min-w-0">
-                                    <h1 class="text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
+                                    <h1 class="text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
                                         Passport
                                     </h1>
 
-                                    <p class="mt-4 max-w-2xl text-sm leading-6 text-white/35 sm:text-base">
+                                    <p class="mt-3 max-w-2xl text-xs leading-5 text-white/35 sm:mt-4 sm:text-base sm:leading-6">
                                         A visual record of the places you have visited and the journeys you have taken.
                                     </p>
                                 </div>
 
                                 <div class="shrink-0">
-                                    <div class="flex gap-2 overflow-x-auto pb-1 lg:justify-end lg:pb-0">
+                                    <div class="mt-5 grid grid-cols-2 gap-2 sm:mt-0 sm:flex sm:overflow-x-auto sm:pb-1 lg:justify-end lg:pb-0">
                                         <button
                                             type="button"
-                                            class="shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition"
+                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
                                             :class="selectedPeriod === 'all'
                                                 ? 'border-white/20 bg-white/[0.08] text-white'
                                                 : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
@@ -466,7 +466,7 @@ const formatDate = (
                                             v-for="year in props.years"
                                             :key="year"
                                             type="button"
-                                            class="shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition"
+                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
                                             :class="selectedPeriod === year
                                                 ? 'border-white/20 bg-white/[0.08] text-white'
                                                 : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
@@ -1577,6 +1577,10 @@ const formatDate = (
 }
 
 @media (max-width: 560px) {
+    .passport-book {
+        border-radius: 22px;
+    }
+
     .passport-map {
         height: 390px;
     }

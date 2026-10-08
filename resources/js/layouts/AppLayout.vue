@@ -12,7 +12,7 @@ defineProps<{
     >
         <Navbar />
 
-        <main class="min-h-screen lg:pl-[72px]">
+        <main class="min-h-screen pt-16 lg:pl-[72px] lg:pt-0">
             <slot />
         </main>
     </div>

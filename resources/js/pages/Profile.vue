@@ -89,7 +89,7 @@ const avatarUrl = computed(() => {
                 <!-- HERO -->
 <!-- HERO -->
 <section class="mb-7">
-    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
+    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
         <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
         <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
 
@@ -117,7 +117,7 @@ const avatarUrl = computed(() => {
                     </div>
 
                     <div class="min-w-0">
-                        <h1 class="text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
+                        <h1 class="text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
                             {{ props.user.name }}
                         </h1>
 

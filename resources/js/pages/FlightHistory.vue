@@ -370,58 +370,58 @@ const formattedAverageDuration = computed(() => {
                      HEADER
                 ====================================================== -->
 
-<section class="mb-7">
-    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
-        <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
-        <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
+                <section class="mb-7">
+                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
+                        <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
+                        <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
 
-        <div class="relative z-10">
-            <div class="text-[9px] uppercase tracking-[0.24em] text-white/25">
-                Travel history
-            </div>
+                        <div class="relative z-10">
+                            <div class="text-[9px] uppercase tracking-[0.24em] text-white/25">
+                                Travel history
+                            </div>
 
-            <div class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                <div class="min-w-0">
-                    <h1 class="text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
-                        Flight History
-                    </h1>
+                            <div class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                                <div class="min-w-0">
+                                    <h1 class="text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
+                                        Flight History
+                                    </h1>
 
-                    <p class="mt-4 max-w-2xl text-sm leading-6 text-white/35 sm:text-base">
-                        A complete record of every flight you have added to VyaMap.
-                    </p>
-                </div>
+                                    <p class="mt-3 max-w-2xl text-xs leading-5 text-white/35 sm:mt-4 sm:text-base sm:leading-6">
+                                        A complete record of every flight you have added to VyaMap.
+                                    </p>
+                                </div>
 
-                <div class="shrink-0">
-                    <div class="flex gap-2 overflow-x-auto pb-1 lg:justify-end lg:pb-0">
-                        <button
-                            type="button"
-                            class="shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition"
-                            :class="selectedPeriod === 'all'
-                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
-                            @click="selectedPeriod = 'all'"
-                        >
-                            All-Time
-                        </button>
+                                <div class="shrink-0">
+                                    <div class="grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-1 lg:justify-end lg:pb-0">
+                                        <button
+                                            type="button"
+                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
+                                            :class="selectedPeriod === 'all'
+                                                ? 'border-white/20 bg-white/[0.08] text-white'
+                                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
+                                            @click="selectedPeriod = 'all'"
+                                        >
+                                            All-Time
+                                        </button>
 
-                        <button
-                            v-for="year in years"
-                            :key="year"
-                            type="button"
-                            class="shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition"
-                            :class="selectedPeriod === year
-                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
-                            @click="selectedPeriod = year"
-                        >
-                            {{ year }}
-                        </button>
+                                        <button
+                                            v-for="year in years"
+                                            :key="year"
+                                            type="button"
+                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
+                                            :class="selectedPeriod === year
+                                                ? 'border-white/20 bg-white/[0.08] text-white'
+                                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
+                                            @click="selectedPeriod = year"
+                                        >
+                                            {{ year }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+                </section>
 
                 <!-- =====================================================
                      STATISTICS
@@ -432,7 +432,7 @@ const formattedAverageDuration = computed(() => {
                         class="grid grid-cols-2 overflow-hidden rounded-[28px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] md:grid-cols-4"
                     >
                         <div
-                            class="border-b border-r border-[var(--vyamap-border)] p-6 md:border-b-0"
+                            class="border-b border-r border-[var(--vyamap-border)] p-4 sm:p-6 md:border-b-0"
                         >
 
                             <p class="vyamap-section-title">
@@ -440,7 +440,7 @@ const formattedAverageDuration = computed(() => {
                             </p>
 
                             <p
-                                class="mt-3 text-3xl font-semibold tracking-[-0.05em]"
+                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
                             >
                                 {{ filteredFlights.length }}
                             </p>
@@ -455,7 +455,7 @@ const formattedAverageDuration = computed(() => {
 
 
                         <div
-                            class="border-b border-[var(--vyamap-border)] p-6 md:border-b-0 md:border-r"
+                            class="border-b border-[var(--vyamap-border)] p-4 sm:p-6 md:border-b-0 md:border-r"
                         >
 
                             <p class="vyamap-section-title">
@@ -463,7 +463,7 @@ const formattedAverageDuration = computed(() => {
                             </p>
 
                             <p
-                                class="mt-3 text-3xl font-semibold tracking-[-0.05em]"
+                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
                             >
                                 {{ formattedTotalDistance }}
                             </p>
@@ -478,7 +478,7 @@ const formattedAverageDuration = computed(() => {
 
 
                         <div
-                            class="border-r border-[var(--vyamap-border)] p-6"
+                            class="border-r border-[var(--vyamap-border)] p-4 sm:p-6"
                         >
 
                             <p class="vyamap-section-title">
@@ -486,7 +486,7 @@ const formattedAverageDuration = computed(() => {
                             </p>
 
                             <p
-                                class="mt-3 text-3xl font-semibold tracking-[-0.05em]"
+                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
                             >
                                 {{ formattedTotalDuration }}
                             </p>
@@ -500,14 +500,14 @@ const formattedAverageDuration = computed(() => {
                         </div>
 
 
-                        <div class="p-6">
+                        <div class="p-4 sm:p-6">
 
                             <p class="vyamap-section-title">
                                 Airports
                             </p>
 
                             <p
-                                class="mt-3 text-3xl font-semibold tracking-[-0.05em]"
+                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
                             >
                                 {{ uniqueAirports }}
                             </p>
@@ -535,7 +535,7 @@ const formattedAverageDuration = computed(() => {
                     >
 
                         <div
-                            class="vyamap-card-lg p-6 sm:p-7"
+                            class="vyamap-card-lg p-5 sm:p-7"
                         >
 
                             <p class="vyamap-section-title">
@@ -585,7 +585,7 @@ const formattedAverageDuration = computed(() => {
 
 
                         <div
-                            class="vyamap-card-lg p-6 sm:p-7"
+                            class="vyamap-card-lg p-5 sm:p-7"
                         >
 
                             <p class="vyamap-section-title">
@@ -658,7 +658,7 @@ const formattedAverageDuration = computed(() => {
                                     </p>
 
                                     <h2
-                                        class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
+                                        class="mt-1 text-2xl font-semibold tracking-[-0.05em] sm:mt-2 sm:text-3xl"
                                     >
                                         Flights map
                                     </h2>
@@ -710,7 +710,7 @@ const formattedAverageDuration = computed(() => {
 
 
                         <div
-                            class="relative flex min-h-[290px] flex-col items-center justify-center px-6 py-10 sm:px-10"
+                            class="relative flex min-h-[240px] flex-col items-center justify-center px-4 py-7 sm:min-h-[290px] sm:px-10 sm:py-10"
                         >
 
                             <p
@@ -722,11 +722,11 @@ const formattedAverageDuration = computed(() => {
 
                             <div
                                 v-if="lastFlight"
-                                class="mt-8 w-full"
+                                class="mt-6 w-full sm:mt-8"
                             >
 
                                 <div
-                                    class="flex items-center justify-center gap-8 sm:gap-12"
+                                    class="flex items-center justify-center gap-4 sm:gap-12"
                                 >
 
                                     <div
@@ -734,7 +734,7 @@ const formattedAverageDuration = computed(() => {
                                     >
 
                                         <div
-                                            class="text-5xl font-semibold tracking-[-0.06em] sm:text-6xl"
+                                            class="text-3xl font-semibold tracking-[-0.06em] sm:text-6xl"
                                         >
                                             {{
                                                 lastFlight.origin.code ||
@@ -754,7 +754,7 @@ const formattedAverageDuration = computed(() => {
 
 
                                     <div
-                                        class="flex min-w-[80px] items-center gap-3"
+                                        class="flex min-w-[50px] items-center gap-2 sm:min-w-[80px] sm:gap-3"
                                     >
 
                                         <div
@@ -779,7 +779,7 @@ const formattedAverageDuration = computed(() => {
                                     >
 
                                         <div
-                                            class="text-5xl font-semibold tracking-[-0.06em] sm:text-6xl"
+                                            class="text-3xl font-semibold tracking-[-0.06em] sm:text-6xl"
                                         >
                                             {{
                                                 lastFlight.destination.code ||
@@ -801,7 +801,7 @@ const formattedAverageDuration = computed(() => {
 
 
                                 <div
-                                    class="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] text-white/30"
+                                    class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-white/30 sm:mt-8 sm:gap-x-5 sm:text-[11px]"
                                 >
 
                                     <span>
@@ -864,17 +864,17 @@ const formattedAverageDuration = computed(() => {
                     <!-- MOST VISITED -->
 
                     <div
-                        class="vyamap-card-lg p-6 sm:p-7"
+                        class="vyamap-card-lg p-5 sm:p-7"
                     >
 
-                        <div class="mb-5">
+                        <div class="mb-4 sm:mb-5">
 
                             <p class="vyamap-section-title">
                                 Airports
                             </p>
 
                             <h2
-                                class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
+                                class="mt-1 text-2xl font-semibold tracking-[-0.05em] sm:mt-2 sm:text-3xl"
                             >
                                 Most visited
                             </h2>
@@ -893,15 +893,15 @@ const formattedAverageDuration = computed(() => {
                                     airport.code ??
                                     `${airport.city}-${airport.airport}`
                                 "
-                                class="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                                class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 sm:gap-4 sm:py-4"
                             >
 
                                 <div
-                                    class="flex min-w-0 items-center gap-4"
+                                    class="flex min-w-0 items-center gap-3 sm:gap-4"
                                 >
 
                                     <div
-                                        class="w-12 shrink-0 text-sm font-semibold"
+                                        class="w-10 shrink-0 text-xs font-semibold sm:w-12 sm:text-sm"
                                     >
                                         {{ airport.code || '—' }}
                                     </div>
@@ -966,7 +966,7 @@ const formattedAverageDuration = computed(() => {
                                 </p>
 
                                 <h2
-                                    class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
+                                    class="mt-1 text-2xl font-semibold tracking-[-0.05em] sm:mt-2 sm:text-3xl"
                                 >
                                     Flights
                                 </h2>
