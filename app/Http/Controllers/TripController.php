@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTripRequest;
+use App\Http\Requests\UpdateTripRequest;
 use App\Models\GoogleMapList;
 use App\Models\Trip;
 use Illuminate\Http\Request;
@@ -22,6 +23,44 @@ class TripController extends Controller
         ]);
 
         return redirect()->route('trips.show', $trip);
+    }
+
+    public function edit(Request $request, Trip $trip): Response
+    {
+        $this->authorize('update', $trip);
+
+        return Inertia::render('Trips/Edit', [
+            'trip' => [
+                'id' => $trip->id,
+                'name' => $trip->name,
+                'description' => $trip->description,
+                'start_date' => $trip->start_date?->format('Y-m-d'),
+                'end_date' => $trip->end_date?->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    public function update(
+        UpdateTripRequest $request,
+        Trip $trip
+    ) {
+        $trip->update([
+            'name' => $request->validated('name'),
+            'description' => $request->validated('description'),
+            'start_date' => $request->validated('start_date'),
+            'end_date' => $request->validated('end_date'),
+        ]);
+
+        return redirect()->route('trips.show', $trip);
+    }
+
+    public function destroy(Request $request, Trip $trip)
+    {
+        $this->authorize('delete', $trip);
+
+        $trip->delete();
+
+        return redirect()->route('trips.index');
     }
 
     public function show(Request $request, Trip $trip): Response
@@ -103,7 +142,6 @@ class TripController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->orderBy('name')
                 ->get(['id', 'name', 'url']),
-
         ]);
     }
 

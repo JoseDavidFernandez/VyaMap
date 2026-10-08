@@ -51,14 +51,25 @@ Route::get('/', DashboardController::class)
 
 
 Route::middleware('auth')->group(function () {
+    
+//TRIPS
     Route::post('/trips', [TripController::class, 'store'])
-        ->name('trips.store');
+    ->name('trips.store');
 
     Route::get('/trips', [TripController::class, 'index'])
     ->name('trips.index');
     
     Route::get('/trips/create', fn () => Inertia::render('Trips/Create'))
     ->name('trips.create');    
+
+    Route::get('/trips/{trip}/edit', [TripController::class, 'edit'])
+    ->name('trips.edit');
+
+    Route::put('/trips/{trip}', [TripController::class, 'update'])
+    ->name('trips.update');
+
+    Route::delete('/trips/{trip}', [TripController::class, 'destroy'])
+    ->name('trips.destroy');
 
     Route::get('/trips/{trip}', [TripController::class, 'show'])
     ->name('trips.show');
@@ -85,6 +96,8 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/trips/{trip}/google-maps/{googleMapList}', [GoogleMapListController::class, 'detach'])
         ->name('trips.google-maps.detach');
+
+//PHOTOS
 
     Route::post('/photos', [PhotoController::class, 'store'])
         ->name('photos.store');

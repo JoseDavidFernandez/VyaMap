@@ -11,4 +11,14 @@ class TripPolicy
     {
         return $trip->user_id === $user->id;
     }
+
+    public function update(User $user, Trip $trip): bool
+    {
+        return $trip->user_id === $user->id;
+    }
+
+    public function delete(User $user, Trip $trip): bool
+    {
+        return $trip->user_id === $user->id;
+    }
 }
