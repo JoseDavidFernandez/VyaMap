@@ -4,7 +4,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import TripVisitedMap from '../../components/trips/TripVisitedMap.vue';
 import TripFlightMap from '../../components/trips/TripFlightMap.vue';
 
-import { router, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 interface Trip {
@@ -283,6 +283,26 @@ const saveVisit = (visit: Visit) => {
 */
 
 const showFlightForm = ref(false);
+
+const isDeletingTrip = ref(false);
+
+const deleteTrip = () => {
+    const confirmed = window.confirm(
+        `Are you sure you want to delete "${props.trip.name}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    isDeletingTrip.value = true;
+
+    router.delete(`/trips/${props.trip.id}`, {
+        onFinish: () => {
+            isDeletingTrip.value = false;
+        },
+    });
+};
 
 const flightForm = useForm({
     origin_airport_id: 0,
@@ -790,6 +810,24 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     >
                                         {{ trip.description }}
                                     </p>
+
+                                    <div class="mt-5 flex flex-wrap gap-2">
+                                        <Link
+                                            :href="`/trips/${trip.id}/edit`"
+                                            class="inline-flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[10px] font-medium text-white/60 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white sm:px-5 sm:py-2.5 sm:text-xs"
+                                        >
+                                            Edit trip
+                                        </Link>
+
+                                        <button
+                                            type="button"
+                                            :disabled="isDeletingTrip"
+                                            class="inline-flex items-center justify-center rounded-full border border-red-400/[0.12] bg-red-400/[0.035] px-4 py-2 text-[10px] font-medium text-red-200/50 transition hover:border-red-300/[0.22] hover:bg-red-400/[0.07] hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5 sm:py-2.5 sm:text-xs"
+                                            @click="deleteTrip"
+                                        >
+                                            {{ isDeletingTrip ? 'Deleting...' : 'Delete trip' }}
+                                        </button>
+                                    </div>
 
                                 </div>
 
