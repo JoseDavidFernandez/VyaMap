@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import AppLayout from '../layouts/AppLayout.vue';
+import AppLayout from '../../layouts/AppLayout.vue';
 import { Link } from '@inertiajs/vue3';
-import ProfileTravelGlobe from '../components/ProfileTravelGlobe.vue';
 
 interface User {
     name: string;
@@ -30,12 +29,37 @@ interface ProfileTrip {
     cover: string | null;
 }
 
-const props = defineProps<{
-    user: User;
-    stats: Stats;
-    countries: Country[];
-    trips: ProfileTrip[];
-}>();
+const user: User = {
+    name: 'José David',
+    email: 'jose@example.com',
+    avatar: null,
+};
+
+const stats: Stats = {
+    countries: 12,
+    cities: 31,
+    trips: 8,
+    flights: 18,
+};
+
+const countries: Country[] = [
+    { name: 'Spain', iso_code: 'ES' },
+    { name: 'Portugal', iso_code: 'PT' },
+    { name: 'Italy', iso_code: 'IT' },
+    { name: 'Croatia', iso_code: 'HR' },
+    { name: 'Greece', iso_code: 'GR' },
+    { name: 'Albania', iso_code: 'AL' },
+];
+
+const trips: ProfileTrip[] = [
+    { id: 1, name: 'Albania', location: 'Tirana · Sarandë · Ksamil', year: 2026, cover: null },
+    { id: 2, name: 'Croatia', location: 'Dubrovnik · Split · Hvar', year: 2025, cover: null },
+    { id: 3, name: 'Italy', location: 'Rome · Florence · Venice', year: 2025, cover: null },
+    { id: 4, name: 'Portugal', location: 'Lisbon · Porto', year: 2024, cover: null },
+    { id: 5, name: 'Switzerland', location: 'Zürich · Interlaken', year: 2024, cover: null },
+    { id: 6, name: 'Denmark', location: 'Copenhagen', year: 2023, cover: null },
+];
+
 const flagEmoji = (isoCode: string) =>
     isoCode
         .toUpperCase()
@@ -55,29 +79,22 @@ const initials = (name: string) =>
 const activeFilter = ref('All');
 
 const years = computed(() =>
-    [...new Set(props.trips.map((trip) => trip.year).filter(Boolean))]
+    [...new Set(trips.map((trip) => trip.year).filter(Boolean))]
         .sort((a, b) => Number(b) - Number(a))
         .map(String),
 );
 
 const filteredTrips = computed(() =>
     activeFilter.value === 'All'
-        ? props.trips
-        : props.trips.filter((trip) => String(trip.year) === activeFilter.value),
+        ? trips
+        : trips.filter((trip) => String(trip.year) === activeFilter.value),
 );
 
 const avatarUrl = computed(() => {
-    const avatar = props.user.avatar;
-
-    if (!avatar) {
-        return null;
-    }
-
-    return avatar.startsWith('/') ||
-        avatar.startsWith('http://') ||
-        avatar.startsWith('https://')
-        ? avatar
-        : `/storage/${avatar}`;
+    if (!user.avatar) return null;
+    return user.avatar.startsWith('/') || user.avatar.startsWith('http')
+        ? user.avatar
+        : `/storage/${user.avatar}`;
 });
 </script>
 
@@ -87,124 +104,101 @@ const avatarUrl = computed(() => {
             <main class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10">
 
                 <!-- HERO -->
-<!-- HERO -->
-<section class="mb-7">
-    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
-        <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
-        <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
+                <section class="relative overflow-hidden rounded-[28px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]">
+                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_78%_15%,rgba(34,211,238,0.10),transparent_32%),radial-gradient(circle_at_18%_100%,rgba(139,92,246,0.08),transparent_35%)]"></div>
 
-        <div class="relative z-10">
-            <div class="text-[9px] uppercase tracking-[0.24em] text-white/25">
-                Traveller profile
-            </div>
+                    <div class="relative grid gap-10 p-7 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-12">
+                        <div class="flex flex-col gap-7 sm:flex-row sm:items-center">
+                            <div class="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-[var(--vyamap-background)] bg-[var(--vyamap-surface-strong)] shadow-xl sm:h-36 sm:w-36">
+                                <img
+                                    v-if="avatarUrl"
+                                    :src="avatarUrl"
+                                    :alt="user.name"
+                                    class="h-full w-full object-cover"
+                                />
+                                <div v-else class="flex h-full w-full items-center justify-center text-3xl font-semibold">
+                                    {{ initials(user.name) }}
+                                </div>
+                            </div>
 
-            <div class="mt-5 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                <div class="flex min-w-0 flex-col gap-6 sm:flex-row sm:items-center">
-                    <div class="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-[#0d1119] bg-white/[0.04] shadow-xl sm:h-36 sm:w-36">
-                        <img
-                            v-if="avatarUrl"
-                            :src="avatarUrl"
-                            :alt="props.user.name"
-                            class="h-full w-full object-cover"
-                        />
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--vyamap-text-muted)]">
+                                    Traveller profile
+                                </p>
+                                <h1 class="mt-2 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+                                    {{ user.name }}
+                                </h1>
 
-                        <div
-                            v-else
-                            class="flex h-full w-full items-center justify-center text-3xl font-semibold text-white"
-                        >
-                            {{ initials(props.user.name) }}
+                                <div v-if="countries.length" class="mt-5 flex flex-wrap gap-2">
+                                    <span
+                                        v-for="country in countries"
+                                        :key="country.iso_code"
+                                        :title="country.name"
+                                        class="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--vyamap-border)] bg-[var(--vyamap-background)] text-lg"
+                                    >
+                                        {{ flagEmoji(country.iso_code) }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="min-w-0">
-                        <h1 class="text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
-                            {{ props.user.name }}
-                        </h1>
-
-                        <div
-                            v-if="props.countries.length"
-                            class="mt-5 flex flex-wrap gap-2"
-                        >
-                            <span
-                                v-for="country in props.countries"
-                                :key="country.iso_code"
-                                :title="country.name"
-                                class="flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-lg"
+                        <div class="flex items-center gap-3 lg:self-end">
+                            <Link
+                                href="/profile/edit"
+                                class="inline-flex rounded-xl bg-[var(--vyamap-text)] px-5 py-2.5 text-sm font-medium text-[var(--vyamap-background)] transition hover:opacity-90"
                             >
-                                {{ flagEmoji(country.iso_code) }}
-                            </span>
+                                Edit profile
+                            </Link>
                         </div>
                     </div>
-                </div>
-
-                <div class="shrink-0">
-                    <Link
-                        href="/profile/edit"
-                        class="inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-medium text-[#0d1119] transition hover:bg-white/90"
-                    >
-                        Edit profile
-                    </Link>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+                </section>
 
                 <!-- STATS -->
                 <section class="mt-4 grid grid-cols-2 overflow-hidden rounded-[22px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] sm:grid-cols-4">
                     <div class="border-b border-[var(--vyamap-border)] p-6 sm:border-b-0 sm:border-r">
-                        <p class="text-3xl font-semibold tracking-tight">{{ props.stats.countries }}</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ stats.countries }}</p>
                         <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Countries</p>
                     </div>
                     <div class="border-b border-[var(--vyamap-border)] p-6 sm:border-b-0 sm:border-r">
-                        <p class="text-3xl font-semibold tracking-tight">{{ props.stats.cities }}</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ stats.cities }}</p>
                         <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Cities</p>
                     </div>
                     <div class="p-6 sm:border-r sm:border-[var(--vyamap-border)]">
-                        <p class="text-3xl font-semibold tracking-tight">{{ props.stats.trips }}</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ stats.trips }}</p>
                         <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Trips</p>
                     </div>
                     <div class="p-6">
-                        <p class="text-3xl font-semibold tracking-tight">{{ props.stats.flights }}</p>
+                        <p class="text-3xl font-semibold tracking-tight">{{ stats.flights }}</p>
                         <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Flights</p>
                     </div>
                 </section>
 
                 <!-- TRAVEL FOOTPRINT -->
-                <section
-                    class="mt-4 overflow-hidden rounded-[28px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]"
-                >
-                    <div class="px-6 pt-7 sm:px-8">
-                        <div class="flex items-end justify-between gap-6">
-                            <div>
-                                <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--vyamap-text-muted)]">
-                                    Your travel world
-                                </p>
+                <section class="mt-16">
+                    <div class="mb-6">
+                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--vyamap-text-muted)]">
+                            Your travel world
+                        </p>
+                        <h2 class="mt-2 text-3xl font-semibold tracking-tight">Travel footprint</h2>
+                    </div>
 
-                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-                                    Travel footprint
-                                </h2>
-
-                                <p class="mt-2 text-sm text-[var(--vyamap-text-muted)]">
-                                    The countries you have explored.
-                                </p>
-                            </div>
-
-                            <div class="hidden text-right sm:block">
-                                <div class="text-xl font-semibold">
-                                    {{ props.countries.length }}
+                    <div class="overflow-hidden rounded-[24px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]">
+                        <div class="relative flex min-h-[260px] items-center justify-center overflow-hidden bg-[#10151b] p-8">
+                            <div class="absolute inset-0 opacity-50 [background-image:radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:18px_18px]"></div>
+                            <div class="relative max-w-xl text-center">
+                                <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-2xl">
+                                    🌍
                                 </div>
-
-                                <div class="text-xs text-[var(--vyamap-text-muted)]">
-                                    countries explored
-                                </div>
+                                <p class="text-sm font-medium text-white">Your world is taking shape</p>
+                                <p class="mt-2 text-sm leading-6 text-white/50">
+                                    {{ stats.countries }} countries · {{ stats.cities }} cities · {{ stats.flights }} flights
+                                </p>
+                                <p class="mt-4 text-xs text-white/35">
+                                    Interactive world map can live here when we connect the profile footprint to the existing map data.
+                                </p>
                             </div>
                         </div>
                     </div>
-
-                    <ProfileTravelGlobe
-                        :countries="props.countries"
-                    />
                 </section>
 
                 <!-- TRIPS -->
@@ -218,7 +212,7 @@ const avatarUrl = computed(() => {
                         </div>
 
                         <span class="text-sm text-[var(--vyamap-text-subtle)]">
-                            {{ props.stats.trips }} trips
+                            {{ stats.trips }} trips
                         </span>
                     </div>
 

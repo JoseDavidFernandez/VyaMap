@@ -137,4 +137,54 @@ class TripController extends Controller
                 ->values(),
         ]);
     }
+
+    public function index(Request $request): Response
+    {
+        $trips = Trip::query()
+            ->where('user_id', $request->user()->id)
+            ->with([
+                'visits.city.country',
+                'photos' => function ($query) {
+                    $query
+                        ->where('processing_status', 'ready')
+                        ->orderBy('id');
+                },
+            ])
+            ->orderByDesc('start_date')
+            ->get();
+
+        return Inertia::render('Trips/Index', [
+            'trips' => $trips->map(function ($trip) {
+                return [
+                    'id' => $trip->id,
+                    'name' => $trip->name,
+                    'description' => $trip->description,
+                    'start_date' => $trip->start_date?->format('Y-m-d'),
+                    'end_date' => $trip->end_date?->format('Y-m-d'),
+
+                    'cover' => $trip->photos->first()?->thumbnail_path
+                        ?? $trip->photos->first()?->path,
+
+                    'cities' => $trip->visits
+                        ->map(fn ($visit) => $visit->city?->name)
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all(),
+
+                    'countries' => $trip->visits
+                        ->map(fn ($visit) => $visit->city?->country)
+                        ->filter()
+                        ->unique('iso_code')
+                        ->values()
+                        ->map(fn ($country) => [
+                            'name' => $country->name,
+                            'iso_code' => $country->iso_code,
+                        ])
+                        ->values()
+                        ->all(),
+                ];
+            }),
+        ]);
+    }
 }

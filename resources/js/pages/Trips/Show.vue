@@ -1,7 +1,8 @@
 <script setup lang="ts">
 
 import AppLayout from '../../layouts/AppLayout.vue';
-import TripMap from '../../components/trips/TripMap.vue';
+import TripVisitedMap from '../../components/trips/TripVisitedMap.vue';
+import TripFlightMap from '../../components/trips/TripFlightMap.vue';
 
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
@@ -87,6 +88,7 @@ interface DestinationGroup {
     iso_code: string;
     cities: string[];
 }
+
 interface GoogleMapList {
     id: number;
     name: string;
@@ -315,7 +317,7 @@ const destinationResults = ref<AirportSearchResult[]>([]);
 
 const searchAirports = async (
     query: string,
-    type: 'origin' | 'destination'
+    type: 'origin' | 'destination',
 ) => {
     if (query.trim().length < 2) {
         if (type === 'origin') {
@@ -329,7 +331,7 @@ const searchAirports = async (
 
     try {
         const response = await fetch(
-            `/airports/search?q=${encodeURIComponent(query)}`
+            `/airports/search?q=${encodeURIComponent(query)}`,
         );
 
         const data = await response.json();
@@ -410,13 +412,6 @@ const tripStartDateTime = computed(() => {
 
     return `${props.trip.start_date}T00:00`;
 });
-
-
-/*
-|--------------------------------------------------------------------------
-| PHOTOS
-|--------------------------------------------------------------------------
-*/
 
 /*
 |--------------------------------------------------------------------------
@@ -561,14 +556,15 @@ const availableGoogleMapLists = computed(() =>
     props.available_google_map_lists.filter(
         (list) =>
             !props.google_map_lists.some(
-                (attachedList) => attachedList.id === list.id
-            )
-    )
+                (attachedList) => attachedList.id === list.id,
+            ),
+    ),
 );
 
 const submitGoogleMap = () => {
     googleMapForm.post(`/trips/${props.trip.id}/google-maps`, {
         preserveScroll: true,
+
         onSuccess: () => {
             showGoogleMapForm.value = false;
             googleMapForm.reset();
@@ -586,11 +582,12 @@ const attachExistingGoogleMap = () => {
         {},
         {
             preserveScroll: true,
+
             onSuccess: () => {
                 showGoogleMapForm.value = false;
                 selectedGoogleMapListId.value = null;
             },
-        }
+        },
     );
 };
 
@@ -643,13 +640,13 @@ const destinationsByCountry = computed<DestinationGroup[]>(() => {
     });
 
     return Array.from(groups.values()).sort((a, b) =>
-        a.country.localeCompare(b.country)
+        a.country.localeCompare(b.country),
     );
 });
 
 const cityCount = computed(() => {
     return new Set(
-        props.visits.map((visit) => visit.city.id)
+        props.visits.map((visit) => visit.city.id),
     ).size;
 });
 
@@ -671,7 +668,7 @@ const tripDays = computed(() => {
         end.getTime() - start.getTime();
 
     return Math.round(
-        difference / (1000 * 60 * 60 * 24)
+        difference / (1000 * 60 * 60 * 24),
     ) + 1;
 });
 
@@ -724,119 +721,207 @@ const formatAirport = (airport: AirportSearchResult) => {
 </script>
 
 <template>
+
     <AppLayout :title="trip.name">
 
         <div class="vyamap-page">
 
-            <div
-                class="relative mx-auto max-w-[1500px] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
+            <main
+                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
             >
 
                 <!-- =====================================================
                      TRIP HEADER
                 ====================================================== -->
 
-                <section class="vyamap-section mb-7">
+                <section class="mb-7">
 
-                    <div class="vyamap-card-lg p-7 sm:p-9 lg:p-10">
+                    <div
+                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
+                    >
 
                         <div
-                            class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
-                        >
+                            class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
+                        ></div>
 
-                            <!-- Trip information -->
+                        <div
+                            class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"
+                        ></div>
 
-                            <div>
+                        <div class="relative z-10">
 
-                                <div class="mb-4 flex items-center gap-3 vyamap-eyebrow">
+                            <div
+                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
+                            >
+                                Travel history
+                            </div>
 
-                                    <span>
-                                        {{ formatDateShort(trip.start_date) }}
-                                    </span>
+                            <div
+                                class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
+                            >
 
-                                    <span class="text-white/15">
-                                        —
-                                    </span>
+                                <div class="min-w-0">
 
-                                    <span>
-                                        {{ formatDateShort(trip.end_date) }}
-                                    </span>
+                                    <div
+                                        class="mb-4 flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-white/30"
+                                    >
+                                        <span>
+                                            {{ formatDateShort(trip.start_date) }}
+                                        </span>
+
+                                        <span class="text-white/15">
+                                            —
+                                        </span>
+
+                                        <span>
+                                            {{ formatDateShort(trip.end_date) }}
+                                        </span>
+                                    </div>
+
+                                    <h1
+                                        class="max-w-4xl text-4xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
+                                    >
+                                        {{ trip.name }}
+                                    </h1>
+
+                                    <p
+                                        v-if="trip.description"
+                                        class="mt-5 max-w-2xl text-sm leading-6 text-white/40 sm:text-base"
+                                    >
+                                        {{ trip.description }}
+                                    </p>
 
                                 </div>
 
 
-                                <h1
-                                    class="max-w-4xl text-5xl font-semibold tracking-[-0.065em] sm:text-6xl lg:text-7xl"
-                                >
-                                    {{ trip.name }}
-                                </h1>
+                                <!-- STATS -->
 
-
-                                <p
-                                    v-if="trip.description"
-                                    class="mt-4 max-w-2xl text-sm leading-6 text-white/40 sm:text-base"
+                                <div
+                                    class="grid shrink-0 grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4 lg:min-w-[440px]"
                                 >
-                                    {{ trip.description }}
-                                </p>
+
+                                    <div>
+
+                                        <div
+                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                        >
+                                            {{ tripDays ?? '—' }}
+                                        </div>
+
+                                        <div
+                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
+                                        >
+                                            Days
+                                        </div>
+
+                                    </div>
+
+                                    <div>
+
+                                        <div
+                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                        >
+                                            {{ cityCount }}
+                                        </div>
+
+                                        <div
+                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
+                                        >
+                                            Cities
+                                        </div>
+
+                                    </div>
+
+                                    <div>
+
+                                        <div
+                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                        >
+                                            {{ countryCount }}
+                                        </div>
+
+                                        <div
+                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
+                                        >
+                                            Countries
+                                        </div>
+
+                                    </div>
+
+                                    <div>
+
+                                        <div
+                                            class="text-3xl font-semibold tracking-[-0.05em] text-white"
+                                        >
+                                            {{ flightCount }}
+                                        </div>
+
+                                        <div
+                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
+                                        >
+                                            Flights
+                                        </div>
+
+                                    </div>
+
+                                </div>
 
                             </div>
 
 
-                            <!-- Statistics -->
+                            <!-- DESTINATIONS -->
 
-                            <div
-                                class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[460px]"
-                            >
+                            <div class="mt-9 border-t border-white/[0.07] pt-7">
 
-                                <div class="vyamap-stat">
+                                <div
+                                    class="mb-4 text-[9px] uppercase tracking-[0.24em] text-white/25"
+                                >
+                                    Destinations
+                                </div>
 
-                                    <div class="text-2xl font-semibold">
-                                        {{ tripDays ?? '—' }}
-                                    </div>
+                                <div
+                                    v-if="destinationsByCountry.length"
+                                    class="flex flex-wrap gap-x-8 gap-y-5"
+                                >
 
-                                    <div class="mt-1 vyamap-eyebrow">
-                                        Days
+                                    <div
+                                        v-for="group in destinationsByCountry"
+                                        :key="group.iso_code"
+                                        class="flex items-center gap-3"
+                                    >
+
+                                        <div
+                                            class="shrink-0 text-lg leading-none"
+                                            :title="group.country"
+                                        >
+                                            {{ flagEmoji(group.iso_code) }}
+                                        </div>
+
+                                        <div class="min-w-0">
+
+                                            <div
+                                                class="text-sm font-medium leading-5 text-white"
+                                            >
+                                                {{ group.country }}
+                                            </div>
+
+                                            <div
+                                                class="mt-0.5 text-[10px] leading-4 text-white/30"
+                                            >
+                                                {{ group.cities.join(' · ') }}
+                                            </div>
+
+                                        </div>
+
                                     </div>
 
                                 </div>
 
-
-                                <div class="vyamap-stat">
-
-                                    <div class="text-2xl font-semibold">
-                                        {{ cityCount }}
-                                    </div>
-
-                                    <div class="mt-1 vyamap-eyebrow">
-                                        Cities
-                                    </div>
-
-                                </div>
-
-
-                                <div class="vyamap-stat">
-
-                                    <div class="text-2xl font-semibold">
-                                        {{ countryCount }}
-                                    </div>
-
-                                    <div class="mt-1 vyamap-eyebrow">
-                                        Countries
-                                    </div>
-
-                                </div>
-
-
-                                <div class="vyamap-stat">
-
-                                    <div class="text-2xl font-semibold">
-                                        {{ flightCount }}
-                                    </div>
-
-                                    <div class="mt-1 vyamap-eyebrow">
-                                        Flights
-                                    </div>
-
+                                <div
+                                    v-else
+                                    class="text-sm text-white/25"
+                                >
+                                    No destinations yet.
                                 </div>
 
                             </div>
@@ -849,7 +934,7 @@ const formatAirport = (airport: AirportSearchResult) => {
 
 
                 <!-- =====================================================
-                     MAP + PHOTOS + DESTINATIONS
+                     MAP + PHOTOS
                 ====================================================== -->
 
                 <section
@@ -858,14 +943,12 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                     <!-- MAIN MAP -->
 
-                    <div class="vyamap-map-card min-h-[530px]">
+                    <div class="vyamap-map-card h-[530px] overflow-hidden">
 
-                        <div class="h-[530px] w-full">
+                        <div class="h-full w-full min-h-0">
 
-                            <TripMap
+                            <TripVisitedMap
                                 :visits="visits"
-                                :flights="[]"
-                                :interactive="false"
                             />
 
                         </div>
@@ -880,9 +963,13 @@ const formatAirport = (airport: AirportSearchResult) => {
                         <!-- PHOTOS -->
 
                         <div class="vyamap-memory group">
+
                             <div class="vyamap-memory-content">
+
                                 <!-- HEADER -->
+
                                 <div class="flex items-center justify-between">
+
                                     <div class="vyamap-memory-label">
                                         Memories
                                     </div>
@@ -893,20 +980,25 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         :disabled="isUploadingPhotos"
                                         @click="openPhotoPicker"
                                     >
-                                        <span v-if="!isUploadingPhotos">+</span>
+                                        <span v-if="!isUploadingPhotos">
+                                            +
+                                        </span>
 
                                         <span
                                             v-else
                                             class="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white"
                                         ></span>
                                     </button>
+
                                 </div>
 
                                 <div
                                     v-if="photoUploadMessage"
                                     class="mt-4 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-xs text-white/60 transition-all"
                                 >
+
                                     <div class="flex items-center gap-3">
+
                                         <span
                                             v-if="isUploadingPhotos"
                                             class="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-white/20 border-t-white"
@@ -922,9 +1014,11 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         <span>
                                             {{ photoUploadMessage }}
                                         </span>
+
                                     </div>
+
                                 </div>
-                                
+
                                 <input
                                     ref="photoInput"
                                     type="file"
@@ -935,12 +1029,14 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 />
 
                                 <!-- PHOTOS -->
+
                                 <div
                                     v-if="photos.length"
                                     class="relative mt-5 h-[300px] overflow-hidden rounded-2xl"
                                     @mouseenter="isPhotosHovered = true"
                                     @mouseleave="isPhotosHovered = false"
                                 >
+
                                     <div
                                         v-for="(photo, index) in photos.slice(0, 3)"
                                         :key="photo.id"
@@ -958,28 +1054,34 @@ const formatAirport = (airport: AirportSearchResult) => {
                                             `,
                                         }"
                                     >
+
                                         <img
                                             :src="`/storage/${photo.thumbnail_path ?? photo.path}`"
                                             :alt="photo.original_filename"
                                             class="h-full w-full object-cover"
                                             loading="lazy"
                                         />
+
                                     </div>
 
                                     <!-- VIEW MORE -->
+
                                     <a
                                         :href="`/trips/${props.trip.id}/photos`"
                                         class="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.92] px-7 py-3 text-sm font-semibold tracking-[-0.02em] text-black shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-white"
                                     >
                                         View More
                                     </a>
+
                                 </div>
 
                                 <!-- EMPTY STATE -->
+
                                 <div
                                     v-else
                                     class="mt-5 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] px-5 py-8 text-center"
                                 >
+
                                     <div class="text-2xl text-white/15">
                                         +
                                     </div>
@@ -994,6 +1096,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         :disabled="isUploadingPhotos"
                                         @click="openPhotoPicker"
                                     >
+
                                         <span v-if="!isUploadingPhotos">
                                             +
                                         </span>
@@ -1002,68 +1105,11 @@ const formatAirport = (airport: AirportSearchResult) => {
                                             v-else
                                             class="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white"
                                         ></span>
+
                                     </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        
-                        <!-- DESTINATIONS -->
-                         
-                        <div class="vyamap-card-lg p-6 sm:p-7">
-
-                            <div class="mb-5 vyamap-section-title">
-                                Destinations
-                            </div>
-
-
-                            <div
-                                v-if="destinationsByCountry.length"
-                                class="space-y-5"
-                            >
-
-                                <div
-                                    v-for="group in destinationsByCountry"
-                                    :key="group.iso_code"
-                                >
-
-                                    <div class="vyamap-destination">
-
-                                        <div
-                                            class="flex h-10 w-10 shrink-0 items-center justify-center text-2xl leading-none"
-                                            :title="group.country"
-                                        >
-                                            {{ flagEmoji(group.iso_code) }}
-                                        </div>
-
-
-                                        <div class="min-w-0">
-
-                                            <div class="truncate text-sm font-medium">
-                                                {{ group.country }}
-                                            </div>
-
-
-                                            <div
-                                                class="mt-0.5 text-[10px] text-white/25"
-                                            >
-                                                {{ group.cities.join(' · ') }}
-                                            </div>
-
-                                        </div>
-
-                                    </div>
 
                                 </div>
 
-                            </div>
-
-
-                            <div
-                                v-else
-                                class="text-sm text-white/25"
-                            >
-                                No destinations yet.
                             </div>
 
                         </div>
@@ -1093,14 +1139,13 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     Journey
                                 </div>
 
-                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
+                                <h2
+                                    class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
+                                >
                                     Itinerary
                                 </h2>
 
                             </div>
-
-
-                            <!-- Add city -->
 
                             <div class="relative">
 
@@ -1112,7 +1157,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     class="h-9 w-9 cursor-text rounded-full border border-white/10 bg-white/[0.05] text-center text-sm text-white outline-none transition placeholder:text-white/30 focus:w-36 focus:px-4 focus:text-left"
                                     @input="searchCities"
                                 />
-
 
                                 <div
                                     v-if="cityResults.length"
@@ -1132,9 +1176,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         </div>
 
                                         <div class="mt-1 text-xs text-white/30">
-                                            {{ city.country }}
-                                            ·
-                                            {{ city.iso_code }}
+                                            {{ city.country }} · {{ city.iso_code }}
                                         </div>
 
                                     </button>
@@ -1143,197 +1185,155 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                             </div>
 
-                            
-
                         </div>
-
-
-                        <!-- Timeline -->
 
                         <div
                             v-if="timeline.length"
-                            class="space-y-0"
+                            class="border-t border-white/[0.08]"
                         >
 
                             <div
                                 v-for="(visit, index) in timeline"
                                 :key="visit.id"
-                                class="relative pb-7 pl-12 last:pb-0"
+                                class="border-b border-white/[0.08] py-5 last:border-b-0"
                             >
 
-                                <div
-                                    v-if="index < timeline.length - 1"
-                                    class="vyamap-timeline-line"
-                                />
+                                <div class="flex items-start gap-4">
 
-
-                                <div class="vyamap-timeline-node">
-                                    {{ String(index + 1).padStart(2, '0') }}
-                                </div>
-
-
-                                <div>
-
-                                    <div
-                                        class="flex items-start justify-between gap-4"
-                                    >
-
-                                        <div>
-
-                                            <div class="vyamap-eyebrow">
-
-                                                {{ formatDate(visit.visited_from) }}
-
-                                                <span
-                                                    v-if="visit.visited_until"
-                                                    class="mx-1"
-                                                >
-                                                    —
-                                                </span>
-
-                                                <span v-if="visit.visited_until">
-                                                    {{ formatDate(visit.visited_until) }}
-                                                </span>
-
-                                            </div>
-
-
-                                            <div class="mt-2 flex items-center gap-2">
-
-                                                <h3
-                                                    class="text-xl font-semibold tracking-[-0.035em]"
-                                                >
-                                                    {{ visit.city.name }}
-                                                </h3>
-
-
-                                                <span
-                                                    class="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[8px] font-semibold text-white/40"
-                                                >
-                                                    {{ visit.city.iso_code }}
-                                                </span>
-
-                                            </div>
-
-
-                                            <div
-                                                class="mt-1 text-xs text-white/30"
-                                            >
-                                                {{ visit.city.country }}
-                                            </div>
-
-                                        </div>
-
-
-                                        <button
-                                            v-if="editingVisitId !== visit.id"
-                                            type="button"
-                                            class="text-[10px] text-white/25 transition hover:text-white"
-                                            @click="startEditingVisit(visit)"
-                                        >
-                                            Edit
-                                        </button>
-
+                                    <div class="pt-1 text-[9px] font-semibold text-white/20">
+                                        {{ String(index + 1).padStart(2, '0') }}
                                     </div>
 
+                                    <div class="min-w-0 flex-1">
 
-                                    <!-- Notes -->
+                                        <div class="flex items-start justify-between gap-4">
 
-                                    <p
-                                        v-if="editingVisitId !== visit.id && visit.notes"
-                                        class="mt-4 text-sm leading-6 text-white/35"
-                                    >
-                                        {{ visit.notes }}
-                                    </p>
+                                            <div class="min-w-0">
 
+                                                <div class="flex items-center gap-3">
 
-                                    <!-- Edit visit -->
+                                                    <h3 class="text-lg font-semibold tracking-[-0.025em]">
+                                                        {{ visit.city.name }}
+                                                    </h3>
 
-                                    <form
-                                        v-if="editingVisitId === visit.id"
-                                        class="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4"
-                                        @submit.prevent="saveVisit(visit)"
-                                    >
+                                                    <span class="text-base">
+                                                        {{ flagEmoji(visit.city.iso_code) }}
+                                                    </span>
 
-                                        <div class="grid gap-3 sm:grid-cols-2">
+                                                </div>
 
-                                            <div>
+                                                <div class="mt-1 text-[11px] text-white/35">
+                                                    {{ visit.city.country }}
+                                                </div>
 
-                                                <label class="vyamap-label">
-                                                    From
-                                                </label>
-
-                                                <input
-                                                    v-model="editVisitForm.visited_from"
-                                                    type="date"
-                                                    :min="trip.start_date ?? undefined"
-                                                    :max="trip.end_date ?? undefined"
-                                                    class="vyamap-input"
-                                                />
+                                                <div class="mt-3 text-[10px] uppercase tracking-[0.12em] text-white/25">
+                                                    {{ formatDateShort(visit.visited_from) }}
+                                                    <span class="mx-1">—</span>
+                                                    {{ formatDateShort(visit.visited_until) }}
+                                                </div>
 
                                             </div>
 
-
-                                            <div>
-
-                                                <label class="vyamap-label">
-                                                    Until
-                                                </label>
-
-                                                <input
-                                                    v-model="editVisitForm.visited_until"
-                                                    type="date"
-                                                    :min="editVisitForm.visited_from || trip.start_date || undefined"
-                                                    :max="trip.end_date ?? undefined"
-                                                    class="vyamap-input"
-                                                />
-
-                                            </div>
-
-                                        </div>
-
-
-                                        <label class="vyamap-label mt-3">
-                                            Notes
-                                        </label>
-
-                                        <textarea
-                                            v-model="editVisitForm.notes"
-                                            rows="4"
-                                            placeholder="What did you see?"
-                                            class="vyamap-textarea"
-                                        />
-
-
-                                        <div class="mt-3 flex gap-2">
-
                                             <button
-                                                type="submit"
-                                                :disabled="editVisitForm.processing"
-                                                class="vyamap-button"
-                                            >
-                                                Save
-                                            </button>
-
-
-                                            <button
+                                                v-if="editingVisitId !== visit.id"
                                                 type="button"
-                                                class="vyamap-button-secondary"
-                                                @click="cancelEditingVisit"
+                                                class="shrink-0 text-[10px] text-white/25 transition hover:text-white"
+                                                @click="startEditingVisit(visit)"
                                             >
-                                                Cancel
+                                                Edit
                                             </button>
 
                                         </div>
 
-                                    </form>
+                                        <p
+                                            v-if="editingVisitId !== visit.id && visit.notes"
+                                            class="mt-4 text-sm leading-6 text-white/35"
+                                        >
+                                            {{ visit.notes }}
+                                        </p>
+
+                                        <form
+                                            v-if="editingVisitId === visit.id"
+                                            class="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4"
+                                            @submit.prevent="saveVisit(visit)"
+                                        >
+
+                                            <div class="grid gap-3 sm:grid-cols-2">
+
+                                                <div>
+
+                                                    <label class="vyamap-label">
+                                                        From
+                                                    </label>
+
+                                                    <input
+                                                        v-model="editVisitForm.visited_from"
+                                                        type="date"
+                                                        :min="trip.start_date ?? undefined"
+                                                        :max="trip.end_date ?? undefined"
+                                                        class="vyamap-input"
+                                                    />
+
+                                                </div>
+
+                                                <div>
+
+                                                    <label class="vyamap-label">
+                                                        Until
+                                                    </label>
+
+                                                    <input
+                                                        v-model="editVisitForm.visited_until"
+                                                        type="date"
+                                                        :min="editVisitForm.visited_from || trip.start_date || undefined"
+                                                        :max="trip.end_date ?? undefined"
+                                                        class="vyamap-input"
+                                                    />
+
+                                                </div>
+
+                                            </div>
+
+                                            <label class="vyamap-label mt-3">
+                                                Notes
+                                            </label>
+
+                                            <textarea
+                                                v-model="editVisitForm.notes"
+                                                rows="4"
+                                                placeholder="What did you see?"
+                                                class="vyamap-textarea"
+                                            />
+
+                                            <div class="mt-3 flex gap-2">
+
+                                                <button
+                                                    type="submit"
+                                                    :disabled="editVisitForm.processing"
+                                                    class="vyamap-button"
+                                                >
+                                                    Save
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    class="vyamap-button-secondary"
+                                                    @click="cancelEditingVisit"
+                                                >
+                                                    Cancel
+                                                </button>
+
+                                            </div>
+
+                                        </form>
+
+                                    </div>
 
                                 </div>
 
                             </div>
 
                         </div>
-
 
                         <div
                             v-else
@@ -1355,12 +1355,11 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                         <!-- FLIGHT MAP -->
 
-                        <div class="vyamap-map-card min-h-[330px]">
+                        <div class="vyamap-map-card h-[360px] overflow-hidden">
 
-                            <div class="h-[330px] w-full">
+                            <div class="h-full w-full min-h-0">
 
-                                <TripMap
-                                    :visits="[]"
+                                <TripFlightMap
                                     :flights="flights"
                                 />
 
@@ -1389,7 +1388,6 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                 </div>
 
-
                                 <button
                                     v-if="!showFlightForm"
                                     type="button"
@@ -1400,7 +1398,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 </button>
 
                             </div>
-
 
                             <div
                                 v-if="flights.length"
@@ -1417,8 +1414,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                                     >
 
-                                        <!-- Flight identity -->
-
                                         <div class="flex items-center gap-3">
 
                                             <div>
@@ -1427,21 +1422,13 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                     {{ flight.flight_number }}
                                                 </div>
 
-                                                <div
-                                                    class="mt-0.5 text-[10px] text-white/30"
-                                                >
+                                                <div class="mt-0.5 text-[10px] text-white/30">
                                                     {{ flight.airline || 'Flight' }}
                                                 </div>
 
                                             </div>
 
-
-                                            <div
-                                                class="h-7 w-px bg-white/[0.08]"
-                                            />
-
-
-                                            <!-- Route -->
+                                            <div class="h-7 w-px bg-white/[0.08]" />
 
                                             <div class="text-xs text-white/60">
 
@@ -1457,9 +1444,6 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                         </div>
 
-
-                                        <!-- Date / time -->
-
                                         <div
                                             class="flex items-center gap-4 text-right"
                                         >
@@ -1470,9 +1454,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                     Departure
                                                 </div>
 
-                                                <div
-                                                    class="mt-0.5 text-xs text-white/55"
-                                                >
+                                                <div class="mt-0.5 text-xs text-white/55">
                                                     {{ formatDateShort(flight.departure) }}
                                                     ·
                                                     {{ formatTime(flight.departure) }}
@@ -1480,11 +1462,9 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                             </div>
 
-
                                             <div class="text-white/15">
                                                 →
                                             </div>
-
 
                                             <div>
 
@@ -1492,9 +1472,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                     Arrival
                                                 </div>
 
-                                                <div
-                                                    class="mt-0.5 text-xs text-white/55"
-                                                >
+                                                <div class="mt-0.5 text-xs text-white/55">
                                                     {{ formatDateShort(flight.arrival) }}
                                                     ·
                                                     {{ formatTime(flight.arrival) }}
@@ -1509,7 +1487,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 </div>
 
                             </div>
-
 
                             <div
                                 v-else
@@ -1550,13 +1527,10 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                     </div>
 
-
                     <form
                         class="space-y-4"
                         @submit.prevent="submitFlight"
                     >
-
-                        <!-- Airports -->
 
                         <div class="grid gap-4 md:grid-cols-2">
 
@@ -1574,7 +1548,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     @input="searchAirports(originSearch, 'origin')"
                                 />
 
-
                                 <div
                                     v-if="originResults.length"
                                     class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
@@ -1589,13 +1562,9 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     >
 
                                         <div class="text-sm">
-
                                             {{ airport.iata_code || airport.icao_code }}
-
                                             ·
-
                                             {{ airport.city }}
-
                                         </div>
 
                                         <div class="mt-1 text-xs text-white/30">
@@ -1607,7 +1576,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 </div>
 
                             </div>
-
 
                             <div class="relative">
 
@@ -1623,7 +1591,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     @input="searchAirports(destinationSearch, 'destination')"
                                 />
 
-
                                 <div
                                     v-if="destinationResults.length"
                                     class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
@@ -1638,13 +1605,9 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     >
 
                                         <div class="text-sm">
-
                                             {{ airport.iata_code || airport.icao_code }}
-
                                             ·
-
                                             {{ airport.city }}
-
                                         </div>
 
                                         <div class="mt-1 text-xs text-white/30">
@@ -1658,9 +1621,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                             </div>
 
                         </div>
-
-
-                        <!-- Flight information -->
 
                         <div class="grid gap-4 md:grid-cols-2">
 
@@ -1679,7 +1639,6 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                             </div>
 
-
                             <div>
 
                                 <label class="vyamap-label">
@@ -1696,9 +1655,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                             </div>
 
                         </div>
-
-
-                        <!-- Date / time -->
 
                         <div class="grid gap-4 md:grid-cols-2">
 
@@ -1718,7 +1674,6 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                             </div>
 
-
                             <div>
 
                                 <label class="vyamap-label">
@@ -1736,9 +1691,6 @@ const formatAirport = (airport: AirportSearchResult) => {
                             </div>
 
                         </div>
-
-
-                        <!-- Actions -->
 
                         <div class="flex gap-2">
 
@@ -1769,21 +1721,30 @@ const formatAirport = (airport: AirportSearchResult) => {
                      GOOGLE MAPS
                 ====================================================== -->
 
-                <section class="vyamap-section">
+                <section>
+
                     <div class="vyamap-card-lg p-7 sm:p-8">
-                        <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+
+                        <div
+                            class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
+                        >
+
                             <div>
+
                                 <div class="vyamap-section-title">
                                     Planning
                                 </div>
 
-                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
+                                <h2
+                                    class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
+                                >
                                     Google Maps
                                 </h2>
 
                                 <p class="mt-2 max-w-xl text-sm text-white/30">
                                     Maps and lists used while planning the trip.
                                 </p>
+
                             </div>
 
                             <button
@@ -1796,13 +1757,18 @@ const formatAirport = (airport: AirportSearchResult) => {
                             >
                                 + Add map
                             </button>
+
                         </div>
 
                         <div
                             v-if="showGoogleMapForm"
                             class="mt-7 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5"
                         >
-                            <div class="flex rounded-xl border border-white/[0.06] bg-black/20 p-1">
+
+                            <div
+                                class="flex rounded-xl border border-white/[0.06] bg-black/20 p-1"
+                            >
+
                                 <button
                                     type="button"
                                     class="flex-1 rounded-lg px-4 py-2.5 text-xs font-medium transition"
@@ -1828,6 +1794,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 >
                                     Use existing list
                                 </button>
+
                             </div>
 
                             <form
@@ -1835,8 +1802,11 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 class="mt-6"
                                 @submit.prevent="submitGoogleMap"
                             >
+
                                 <div class="grid gap-4 sm:grid-cols-2">
+
                                     <div>
+
                                         <label class="vyamap-label">
                                             List name
                                         </label>
@@ -1854,9 +1824,11 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         >
                                             {{ googleMapForm.errors.name }}
                                         </p>
+
                                     </div>
 
                                     <div>
+
                                         <label class="vyamap-label">
                                             Google Maps URL
                                         </label>
@@ -1874,10 +1846,13 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         >
                                             {{ googleMapForm.errors.url }}
                                         </p>
+
                                     </div>
+
                                 </div>
 
                                 <div class="mt-5 flex gap-2">
+
                                     <button
                                         type="submit"
                                         class="vyamap-button"
@@ -1893,14 +1868,18 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     >
                                         Cancel
                                     </button>
+
                                 </div>
+
                             </form>
 
                             <div
                                 v-else
                                 class="mt-6"
                             >
+
                                 <div v-if="availableGoogleMapLists.length">
+
                                     <label class="vyamap-label">
                                         Select a Google Maps list
                                     </label>
@@ -1909,6 +1888,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         v-model="selectedGoogleMapListId"
                                         class="vyamap-input"
                                     >
+
                                         <option :value="null">
                                             Select a list...
                                         </option>
@@ -1920,9 +1900,11 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         >
                                             {{ mapList.name }}
                                         </option>
+
                                     </select>
 
                                     <div class="mt-5 flex gap-2">
+
                                         <button
                                             type="button"
                                             class="vyamap-button"
@@ -1939,13 +1921,16 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         >
                                             Cancel
                                         </button>
+
                                     </div>
+
                                 </div>
 
                                 <div
                                     v-else
                                     class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
                                 >
+
                                     <p class="text-xs text-white/30">
                                         You don't have any other Google Maps lists available.
                                     </p>
@@ -1957,63 +1942,83 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     >
                                         + Create a new list
                                     </button>
+
                                 </div>
+
                             </div>
+
                         </div>
 
                         <div
                             v-if="props.google_map_lists.length"
-                            class="mt-7 grid gap-3"
+                            class="mt-7 grid gap-3 sm:grid-cols-2"
                         >
+
                             <div
                                 v-for="mapList in props.google_map_lists"
                                 :key="mapList.id"
-                                class="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4"
+                                class="group relative border border-white/[0.08] bg-white/[0.025] p-6 transition hover:-translate-y-0.5 hover:bg-white/[0.04]"
                             >
-                                <div class="min-w-0">
+
+                                <div class="flex items-center justify-between">
+
+                                    <span class="text-lg text-white/70">
+                                        ↗
+                                    </span>
+
                                     <div class="flex items-center gap-3">
-                                        <span class="text-lg">
-                                            ↗
-                                        </span>
 
-                                        <div class="min-w-0">
-                                            <div class="truncate text-sm font-medium text-white">
-                                                {{ mapList.name }}
-                                            </div>
+                                        <a
+                                            :href="mapList.url"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="text-[9px] uppercase tracking-[0.15em] text-white/30 transition hover:text-white"
+                                        >
+                                            Open
+                                        </a>
 
-                                            <div class="mt-1 truncate text-xs text-white/25">
-                                                Google Maps list
-                                            </div>
-                                        </div>
+                                        <button
+                                            type="button"
+                                            class="text-[9px] uppercase tracking-[0.15em] text-white/20 transition hover:text-red-400"
+                                            @click="router.delete(`/trips/${props.trip.id}/google-maps/${mapList.id}`, { preserveScroll: true })"
+                                        >
+                                            Remove
+                                        </button>
+
                                     </div>
+
                                 </div>
 
-                                <div class="flex shrink-0 items-center gap-2">
-                                    <a
-                                        :href="mapList.url"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[10px] font-medium text-white/60 transition hover:bg-white/[0.08] hover:text-white"
-                                    >
-                                        Open
-                                    </a>
+                                <a
+                                    :href="mapList.url"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="block"
+                                >
 
-                                    <button
-                                        type="button"
-                                        class="rounded-full px-3 py-2 text-[10px] text-white/25 transition hover:text-red-400"
-                                        @click="router.delete(`/trips/${props.trip.id}/google-maps/${mapList.id}`, { preserveScroll: true })"
+                                    <div
+                                        class="mt-10 text-lg font-semibold tracking-[-0.025em] text-white"
                                     >
-                                        Remove
-                                    </button>
-                                </div>
+                                        {{ mapList.name }}
+                                    </div>
+
+                                    <div class="mt-2 text-[10px] text-white/30">
+                                        Google Maps list
+                                    </div>
+
+                                </a>
+
                             </div>
+
                         </div>
 
                         <div
                             v-else-if="!showGoogleMapForm"
                             class="vyamap-empty mt-7"
                         >
+
                             <div class="text-center">
+
                                 <div class="text-2xl text-white/10">
                                     ↗
                                 </div>
@@ -2021,14 +2026,19 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 <p class="mt-2 text-xs text-white/25">
                                     No Google Maps lists linked to this trip yet.
                                 </p>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </section>
 
-            </div>
+            </main>
 
         </div>
 
     </AppLayout>
+
 </template>

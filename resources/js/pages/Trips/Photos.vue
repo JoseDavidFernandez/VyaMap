@@ -1,7 +1,5 @@
 <script setup lang="ts">
-
 import AppLayout from '../../layouts/AppLayout.vue';
-
 import { computed, ref } from 'vue';
 
 interface Trip {
@@ -93,43 +91,62 @@ const formatDate = (date: string | null) => {
                             <div
                                 class="text-[9px] uppercase tracking-[0.24em] text-white/25"
                             >
-                                Memories
-                            </div>
-
-                            <h1
-                                class="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl"
-                            >
-                                {{ trip.name }}
-                            </h1>
-
-                            <div
-                                v-if="trip.start_date || trip.end_date"
-                                class="mt-3 text-xs text-white/30"
-                            >
-                                <span v-if="formatDate(trip.start_date)">
-                                    {{ formatDate(trip.start_date) }}
-                                </span>
-
-                                <span
-                                    v-if="trip.start_date && trip.end_date"
-                                    class="mx-2"
-                                >
-                                    →
-                                </span>
-
-                                <span v-if="formatDate(trip.end_date)">
-                                    {{ formatDate(trip.end_date) }}
-                                </span>
+                                Travel memories
                             </div>
 
                             <div
-                                class="mt-6 flex items-center gap-3"
+                                class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
                             >
+                                <div class="min-w-0">
+                                    <div
+                                        class="text-[10px] uppercase tracking-[0.22em] text-white/35"
+                                    >
+                                        Photos
+                                    </div>
+
+                                    <h1
+                                        class="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl"
+                                    >
+                                        {{ trip.name }}
+                                    </h1>
+
+                                    <div
+                                        v-if="trip.start_date || trip.end_date"
+                                        class="mt-3 text-xs text-white/30"
+                                    >
+                                        <span v-if="formatDate(trip.start_date)">
+                                            {{ formatDate(trip.start_date) }}
+                                        </span>
+
+                                        <span
+                                            v-if="trip.start_date && trip.end_date"
+                                            class="mx-2"
+                                        >
+                                            →
+                                        </span>
+
+                                        <span v-if="formatDate(trip.end_date)">
+                                            {{ formatDate(trip.end_date) }}
+                                        </span>
+                                    </div>
+                                </div>
+
                                 <div
-                                    class="rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[10px] text-white/40"
+                                    class="flex shrink-0 items-end gap-8 lg:gap-10"
                                 >
-                                    {{ photos.length }}
-                                    {{ photos.length === 1 ? 'photo' : 'photos' }}
+                                    <div>
+                                        <div
+                                            class="text-[9px] uppercase tracking-[0.22em] text-white/25"
+                                        >
+                                            Photos
+                                        </div>
+
+                                        <div
+                                            class="mt-1 text-2xl font-semibold tracking-[-0.04em] text-white"
+                                        >
+                                            {{ photos.length }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
