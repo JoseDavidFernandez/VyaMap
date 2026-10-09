@@ -38,6 +38,7 @@ interface FlightAirport {
     city: string;
     latitude: number;
     longitude: number;
+    timezone: string | null;
 }
 
 interface Flight {
@@ -81,6 +82,7 @@ interface AirportSearchResult {
     country: string | null;
     latitude: number;
     longitude: number;
+    timezone: string | null;
 }
 
 interface DestinationGroup {
@@ -405,13 +407,37 @@ const cancelFlightForm = () => {
 
 const editingFlightId = ref<number | null>(null);
 
-const formatDateTimeLocal = (value: string | null): string => {
+
+const formatDateTimeLocal = (
+    value: string | null,
+    timezone: string | null,
+): string => {
     if (!value) {
         return '';
     }
 
-    return value.replace(' ', 'T').slice(0, 16);
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: timezone || 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(date);
+
+    const part = (type: string) =>
+        parts.find((item) => item.type === type)?.value ?? '';
+
+    return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
 };
+
 
 const startEditingFlight = (flight: Flight) => {
     editingFlightId.value = flight.id;
@@ -420,8 +446,14 @@ const startEditingFlight = (flight: Flight) => {
     flightForm.origin_airport_id = flight.origin.id;
     flightForm.destination_airport_id = flight.destination.id;
     flightForm.flight_number = flight.flight_number;
-    flightForm.departure_at = formatDateTimeLocal(flight.departure);
-    flightForm.arrival_at = formatDateTimeLocal(flight.arrival);
+    flightForm.departure_at = formatDateTimeLocal(
+        flight.departure,
+        flight.origin.timezone,
+    );
+    flightForm.arrival_at = formatDateTimeLocal(
+        flight.arrival,
+        flight.destination.timezone,
+    );
     flightForm.airline = flight.airline ?? '';
 
     originSearch.value = `${flight.origin.city} · ${flight.origin.name}`;
@@ -774,16 +806,22 @@ const formatDateShort = (date: string | null) => {
     }).format(new Date(date));
 };
 
-const formatTime = (date: string | null) => {
+const formatTime = (
+    date: string | null,
+    timezone: string | null,
+) => {
     if (!date) {
         return '—';
     }
 
     return new Intl.DateTimeFormat('en-GB', {
+        timeZone: timezone || 'UTC',
         hour: '2-digit',
         minute: '2-digit',
+        hourCycle: 'h23',
     }).format(new Date(date));
 };
+
 
 const formatAirport = (airport: AirportSearchResult) => {
     const code = airport.iata_code || airport.icao_code || '';
@@ -1552,7 +1590,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                 <div class="mt-0.5 text-xs text-white/55">
                                                     {{ formatDateShort(flight.departure) }}
                                                     ·
-                                                    {{ formatTime(flight.departure) }}
+                                                    {{ formatTime(flight.departure, flight.origin.timezone) }}
                                                 </div>
 
                                             </div>
@@ -1570,7 +1608,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                 <div class="mt-0.5 text-xs text-white/55">
                                                     {{ formatDateShort(flight.arrival) }}
                                                     ·
-                                                    {{ formatTime(flight.arrival) }}
+                                                    {{ formatTime(flight.arrival, flight.destination.timezone) }}
                                                 </div>
 
                                             </div>

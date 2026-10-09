@@ -112,6 +112,7 @@ class TripController extends Controller
                     'city' => $flight->originAirport->city->name,
                     'latitude' => (float) $flight->originAirport->latitude,
                     'longitude' => (float) $flight->originAirport->longitude,
+                    'timezone' => $flight->originAirport->timezone,
                 ],
                 'destination' => [
                     'id' => $flight->destinationAirport->id,
@@ -119,6 +120,7 @@ class TripController extends Controller
                     'city' => $flight->destinationAirport->city->name,
                     'latitude' => (float) $flight->destinationAirport->latitude,
                     'longitude' => (float) $flight->destinationAirport->longitude,
+                    'timezone' => $flight->destinationAirport->timezone,
                 ],
             ]),
 
