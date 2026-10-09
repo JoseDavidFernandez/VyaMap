@@ -18,6 +18,7 @@ class Airport extends Model
         'icao_code',
         'latitude',
         'longitude',
+        'timezone',
     ];
 
     protected $casts = [

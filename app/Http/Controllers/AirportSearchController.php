@@ -51,6 +51,7 @@ class AirportSearchController extends Controller
                 'country' => $airport->city?->country?->name,
                 'latitude' => (float) $airport->latitude,
                 'longitude' => (float) $airport->longitude,
+                'timezone' => $airport->timezone,
             ]),
         ]);
     }
