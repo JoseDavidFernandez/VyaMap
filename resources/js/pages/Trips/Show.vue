@@ -399,18 +399,71 @@ const resetFlightForm = () => {
 
 const cancelFlightForm = () => {
     showFlightForm.value = false;
+    editingFlightId.value = null;
     resetFlightForm();
 };
 
-const submitFlight = () => {
-    flightForm.post(`/trips/${props.trip.id}/flights`, {
-        preserveScroll: true,
+const editingFlightId = ref<number | null>(null);
 
+const formatDateTimeLocal = (value: string | null): string => {
+    if (!value) {
+        return '';
+    }
+
+    return value.replace(' ', 'T').slice(0, 16);
+};
+
+const startEditingFlight = (flight: Flight) => {
+    editingFlightId.value = flight.id;
+    showFlightForm.value = true;
+
+    flightForm.origin_airport_id = flight.origin.id;
+    flightForm.destination_airport_id = flight.destination.id;
+    flightForm.flight_number = flight.flight_number;
+    flightForm.departure_at = formatDateTimeLocal(flight.departure);
+    flightForm.arrival_at = formatDateTimeLocal(flight.arrival);
+    flightForm.airline = flight.airline ?? '';
+
+    originSearch.value = `${flight.origin.city} · ${flight.origin.name}`;
+    destinationSearch.value = `${flight.destination.city} · ${flight.destination.name}`;
+    originResults.value = [];
+    destinationResults.value = [];
+};
+
+const deleteFlight = (flight: Flight) => {
+    const confirmed = window.confirm(
+        `Are you sure you want to delete flight "${flight.flight_number}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    router.delete(`/trips/${props.trip.id}/flights/${flight.id}`, {
+        preserveScroll: true,
+    });
+};
+
+const submitFlight = () => {
+    const options = {
+        preserveScroll: true,
         onSuccess: () => {
             showFlightForm.value = false;
+            editingFlightId.value = null;
             resetFlightForm();
         },
-    });
+    };
+
+    if (editingFlightId.value !== null) {
+        flightForm.put(
+            `/trips/${props.trip.id}/flights/${editingFlightId.value}`,
+            options,
+        );
+
+        return;
+    }
+
+    flightForm.post(`/trips/${props.trip.id}/flights`, options);
 };
 
 const flagEmoji = (isoCode: string) => {
@@ -1430,7 +1483,11 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     v-if="!showFlightForm"
                                     type="button"
                                     class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-base text-white/50 transition hover:bg-white/[0.1] hover:text-white"
-                                    @click="showFlightForm = true"
+                                    @click="
+                                        editingFlightId = null;
+                                        resetFlightForm();
+                                        showFlightForm = true;
+                                    "
                                 >
                                     +
                                 </button>
@@ -1522,6 +1579,24 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                     </div>
 
+                                    <div class="mt-4 flex justify-end gap-2 border-t border-white/[0.06] pt-3">
+                                        <button
+                                            type="button"
+                                            class="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] font-medium text-white/50 transition hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-white"
+                                            @click="startEditingFlight(flight)"
+                                        >
+                                            Edit
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="rounded-full border border-red-400/[0.12] px-3 py-1.5 text-[10px] font-medium text-red-200/60 transition hover:border-red-300/[0.25] hover:bg-red-400/[0.06] hover:text-red-100"
+                                            @click="deleteFlight(flight)"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+
                                 </div>
 
                             </div>
@@ -1560,7 +1635,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                         </div>
 
                         <h2 class="vyamap-section-heading">
-                            Add flight
+                            {{ editingFlightId !== null ? 'Edit flight' : 'Add flight' }}
                         </h2>
 
                     </div>
@@ -1737,7 +1812,13 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 :disabled="flightForm.processing"
                                 class="vyamap-button"
                             >
-                                Add flight
+                                {{
+                                    flightForm.processing
+                                        ? 'Saving...'
+                                        : editingFlightId !== null
+                                          ? 'Save changes'
+                                          : 'Add flight'
+                                }}
                             </button>
 
                             <button

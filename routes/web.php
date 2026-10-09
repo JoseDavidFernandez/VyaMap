@@ -85,8 +85,16 @@ Route::middleware('auth')->group(function () {
             ->name('trips.visits.update');
     });
 
-    Route::post('/trips/{trip}/flights', [FlightController::class, 'store'])
-    ->name('trips.flights.store');
+    Route::scopeBindings()->group(function () {
+        Route::post('/trips/{trip}/flights', [FlightController::class, 'store'])
+            ->name('trips.flights.store');
+
+        Route::put('/trips/{trip}/flights/{flight}', [FlightController::class, 'update'])
+            ->name('trips.flights.update');
+
+        Route::delete('/trips/{trip}/flights/{flight}', [FlightController::class, 'destroy'])
+            ->name('trips.flights.destroy');
+    });
 
     Route::post('/trips/{trip}/google-maps', [GoogleMapListController::class, 'store'])
     ->name('trips.google-maps.store');
