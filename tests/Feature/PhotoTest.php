@@ -179,7 +179,7 @@ class PhotoTest extends TestCase
 
         $response
             ->assertStatus(201)
-            ->assertJsonPath('processing_status', 'pending');
+            ->assertJsonPath('photo.processing_status', 'pending');
 
         $this->assertDatabaseHas('photos', [
             'user_id' => $user->id,

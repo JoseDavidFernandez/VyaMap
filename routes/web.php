@@ -83,6 +83,9 @@ Route::middleware('auth')->group(function () {
 
         Route::put('/trips/{trip}/visits/{visit}', [VisitController::class, 'update'])
             ->name('trips.visits.update');
+
+        Route::delete('/trips/{trip}/visits/{visit}', [VisitController::class, 'destroy'])
+            ->name('trips.visits.destroy');
     });
 
     Route::scopeBindings()->group(function () {

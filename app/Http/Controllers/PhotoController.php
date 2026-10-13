@@ -81,7 +81,7 @@ class PhotoController extends Controller
         return response()->json([
             'message' => 'Photo uploaded successfully.',
             'photo' => $photo,
-        ]);
+        ],201);
     }
 
     public function destroy(Request $request, Photo $photo): RedirectResponse

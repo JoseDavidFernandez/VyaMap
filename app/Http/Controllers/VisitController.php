@@ -36,4 +36,14 @@ class VisitController extends Controller
 
         return redirect()->route('trips.show', $trip);
     }
+
+    public function destroy(Trip $trip, Visit $visit): RedirectResponse
+    {
+        $this->authorize('view', $trip);
+
+        $visit->delete();
+
+        return redirect()->route('trips.show', $trip);
+    }
+    
 }

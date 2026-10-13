@@ -282,6 +282,16 @@ const saveVisit = (visit: Visit) => {
     });
 };
 
+const deleteVisit = (visit: Visit) => {
+    if (!confirm(`¿Quieres quitar ${visit.city.name} de este viaje?`)) {
+        return;
+    }
+
+    router.delete(`/trips/${props.trip.id}/visits/${visit.id}`, {
+        preserveScroll: true,
+    });
+};
+
 /*
 |--------------------------------------------------------------------------
 | Flights
@@ -1367,14 +1377,26 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                             </div>
 
-                                            <button
+                                            <div
                                                 v-if="editingVisitId !== visit.id"
-                                                type="button"
-                                                class="shrink-0 text-[10px] text-white/25 transition hover:text-white"
-                                                @click="startEditingVisit(visit)"
+                                                class="flex shrink-0 items-center gap-3"
                                             >
-                                                Edit
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    class="text-[10px] text-white/25 transition hover:text-white"
+                                                    @click="startEditingVisit(visit)"
+                                                >
+                                                    Edit
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    class="text-[10px] text-red-400/50 transition hover:text-red-400"
+                                                    @click="deleteVisit(visit)"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
 
                                         </div>
 
@@ -1705,7 +1727,7 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                 <div
                                     v-if="originResults.length"
-                                    class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
+                                    class="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
                                 >
 
                                     <button
