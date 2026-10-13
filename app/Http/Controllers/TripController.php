@@ -149,6 +149,11 @@ class TripController extends Controller
                 'taken_at' => $photo->taken_at?->toISOString(),
             ]),
 
+            // Fotos subidas que la cola aún no ha procesado (no se listan arriba).
+            'processing_photos_count' => $trip->photos()
+                ->whereIn('processing_status', ['pending', 'processing'])
+                ->count(),
+
             'google_map_lists' => $trip->googleMapLists->map(fn ($list) => [
                 'id' => $list->id,
                 'name' => $list->name,

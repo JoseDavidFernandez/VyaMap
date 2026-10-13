@@ -17,6 +17,15 @@ class ProcessPhoto implements ShouldQueue
 {
     use Queueable;
 
+    /** Reintentos ante fallos transitorios (disco, cola). */
+    public int $tries = 3;
+
+    /** Segundos de espera antes del 2.º y 3.er intento. */
+    public array $backoff = [10, 60];
+
+    /** Una foto de 24 MP tarda menos de 1 s; 120 s deja margen amplio. */
+    public int $timeout = 120;
+
     public function __construct(
         public int $photoId,
         public string $temporaryPath,
@@ -82,9 +91,9 @@ class ProcessPhoto implements ShouldQueue
                 $encodedImage
             );
 
-            $thumbnail = $manager
-                ->decodePath($sourcePath)
-                ->scaleDown(width: 400);
+            // La miniatura sale de la versión ya reducida: una sola decodificación
+            // del original (más rápido y con menos memoria).
+            $thumbnail = (clone $image)->scaleDown(width: 400);
 
             $encodedThumbnail = $thumbnail->encode(
                 new WebpEncoder(80)
@@ -110,8 +119,10 @@ class ProcessPhoto implements ShouldQueue
             // por si la cola reintenta el trabajo.
             $files->deletePublicFiles($photo->id);
 
+            // Mientras queden reintentos la foto sigue pendiente; el estado
+            // definitivo 'failed' lo fija failed() al agotarlos.
             $photo->update([
-                'processing_status' => 'failed',
+                'processing_status' => $this->attempts() < $this->tries ? 'pending' : 'failed',
                 'metadata' => [
                     'processing_error' => $exception::class,
                 ],
@@ -122,11 +133,27 @@ class ProcessPhoto implements ShouldQueue
     }
 
     /**
-     * Se ejecuta cuando la cola agota los reintentos: el original (que puede
-     * contener EXIF con ubicación) no debe quedarse huérfano.
+     * Se ejecuta cuando la cola agota los reintentos (o el worker murió y el
+     * trabajo caducó): la foto queda como fallida, sin imágenes a medias, y el
+     * original (que puede contener EXIF con ubicación) no se queda huérfano.
      */
     public function failed(?Throwable $exception = null): void
     {
-        app(PhotoFileManager::class)->deleteTemporaryFile($this->temporaryPath);
+        $files = app(PhotoFileManager::class);
+
+        $photo = Photo::find($this->photoId);
+
+        if ($photo !== null && $photo->processing_status !== 'ready') {
+            $files->deletePublicFiles($photo->id);
+
+            $photo->update([
+                'processing_status' => 'failed',
+                'metadata' => [
+                    'processing_error' => $exception ? $exception::class : 'unknown',
+                ],
+            ]);
+        }
+
+        $files->deleteTemporaryFile($this->temporaryPath);
     }
 }

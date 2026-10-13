@@ -5,7 +5,7 @@ import TripVisitedMap from '../../components/trips/TripVisitedMap.vue';
 import TripFlightMap from '../../components/trips/TripFlightMap.vue';
 
 import { Link, router, useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 interface Trip {
     id: number;
@@ -102,6 +102,7 @@ const props = defineProps<{
     visits: Visit[];
     flights: Flight[];
     photos: Photo[];
+    processing_photos_count: number;
     google_map_lists: GoogleMapList[];
     available_google_map_lists: GoogleMapList[];
 }>();
@@ -547,6 +548,35 @@ const photoInput = ref<HTMLInputElement | null>(null);
 const isPhotosHovered = ref(false);
 const isUploadingPhotos = ref(false);
 const photoUploadMessage = ref('');
+
+/*
+| Las fotos se procesan en segundo plano: mientras haya alguna pendiente se
+| recarga la lista cada 5 s (solo las props de fotos) y se detiene sola.
+*/
+let processingPoll: ReturnType<typeof setInterval> | null = null;
+
+const stopProcessingPoll = () => {
+    if (processingPoll) {
+        clearInterval(processingPoll);
+        processingPoll = null;
+    }
+};
+
+watch(
+    () => props.processing_photos_count,
+    (count) => {
+        if (count > 0 && !processingPoll) {
+            processingPoll = setInterval(() => {
+                router.reload({ only: ['photos', 'processing_photos_count'] });
+            }, 5000);
+        } else if (count === 0) {
+            stopProcessingPoll();
+        }
+    },
+    { immediate: true },
+);
+
+onBeforeUnmount(stopProcessingPoll);
 const photoUploadSuccess = ref(false);
 
 const openPhotoPicker = () => {
@@ -608,7 +638,7 @@ const handlePhotoSelection = async (event: Event) => {
                     : `${uploadedCount} of ${totalPhotos} photos uploaded`;
 
             router.reload({
-                only: ['photos'],
+                only: ['photos', 'processing_photos_count'],
             });
 
             setTimeout(() => {
@@ -1166,10 +1196,21 @@ const formatAirport = (airport: AirportSearchResult) => {
 
                                 </div>
 
+                                <p
+                                    v-if="processing_photos_count > 0"
+                                    role="status"
+                                    class="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-xs text-white/60"
+                                >
+                                    <span class="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-white/20 border-t-white"></span>
+                                    {{ processing_photos_count === 1 ? '1 photo is being processed' : `${processing_photos_count} photos are being processed` }}
+                                    and will appear here when ready.
+                                </p>
+
+                                <!-- Mismos formatos que valida el servidor (HEIC no es compatible). -->
                                 <input
                                     ref="photoInput"
                                     type="file"
-                                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                    accept="image/jpeg,image/png,image/webp"
                                     multiple
                                     class="hidden"
                                     @change="handlePhotoSelection"

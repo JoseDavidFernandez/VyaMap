@@ -387,6 +387,15 @@ Imagen procesada     disco public   photos/{photo_id}/*.webp (imagen y miniatura
 - Si el procesamiento falla, se borran las imágenes a medio generar y la foto queda en `failed`. Cuando la cola agota los reintentos, también se borra el original.
 - Al borrar una foto o un viaje se borra primero el registro y después los archivos. Si el almacenamiento falla, quedan archivos huérfanos (se registra un aviso), pero nunca registros que apunten a archivos inexistentes.
 - Si una foto se borra antes de procesarse, el trabajo de la cola solo elimina el original.
+- El procesamiento usa la cola `database` (`QUEUE_CONNECTION=database`). Sin un worker en marcha las fotos se quedan en `pending`. En desarrollo:
+
+```bash
+composer run queue        # equivale a: php artisan queue:work --queue=default --sleep=2
+```
+
+- `ProcessPhoto` reintenta hasta 3 veces (esperas de 10 s y 60 s) con un tiempo máximo de 120 s por intento. Entre reintentos la foto sigue `pending`; al agotarlos queda `failed`, sin imágenes a medias y sin el original. Si el worker muere a mitad, el trabajo se libera tras `retry_after` (90 s) y cuenta como un intento.
+- La página del viaje muestra cuántas fotos están en proceso y se actualiza sola cada 5 s mientras queden pendientes.
+- Formatos admitidos: JPEG, PNG y WebP (HEIC no: GD no puede leerlo).
 
 ---
 
