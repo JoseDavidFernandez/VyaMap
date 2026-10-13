@@ -78,8 +78,12 @@ class TripController extends Controller
     {
         $this->authorize('view', $trip);
 
+        // Orden cronológico (y por id ante empates) para que la lista y los mapas
+        // no dependan del orden en que se crearon los registros.
         $trip->load([
+            'visits' => fn ($query) => $query->orderBy('visited_from')->orderBy('visited_until')->orderBy('id'),
             'visits.city.country',
+            'flights' => fn ($query) => $query->orderBy('departure_at')->orderBy('id'),
             'flights.originAirport.city',
             'flights.destinationAirport.city',
             'journal',
