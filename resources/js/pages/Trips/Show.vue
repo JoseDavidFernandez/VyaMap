@@ -116,6 +116,84 @@ const props = defineProps<{
 const citySearch = ref('');
 const cityResults = ref<CitySearchResult[]>([]);
 const cityError = ref('');
+const citySearchDone = ref(false);
+const cityExternalSearched = ref(true);
+const cityExternalUnavailable = ref(false);
+const isSearchingWorldwide = ref(false);
+
+/*
+| Etiqueta secundaria de un resultado. La región distingue homónimos del mismo
+| país (Portland OR / ME); si falta, se añaden coordenadas para no confundirlos.
+*/
+const cityResultLabel = (city: CitySearchResult) => {
+    const parts = [city.region_code, city.country, city.iso_code].filter(Boolean);
+
+    const twins = cityResults.value.filter(
+        (other) =>
+            other.name.toLowerCase() === city.name.toLowerCase() &&
+            other.iso_code === city.iso_code &&
+            (other.region_code ?? '') === (city.region_code ?? ''),
+    );
+
+    if (twins.length > 1 && city.latitude !== null && city.longitude !== null) {
+        parts.push(`${Number(city.latitude).toFixed(2)}, ${Number(city.longitude).toFixed(2)}`);
+    }
+
+    return parts.join(' · ');
+};
+
+const runCitySearch = async (query: string, external: boolean) => {
+    const requestId = ++citySearchRequestId;
+
+    try {
+        const response = await fetch(
+            `/cities/search?q=${encodeURIComponent(query)}${external ? '&external=1' : ''}`,
+            {
+                headers: {
+                    Accept: 'application/json',
+                },
+            },
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (requestId !== citySearchRequestId) {
+            return;
+        }
+
+        cityResults.value = data.results ?? [];
+        cityExternalSearched.value = data.external_searched ?? true;
+        cityExternalUnavailable.value = data.external_unavailable ?? false;
+        citySearchDone.value = true;
+    } catch {
+        if (requestId !== citySearchRequestId) {
+            return;
+        }
+
+        cityResults.value = [];
+        cityError.value = 'City search failed. Please try again.';
+    }
+};
+
+const searchCitiesWorldwide = async () => {
+    const query = citySearch.value.trim();
+
+    if (query.length < 2) {
+        return;
+    }
+
+    isSearchingWorldwide.value = true;
+
+    try {
+        await runCitySearch(query, true);
+    } finally {
+        isSearchingWorldwide.value = false;
+    }
+};
 
 let citySearchTimeout: ReturnType<typeof setTimeout> | null = null;
 let citySearchRequestId = 0;
@@ -129,6 +207,7 @@ const visitForm = useForm({
 
 const searchCities = () => {
     cityError.value = '';
+    citySearchDone.value = false;
 
     if (citySearchTimeout) {
         clearTimeout(citySearchTimeout);
@@ -138,38 +217,11 @@ const searchCities = () => {
 
     if (query.length < 2) {
         cityResults.value = [];
+        citySearchRequestId++;
         return;
     }
 
-    const requestId = ++citySearchRequestId;
-
-    citySearchTimeout = setTimeout(async () => {
-        try {
-            const response = await fetch(
-                `/cities/search?q=${encodeURIComponent(query)}`,
-                {
-                    headers: {
-                        Accept: 'application/json',
-                    },
-                },
-            );
-
-            const data = await response.json();
-
-            if (requestId !== citySearchRequestId) {
-                return;
-            }
-
-            cityResults.value = data.results ?? [];
-        } catch (error) {
-            if (requestId !== citySearchRequestId) {
-                return;
-            }
-
-            console.error('Error searching cities:', error);
-            cityResults.value = [];
-        }
-    }, 300);
+    citySearchTimeout = setTimeout(() => runCitySearch(query, false), 300);
 };
 
 const addCityToTrip = (city: CitySearchResult) => {
@@ -1355,9 +1407,16 @@ const formatAirport = (airport: AirportSearchResult) => {
                                 </p>
 
                                 <div
-                                    v-if="cityResults.length"
+                                    v-if="citySearchDone && citySearch.trim().length >= 2"
                                     class="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#11171d] shadow-2xl"
                                 >
+
+                                    <p
+                                        v-if="!cityResults.length"
+                                        class="px-4 py-3 text-xs text-white/40"
+                                    >
+                                        {{ cityExternalUnavailable ? 'No cities found here and worldwide search is unavailable right now.' : 'No cities found.' }}
+                                    </p>
 
                                     <button
                                         v-for="city in cityResults"
@@ -1372,10 +1431,27 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         </div>
 
                                         <div class="mt-1 text-xs text-white/30">
-                                            {{ city.country }} · {{ city.iso_code }}
+                                            {{ cityResultLabel(city) }}
                                         </div>
 
                                     </button>
+
+                                    <button
+                                        v-if="!cityExternalSearched"
+                                        type="button"
+                                        :disabled="isSearchingWorldwide"
+                                        class="block w-full border-t border-white/10 px-4 py-3 text-left text-xs text-white/50 transition hover:bg-white/[0.06] hover:text-white"
+                                        @click="searchCitiesWorldwide"
+                                    >
+                                        {{ isSearchingWorldwide ? 'Searching worldwide…' : 'Not the one? Search worldwide' }}
+                                    </button>
+
+                                    <p
+                                        v-else-if="cityExternalUnavailable && cityResults.length"
+                                        class="border-t border-white/10 px-4 py-3 text-xs text-white/40"
+                                    >
+                                        Worldwide search is unavailable right now.
+                                    </p>
 
                                 </div>
 

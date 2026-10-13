@@ -6,6 +6,7 @@ use App\Models\City;
 use App\Models\CityAlias;
 use App\Models\Country;
 use App\Support\CityAliasNormalizer;
+use App\Support\CityAliasPolicy;
 use App\Support\GeoDistance;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +43,7 @@ class CityPersistenceService
             if (
                 $normalizedQuery !== ''
                 && $normalizedQuery !== $normalizedCityName
+                && CityAliasPolicy::rejectionReason($normalizedQuery, $city) === null
             ) {
                 $existingAlias = CityAlias::query()
                     ->where('normalized_alias', $normalizedQuery)

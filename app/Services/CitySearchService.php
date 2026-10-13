@@ -6,6 +6,7 @@ use App\Exceptions\GeoapifyUnavailableException;
 use App\Models\City;
 use App\Models\CityAlias;
 use App\Support\CityAliasNormalizer;
+use App\Support\GeoDistance;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -20,85 +21,154 @@ class CitySearchService
      */
     private const GEOAPIFY_CACHE_SECONDS = 600;
 
-    public function search(string $query): array
+    private const MAX_RESULTS = 10;
+
+    public function search(string $query, bool $includeExternal = false): array
     {
-        $localResults = $this->searchLocal($query);
+        return $this->searchWithMeta($query, $includeExternal)['results'];
+    }
 
-        // Si hay una coincidencia exacta local, no necesitamos consultar Geoapify.
+    /**
+     * @return array{results: list<array>, external_searched: bool, external_unavailable: bool}
+     */
+    public function searchWithMeta(string $query, bool $includeExternal = false): array
+    {
         $normalizedQuery = CityAliasNormalizer::normalize($query);
+        $localResults = $this->searchLocal($query, $normalizedQuery);
 
+        // Con una coincidencia exacta local no se consulta Geoapify, salvo que el
+        // usuario lo pida expresamente ("buscar en todo el mundo"): puede haber
+        // ciudades homónimas que aún no están en el catálogo.
         $hasExactLocalMatch = $localResults->contains(
-            fn (City $city) =>
-                CityAliasNormalizer::normalize($city->name) === $normalizedQuery
-                || $city->aliases->contains(
-                    fn (CityAlias $alias) =>
-                        $alias->normalized_alias === $normalizedQuery
-                )
+            fn (City $city) => $this->matchRank($city, $normalizedQuery) === 0
         );
 
-        if ($hasExactLocalMatch) {
-            return $this->formatLocalResults($localResults);
+        $local = $this->formatLocalResults($localResults);
+
+        if ($hasExactLocalMatch && ! $includeExternal) {
+            return ['results' => $local, 'external_searched' => false, 'external_unavailable' => false];
         }
 
-        $geoapifyResults = $this->geoapifyResults($query) ?? [];
+        $geoapifyResults = $this->geoapifyResults($query);
 
-        // Conservamos las coincidencias locales y añadimos resultados externos.
-        return collect($this->formatLocalResults($localResults))
-            ->concat($geoapifyResults)
+        $external = collect($geoapifyResults ?? [])
+            // Lo que ya está en el catálogo (mismo identificador, o mismo nombre
+            // y país a poca distancia) no se ofrece dos veces.
+            ->reject(fn (array $result) => $localResults->contains(
+                fn (City $city) => $this->sameCity($city, $result)
+            ));
+
+        $results = collect($local)
+            ->concat($external)
             ->unique(fn (array $result) =>
                 strtolower($result['name']) . '|'
                 . strtolower($result['country'] ?? '') . '|'
-                . strtolower($result['region_code'] ?? '')
+                . strtolower($result['region_code'] ?? '') . '|'
+                . ($result['id'] ?? $result['external_id'] ?? '')
             )
-            ->take(10)
+            ->take(self::MAX_RESULTS)
             ->values()
             ->all();
+
+        return [
+            'results' => $results,
+            'external_searched' => true,
+            'external_unavailable' => $geoapifyResults === null,
+        ];
     }
 
-    private function searchLocal(string $query): Collection
+    /**
+     * Coincidencias exactas (nombre o alias), después las que empiezan por la
+     * búsqueda y por último las que la contienen. Las exactas se consultan
+     * aparte para que el límite de resultados nunca las deje fuera.
+     */
+    private function searchLocal(string $query, string $normalizedQuery): Collection
     {
-        $normalizedQuery = CityAliasNormalizer::normalize($query);
         $manualAlias = config("city_aliases.{$normalizedQuery}");
+        $like = $this->escapeLike($query);
 
-        $cities = City::query()
-            ->notMerged()
-            ->with(['country', 'aliases'])
-            ->where(function ($builder) use ($query, $normalizedQuery) {
-                $builder
-                    ->where('name', 'like', '%' . $query . '%')
-                    ->orWhereHas('aliases', function ($aliasQuery) use ($normalizedQuery) {
-                        $aliasQuery->where('normalized_alias', $normalizedQuery);
-                    })
-                    ->orWhereHas('aliases', function ($aliasQuery) use ($normalizedQuery) {
-                        $aliasQuery->where('normalized_alias', 'like', '%' . $normalizedQuery . '%');
-                    });
-            })
-            ->orderBy('name')
-            ->limit(10)
+        $base = fn () => City::query()->notMerged()->with(['country', 'aliases']);
+
+        $exact = $base()
+            ->where(fn ($builder) => $builder
+                ->where('name', $query)    // sin distinguir mayúsculas ni acentos (collation)
+                ->orWhereHas('aliases', fn ($aliasQuery) => $aliasQuery->where('normalized_alias', $normalizedQuery)))
             ->get();
 
         if ($manualAlias) {
-            $manualCities = City::query()
-                ->notMerged()
-                ->with(['country', 'aliases'])
-                ->whereRaw('LOWER(name) = ?', [
-                    mb_strtolower($manualAlias['name']),
-                ])
-                ->whereHas('country', function ($countryQuery) use ($manualAlias) {
-                    $countryQuery->where(
-                        'iso_code',
-                        $manualAlias['country_iso_code']
-                    );
-                })
-                ->get();
-
-            $cities = $manualCities
-                ->concat($cities)
-                ->unique('id')
-                ->take(10);
+            $exact = $exact->concat(
+                $base()
+                    ->where('name', $manualAlias['name'])
+                    ->whereHas('country', fn ($countryQuery) => $countryQuery->where('iso_code', $manualAlias['country_iso_code']))
+                    ->get()
+            );
         }
 
+        $partial = $base()
+            ->where(fn ($builder) => $builder
+                ->where('name', 'like', '%' . $like . '%')
+                ->orWhereHas('aliases', fn ($aliasQuery) => $aliasQuery->where('normalized_alias', 'like', '%' . $this->escapeLike($normalizedQuery) . '%')))
+            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$like . '%'])
+            ->orderBy('name')
+            ->limit(self::MAX_RESULTS)
+            ->get();
+
+        $cities = $exact
+            ->concat($partial)
+            ->unique('id')
+            ->sortBy(fn (City $city) => sprintf('%d|%s', $this->matchRank($city, $normalizedQuery, $manualAlias), CityAliasNormalizer::normalize($city->name)))
+            ->take(self::MAX_RESULTS);
+
         return new Collection($cities->values()->all());
+    }
+
+    /**
+     * 0 = nombre, alias o alias manual exactos; 1 = empieza por la búsqueda;
+     * 2 = la contiene.
+     */
+    private function matchRank(City $city, string $normalizedQuery, ?array $manualAlias = null): int
+    {
+        $name = CityAliasNormalizer::normalize($city->name);
+
+        if (
+            $name === $normalizedQuery
+            || $city->aliases->contains(fn (CityAlias $alias) => $alias->normalized_alias === $normalizedQuery)
+            || ($manualAlias !== null
+                && $name === CityAliasNormalizer::normalize($manualAlias['name'])
+                && $city->country?->iso_code === $manualAlias['country_iso_code'])
+        ) {
+            return 0;
+        }
+
+        return str_starts_with($name, $normalizedQuery) ? 1 : 2;
+    }
+
+    private function sameCity(City $city, array $result): bool
+    {
+        if (($result['external_id'] ?? null) !== null && $city->external_id === $result['external_id']) {
+            return true;
+        }
+
+        if (
+            CityAliasNormalizer::normalize($city->name) !== CityAliasNormalizer::normalize((string) $result['name'])
+            || $city->country?->iso_code !== ($result['iso_code'] ?? null)
+            || $city->latitude === null
+            || ($result['latitude'] ?? null) === null
+        ) {
+            return false;
+        }
+
+        return GeoDistance::km(
+            (float) $city->latitude,
+            (float) $city->longitude,
+            (float) $result['latitude'],
+            (float) $result['longitude'],
+        ) <= (float) config('cities.same_city_max_distance_km', 25);
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return addcslashes($value, '\\%_');
     }
 
     private function formatLocalResults(Collection $cities): array

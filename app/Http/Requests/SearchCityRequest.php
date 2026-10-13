@@ -15,6 +15,8 @@ class SearchCityRequest extends FormRequest
     {
         return [
             'q' => ['required', 'string', 'min:2', 'max:100'],
+            // "Buscar en todo el mundo": consulta Geoapify aunque haya coincidencias exactas locales.
+            'external' => ['sometimes', 'boolean'],
         ];
     }
 }

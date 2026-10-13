@@ -16,13 +16,16 @@ class AirportSearchController extends Controller
     {
         $query = trim((string) $request->query('q'));
 
-        if (mb_strlen($query) < 2) {
+        if (mb_strlen($query) < 2 || mb_strlen($query) > 100) {
             return response()->json([
                 'results' => [],
             ]);
         }
 
         $normalizedQuery = CityAliasNormalizer::normalize($query);
+
+        // % y _ son comodines de LIKE: se buscan como texto literal.
+        $like = addcslashes($query, '\\%_');
 
         $learnedAlias = CityAlias::query()
             ->with('city.country')
@@ -34,17 +37,17 @@ class AirportSearchController extends Controller
         $airports = Airport::query()
             ->with('city.country')
             ->where(function ($builder) use (
-                $query,
+                $like,
                 $normalizedQuery,
                 $learnedAlias,
                 $manualAlias
             ) {
                 $builder
-                    ->where('name', 'like', "%{$query}%")
-                    ->orWhere('iata_code', 'like', "%{$query}%")
-                    ->orWhere('icao_code', 'like', "%{$query}%")
-                    ->orWhereHas('city', function ($cityQuery) use ($query) {
-                        $cityQuery->where('name', 'like', "%{$query}%");
+                    ->where('name', 'like', "%{$like}%")
+                    ->orWhere('iata_code', 'like', "%{$like}%")
+                    ->orWhere('icao_code', 'like', "%{$like}%")
+                    ->orWhereHas('city', function ($cityQuery) use ($like) {
+                        $cityQuery->where('name', 'like', "%{$like}%");
                     })
                     ->orWhereHas('city.aliases', function ($aliasQuery) use ($normalizedQuery) {
                         $aliasQuery->where('normalized_alias', $normalizedQuery);
@@ -98,7 +101,7 @@ class AirportSearchController extends Controller
             })
             ->orderByRaw(
                 'CASE WHEN name LIKE ? THEN 0 ELSE 1 END',
-                ["{$query}%"]
+                ["{$like}%"]
             )
             ->orderBy('iata_code')
             ->limit(self::MAX_RESULTS)

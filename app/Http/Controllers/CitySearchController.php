@@ -18,8 +18,8 @@ class CitySearchController extends Controller
     {
         $query = trim($request->string('q')->toString());
 
-        return response()->json([
-            'results' => $this->citySearchService->search($query),
-        ]);
+        return response()->json(
+            $this->citySearchService->searchWithMeta($query, $request->boolean('external'))
+        );
     }
 }
