@@ -515,6 +515,8 @@ Render every time
 - Un alias solo se aprende a partir de una búsqueda que Geoapify ha asociado realmente a esa ciudad.
 - Las llamadas tienen timeout (3 s de conexión, 5 s en total). Si Geoapify falla o no hay clave, la búsqueda devuelve solo resultados locales y el alta de ciudades responde 503. Nunca se registra la URL, porque contiene la clave.
 - Límites: 60 búsquedas de ciudades o aeropuertos por minuto y 20 altas de ciudades por minuto por usuario; la búsqueda de aeropuertos devuelve como máximo 20 resultados.
+- Duplicados: al crear una ciudad desde Geoapify se reutiliza una ciudad no fusionada del mismo país, con el mismo nombre normalizado y a menos de `config('cities.same_city_max_distance_km')` (25 km). Si esa ciudad no tiene identidad externa, se le asigna. El par `(external_provider, external_id)` es único.
+- Fusión de duplicados existentes: `php artisan cities:reconcile {duplicada} --into={canónica}`. Por defecto solo simula; `--execute` aplica en una transacción y pide confirmación. Comprueba país, nombre o alias, distancia y conflictos de visitas, y solo asigna el identificador externo si Geoapify lo confirma (o se omite con `--without-external-id`). La ciudad duplicada no se borra: queda con `merged_into_id` y desaparece de búsquedas y selecciones. Cada fusión queda en `city_reconciliations` y se revierte con `--revert={id} --execute`.
 
 ---
 

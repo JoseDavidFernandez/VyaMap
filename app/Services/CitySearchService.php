@@ -61,6 +61,7 @@ class CitySearchService
         $manualAlias = config("city_aliases.{$normalizedQuery}");
 
         $cities = City::query()
+            ->notMerged()
             ->with(['country', 'aliases'])
             ->where(function ($builder) use ($query, $normalizedQuery) {
                 $builder
@@ -78,6 +79,7 @@ class CitySearchService
 
         if ($manualAlias) {
             $manualCities = City::query()
+                ->notMerged()
                 ->with(['country', 'aliases'])
                 ->whereRaw('LOWER(name) = ?', [
                     mb_strtolower($manualAlias['name']),

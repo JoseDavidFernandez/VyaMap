@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\JournalDay;
 use App\Models\Place;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreJournalEntryRequest extends FormRequest
@@ -26,7 +27,7 @@ class StoreJournalEntryRequest extends FormRequest
             'journal_day_id' => ['required', 'integer', 'exists:journal_days,id'],
             'title' => ['required', 'string', 'max:200'],
             'content' => ['required', 'string'],
-            'city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')->whereNull('merged_into_id')],
             'place_id' => ['nullable', 'integer', 'exists:places,id'],
             'sort_order' => ['required', 'integer', 'min:0'],
         ];

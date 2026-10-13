@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Trip;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateVisitRequest extends FormRequest
 {
@@ -24,7 +25,7 @@ class UpdateVisitRequest extends FormRequest
         $trip = $this->route('trip');
 
         return [
-            'city_id' => ['required', 'integer', 'exists:cities,id'],
+            'city_id' => ['required', 'integer', Rule::exists('cities', 'id')->whereNull('merged_into_id')],
 
             'visited_from' => [
                 'required',

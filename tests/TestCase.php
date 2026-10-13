@@ -18,5 +18,8 @@ abstract class TestCase extends BaseTestCase
         Http::preventStrayRequests();
 
         config(['services.geoapify.key' => 'testing-key']);
+
+        // Las vistas Inertia no deben depender de un build previo de Vite.
+        $this->withoutVite();
     }
 }
