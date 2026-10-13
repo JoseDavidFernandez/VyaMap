@@ -5,9 +5,10 @@ import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import type { DefineComponent } from 'vue';
 
+// Los prototipos de diseño no tienen ruta: se excluyen del bundle.
 const pages = import.meta.glob<{
     default: DefineComponent;
-}>('./pages/**/*.vue', {
+}>(['./pages/**/*.vue', '!./pages/prototypes/**'], {
     eager: true,
 });
 

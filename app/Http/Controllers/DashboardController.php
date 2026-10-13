@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\Visit;
-use App\Models\Country;
+use App\Support\SovereignCountries;
 use App\Models\Photo;
 use Carbon\Carbon;
 use Inertia\Inertia;
@@ -156,13 +156,12 @@ class DashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $totalCountries = Country::query()->count();
-
+        // El porcentaje solo considera Estados soberanos (config/countries.php).
+        // El contador de países visitados sigue incluyendo territorios.
         $visitedCountryCount = $countries->count();
 
-        $remainingCountryCount = max(
-            0,
-            $totalCountries - $visitedCountryCount
+        $visitedSovereignCount = SovereignCountries::countVisited(
+            $countries->map(fn ($visit) => $visit->city->country->iso_code)
         );
 
         $tripsByYear = $trips
@@ -197,6 +196,8 @@ class DashboardController extends Controller
 
             'stats' => [
                 'countries' => $visitedCountryCount,
+                'sovereign_countries' => $visitedSovereignCount,
+                'total_sovereign_countries' => SovereignCountries::total(),
                 'cities' => $visitedCities->count(),
                 'trips' => $trips->count(),
                 'flights' => $flights->count(),

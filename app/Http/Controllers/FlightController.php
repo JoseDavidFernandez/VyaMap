@@ -15,7 +15,7 @@ class FlightController extends Controller
         StoreFlightRequest $request,
         Trip $trip
     ): RedirectResponse {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         $data = $request->validated();
 
@@ -47,7 +47,7 @@ class FlightController extends Controller
         Trip $trip,
         Flight $flight
     ): RedirectResponse {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
         $this->ensureFlightBelongsToTrip($flight, $trip);
 
         $data = $request->validated();
@@ -77,7 +77,7 @@ class FlightController extends Controller
         Trip $trip,
         Flight $flight
     ): RedirectResponse {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
         $this->ensureFlightBelongsToTrip($flight, $trip);
 
         $flight->delete();

@@ -6,7 +6,9 @@ use App\Http\Requests\StoreTripRequest;
 use App\Http\Requests\UpdateTripRequest;
 use App\Models\GoogleMapList;
 use App\Models\Trip;
+use App\Services\PhotoFileManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -54,11 +56,20 @@ class TripController extends Controller
         return redirect()->route('trips.show', $trip);
     }
 
-    public function destroy(Request $request, Trip $trip)
+    public function destroy(Request $request, Trip $trip, PhotoFileManager $files)
     {
         $this->authorize('delete', $trip);
 
-        $trip->delete();
+        $photoIds = $trip->photos()->pluck('id');
+
+        // Las fotos, visitas y vuelos se borran en cascada en la base de datos.
+        // Los archivos se eliminan después: si el almacenamiento falla, quedan
+        // huérfanos, pero ningún registro apunta a archivos inexistentes.
+        DB::transaction(fn () => $trip->delete());
+
+        foreach ($photoIds as $photoId) {
+            $files->deleteFiles($photoId);
+        }
 
         return redirect()->route('trips.index');
     }
@@ -72,7 +83,7 @@ class TripController extends Controller
             'flights.originAirport.city',
             'flights.destinationAirport.city',
             'journal',
-            'photos',
+            'photos' => fn ($query) => $query->where('processing_status', 'ready'),
             'googleMapLists',
         ]);
 
@@ -95,8 +106,8 @@ class TripController extends Controller
                     'latitude' => $visit->city->latitude,
                     'longitude' => $visit->city->longitude,
                 ],
-                'visited_from' => $visit->visited_from,
-                'visited_until' => $visit->visited_until,
+                'visited_from' => $visit->visited_from?->format('Y-m-d'),
+                'visited_until' => $visit->visited_until?->format('Y-m-d'),
                 'notes' => $visit->notes,
             ]),
 

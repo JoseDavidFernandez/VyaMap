@@ -76,6 +76,15 @@ return [
     'home' => '/',
 
     /*
+    | Con 'views' => false Fortify redirige a 'home' tras restablecer la
+    | contraseña; el usuario aún no ha iniciado sesión y el mensaje se perdería.
+    */
+
+    'redirects' => [
+        'password-reset' => '/login',
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Fortify Routes Prefix / Subdomain
     |--------------------------------------------------------------------------

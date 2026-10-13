@@ -372,6 +372,22 @@ Una Photo puede estar asociada opcionalmente a:
 
 Esto permite reutilizar una fotografía en diferentes contextos sin introducir una entidad Album innecesaria.
 
+### Archivos y ciclo de vida
+
+`App\Services\PhotoFileManager` centraliza las rutas y el borrado:
+
+```text
+Original pendiente   disco local    photo-processing/{photo_id}/original.{ext}
+Imagen procesada     disco public   photos/{photo_id}/*.webp (imagen y miniatura)
+```
+
+- La extensión del original se deduce del contenido, no del nombre enviado.
+- La ausencia de EXIF (habitual en PNG y WebP) es válida: fecha y coordenadas quedan a `null`.
+- Las imágenes WebP generadas no conservan EXIF; las coordenadas solo se guardan en la base de datos.
+- Si el procesamiento falla, se borran las imágenes a medio generar y la foto queda en `failed`. Cuando la cola agota los reintentos, también se borra el original.
+- Al borrar una foto o un viaje se borra primero el registro y después los archivos. Si el almacenamiento falla, quedan archivos huérfanos (se registra un aviso), pero nunca registros que apunten a archivos inexistentes.
+- Si una foto se borra antes de procesarse, el trabajo de la cola solo elimina el original.
+
 ---
 
 # 10. Frontend
@@ -492,6 +508,14 @@ External API
 Render every time
 ```
 
+## Geoapify (ciudades)
+
+- El catálogo de ciudades, países y alias es compartido por todos los usuarios, por lo que `POST /cities` no acepta datos geográficos del cliente: solo `external_id` y `search_query`.
+- El servidor comprueba que ese `external_id` aparece en los resultados de Geoapify para esa búsqueda y guarda los datos devueltos por Geoapify. Los resultados se guardan en caché 10 minutos para no repetir la llamada.
+- Un alias solo se aprende a partir de una búsqueda que Geoapify ha asociado realmente a esa ciudad.
+- Las llamadas tienen timeout (3 s de conexión, 5 s en total). Si Geoapify falla o no hay clave, la búsqueda devuelve solo resultados locales y el alta de ciudades responde 503. Nunca se registra la URL, porque contiene la clave.
+- Límites: 60 búsquedas de ciudades o aeropuertos por minuto y 20 altas de ciudades por minuto por usuario; la búsqueda de aeropuertos devuelve como máximo 20 resultados.
+
 ---
 
 # 13. Mapas y datos geográficos
@@ -591,6 +615,19 @@ Estos datos se derivarán de Visits, Trips y demás entidades relevantes.
 
 La fuente de verdad será siempre el dominio persistente.
 
+## Porcentaje de países visitados
+
+El porcentaje ("% of the world") solo cuenta Estados soberanos, tanto en el numerador como en el denominador. El criterio y las listas están en `config/countries.php` y se aplican con `App\Support\SovereignCountries`:
+
+- **Soberanos:** los 193 Estados miembros de la ONU, por su código ISO 3166-1 alfa-2. Se pueden añadir otros en `additional_sovereign`.
+- **Pendientes de decisión** (no cuentan hasta que se decida): VA, PS, XK, TW, EH, CK, NU.
+- **Códigos especiales** (no son países): ZZ, XP.
+- **Resto** (PR, HK, GL, RE, AQ…): territorios dependientes o zonas sin Estado propio; no cuentan.
+
+La clasificación no modifica el catálogo: los territorios siguen apareciendo en el mapa y en el contador de países visitados, pero no en el porcentaje.
+
+Un vuelo o una escala no marcan una ciudad ni un país como visitados: solo cuentan las Visits.
+
 ---
 
 # 17. Seguridad
@@ -642,13 +679,20 @@ Los tests deben cubrir especialmente:
 - operaciones destructivas;
 - integraciones cuando existan.
 
-Estado actual:
+Estado actual (13-10-2026):
 
 ```text
-11 tests
-30 assertions
+109 tests
+557 assertions
 0 failures
 ```
+
+Reglas de aislamiento:
+
+- Los tests solo usan la base de datos de `.env.testing`.
+- Los tests de fotos usan `Storage::fake('local')` y `Storage::fake('public')`: nunca escriben en `storage/app`.
+- `Tests\TestCase` activa `Http::preventStrayRequests()`: cualquier llamada externa sin `Http::fake()` hace fallar el test.
+- Las imágenes de prueba con EXIF se generan con `Tests\Support\SyntheticExifJpeg` (`php tests/Fixtures/make-synthetic-exif.php`). Solo contienen una fecha y unas coordenadas ficticias. No se deben añadir fotos reales al repositorio.
 
 La suite debe mantenerse pasando antes de avanzar a cambios estructurales importantes.
 

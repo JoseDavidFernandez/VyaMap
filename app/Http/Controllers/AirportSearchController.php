@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 
 class AirportSearchController extends Controller
 {
+    private const MAX_RESULTS = 20;
+
     public function __invoke(Request $request): JsonResponse
     {
         $query = trim((string) $request->query('q'));
@@ -99,6 +101,7 @@ class AirportSearchController extends Controller
                 ["{$query}%"]
             )
             ->orderBy('iata_code')
+            ->limit(self::MAX_RESULTS)
             ->get();
 
         return response()->json([

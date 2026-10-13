@@ -12,7 +12,7 @@ class VisitController extends Controller
 {
     public function store(StoreVisitRequest $request, Trip $trip): RedirectResponse
     {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         $trip->visits()->create([
             'user_id' => $request->user()->id,
@@ -30,7 +30,7 @@ class VisitController extends Controller
         Trip $trip,
         Visit $visit
     ): RedirectResponse {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         $visit->update($request->validated());
 
@@ -39,7 +39,7 @@ class VisitController extends Controller
 
     public function destroy(Trip $trip, Visit $visit): RedirectResponse
     {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         $visit->delete();
 

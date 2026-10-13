@@ -8,6 +8,7 @@ import {
     ref,
     watch,
 } from 'vue';
+import { normalizeGeoJsonIsoCode } from '../../data/countryCodes';
 
 interface Country {
     id: number;
@@ -44,8 +45,9 @@ watch(
                     feature?: GeoJSON.Feature;
                 }).feature;
 
-            const isoCode =
-                feature?.properties?.ISO_A2;
+            const isoCode = normalizeGeoJsonIsoCode(
+                feature?.properties?.ISO_A2,
+            );
 
             const visited = isoCode
                 ? visitedCountries.has(isoCode)
@@ -124,8 +126,9 @@ onMounted(async () => {
         worldGeoJson,
         {
             style: (feature) => {
-                const isoCode =
-                    feature?.properties?.ISO_A2;
+                const isoCode = normalizeGeoJsonIsoCode(
+                    feature?.properties?.ISO_A2,
+                );
 
                 const visited = isoCode
                     ? visitedCountries.has(

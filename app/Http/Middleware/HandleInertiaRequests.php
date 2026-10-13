@@ -38,8 +38,12 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
 
+            // Solo los campos que usa la interfaz (ver resources/js/types):
+            // el modelo completo incluiría columnas de 2FA y marcas internas.
             'auth' => [
-                'user' => $request->user(),
+                'user' => fn () => $request->user()
+                    ? $request->user()->only(['id', 'name', 'email', 'avatar'])
+                    : null,
             ],
         ];
     }

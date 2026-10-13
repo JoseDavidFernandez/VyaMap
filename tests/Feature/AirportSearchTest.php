@@ -116,4 +116,26 @@ class AirportSearchTest extends TestCase
             $response->json('results.0.id')
         );
     }
+
+    public function test_airport_search_returns_at_most_twenty_results(): void
+    {
+        $user = User::factory()->create();
+
+        $country = Country::create(['name' => 'Spain', 'iso_code' => 'ES']);
+        $city = City::create(['country_id' => $country->id, 'name' => 'Testville']);
+
+        for ($i = 0; $i < 30; $i++) {
+            Airport::create([
+                'city_id' => $city->id,
+                'name' => "Test Airport {$i}",
+                'iata_code' => sprintf('T%02d', $i),
+                'timezone' => 'Europe/Madrid',
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->getJson('/airports/search?q=Test')
+            ->assertOk()
+            ->assertJsonCount(20, 'results');
+    }
 }

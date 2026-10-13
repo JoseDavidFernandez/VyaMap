@@ -7,16 +7,28 @@ use RuntimeException;
 
 class PhotoExifService
 {
+    /**
+     * Devuelve siempre las mismas claves. Una imagen sin EXIF (habitual en
+     * PNG y WebP) es válida y produce valores nulos.
+     *
+     * @return array{taken_at: ?Carbon, latitude: ?float, longitude: ?float}
+     */
     public function extract(string $path): array
     {
         if (! function_exists('exif_read_data')) {
             throw new RuntimeException('La extensión EXIF de PHP no está disponible.');
         }
 
+        $empty = [
+            'taken_at' => null,
+            'latitude' => null,
+            'longitude' => null,
+        ];
+
         $exif = @exif_read_data($path, null, true);
 
-        if ($exif === false) {
-            return [];
+        if (! is_array($exif)) {
+            return $empty;
         }
 
         return [

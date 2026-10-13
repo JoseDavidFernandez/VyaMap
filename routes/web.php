@@ -15,11 +15,9 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-
-
-use App\Models\Trip;
 
 
 
@@ -34,15 +32,26 @@ use App\Models\Trip;
 |
 */
 
-// LOGIN
-Route::get('/login', function () {
-    return Inertia::render('Auth/Login');
-})->name('login');
+Route::middleware('guest')->group(function () {
+    // LOGIN
+    Route::get('/login', fn () => Inertia::render('Auth/Login', [
+        'status' => session('status'),
+    ]))->name('login');
 
-//REGISTER
-Route::get('/register', function () {
-    return Inertia::render('Auth/Register');
-})->name('register');
+    // REGISTER
+    Route::get('/register', fn () => Inertia::render('Auth/Register'))
+        ->name('register');
+
+    // PASSWORD RESET (los POST los registra Fortify)
+    Route::get('/forgot-password', fn () => Inertia::render('Auth/ForgotPassword', [
+        'status' => session('status'),
+    ]))->name('password.request');
+
+    Route::get('/reset-password/{token}', fn (Request $request, string $token) => Inertia::render('Auth/ResetPassword', [
+        'token' => $token,
+        'email' => (string) $request->query('email', ''),
+    ]))->name('password.reset');
+});
 
 
 Route::get('/', DashboardController::class)
@@ -110,19 +119,21 @@ Route::middleware('auth')->group(function () {
 
 //PHOTOS
 
-    Route::post('/photos', [PhotoController::class, 'store'])
-        ->name('photos.store');
-
     Route::post('/journal-entries', [JournalEntryController::class, 'store'])
     ->name('journal-entries.store');
 
+    // Búsquedas y alta de ciudades: limitadas para evitar abusos y proteger
+    // la cuota de Geoapify.
     Route::get('/cities/search', CitySearchController::class)
+    ->middleware('throttle:60,1')
     ->name('cities.search');
 
     Route::get('/airports/search', AirportSearchController::class)
+    ->middleware('throttle:60,1')
     ->name('airports.search');
 
     Route::post('/cities', [CityController::class, 'store'])
+    ->middleware('throttle:20,1')
     ->name('cities.store');
 
     Route::get('/passport', PassportController::class)

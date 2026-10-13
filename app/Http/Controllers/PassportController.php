@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Country;
+use App\Support\SovereignCountries;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\Visit;
@@ -101,7 +101,8 @@ class PassportController extends Controller
             ->values();
 
         return Inertia::render('Passport', [
-            'totalCountries' => Country::count(),
+            // Solo Estados soberanos (ver config/countries.php).
+            'totalCountries' => SovereignCountries::total(),
 
             'years' => $years,
 
@@ -112,6 +113,7 @@ class PassportController extends Controller
                     'city' => $visit->city->name,
                     'country' => $visit->city->country->name,
                     'iso_code' => $visit->city->country->iso_code,
+                    'is_sovereign' => SovereignCountries::isSovereign($visit->city->country->iso_code),
                     'visited_from' => $visit->visited_from,
                     'visited_until' => $visit->visited_until,
                 ];

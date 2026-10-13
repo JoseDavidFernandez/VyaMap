@@ -13,6 +13,8 @@ interface User {
 
 interface Stats {
     countries: number;
+    sovereign_countries: number;
+    total_sovereign_countries: number;
     cities: number;
     trips: number;
     flights: number;
@@ -188,7 +190,12 @@ const visitedCountries = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const totalCountries: number = 251;
+// El porcentaje solo considera Estados soberanos (config/countries.php).
+const sovereignShare = computed(() =>
+    props.stats.total_sovereign_countries
+        ? (props.stats.sovereign_countries / props.stats.total_sovereign_countries) * 100
+        : 0,
+);
 
 const topCountries = computed(() => {
     const countryMap = new Map<
@@ -279,9 +286,7 @@ const recentHomeTrips = computed(() => {
 });
 
 const countriesPercentage = computed(() => {
-    return Math.round(
-        (props.stats.countries / totalCountries) * 100,
-    );
+    return Math.round(sovereignShare.value);
 });
 
 const countriesRingStyle = computed(() => {
@@ -289,7 +294,7 @@ const countriesRingStyle = computed(() => {
         100,
         Math.max(
             0,
-            (props.stats.countries / totalCountries) * 100,
+            sovereignShare.value,
         ),
     );
 

@@ -2,13 +2,21 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Trip;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateVisitRequest extends FormRequest
 {
+    /**
+     * Se resuelve antes que rules(): las reglas incluyen las fechas del viaje
+     * y no deben evaluarse (ni aparecer en errores) para un viaje ajeno.
+     */
     public function authorize(): bool
     {
-        return true;
+        $trip = $this->route('trip');
+
+        return $trip instanceof Trip
+            && $this->user()?->can('update', $trip) === true;
     }
 
     public function rules(): array

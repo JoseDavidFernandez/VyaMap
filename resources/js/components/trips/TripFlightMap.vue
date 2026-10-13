@@ -117,7 +117,7 @@ const renderMap = async () => {
     });
 
     if (bounds.length) {
-        map.fitBounds(bounds, {
+        map.fitBounds(L.latLngBounds(bounds), {
             padding: [42, 42],
             maxZoom: 6,
         });
@@ -130,11 +130,11 @@ const renderMap = async () => {
 
 const escapeHtml = (value: string | null | undefined) => {
     return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 };
 
 onMounted(async () => {

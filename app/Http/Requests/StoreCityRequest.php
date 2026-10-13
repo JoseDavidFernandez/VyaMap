@@ -4,6 +4,11 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * El cliente solo indica qué resultado de la búsqueda ha elegido. Nombre,
+ * país, región y coordenadas se obtienen en el servidor desde Geoapify:
+ * el catálogo de ciudades y países es compartido por todos los usuarios.
+ */
 class StoreCityRequest extends FormRequest
 {
     public function authorize(): bool
@@ -14,16 +19,9 @@ class StoreCityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:150'],
-            'country' => ['required', 'string', 'max:100'],
-            'iso_code' => ['required', 'string', 'size:2'],
-            'region_code' => ['nullable', 'string', 'max:20'],
-            'latitude' => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
             'external_provider' => ['required', 'string', 'in:geoapify'],
             'external_id' => ['required', 'string', 'max:255'],
-            'search_query' => ['nullable', 'string', 'max:150'],
+            'search_query' => ['required', 'string', 'min:2', 'max:100'],
         ];
     }
-
 }

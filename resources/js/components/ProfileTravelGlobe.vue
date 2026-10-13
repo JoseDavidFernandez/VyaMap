@@ -8,6 +8,7 @@ import {
 import Globe from 'three-globe';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { normalizeGeoJsonIsoCode } from '../data/countryCodes';
 
 interface Country {
     name: string;
@@ -48,11 +49,7 @@ const getCountryCode = (feature: any): string | null => {
         properties.iso_code ??
         null;
 
-    if (!code || code === '-99') {
-        return null;
-    }
-
-    return String(code).toUpperCase();
+    return normalizeGeoJsonIsoCode(code);
 };
 
 const resize = () => {

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\CityAlias;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 
@@ -169,21 +170,18 @@ class CitySearchTest extends TestCase
             ->assertJsonPath('results.0.source', 'geoapify');
     }
 
-    public function test_authenticated_user_can_create_city(): void
+    public function test_authenticated_user_can_create_a_city_verified_by_geoapify(): void
     {
         $user = User::factory()->create();
+
+        $this->fakeGeoapifySkopje();
 
         $response = $this
             ->actingAs($user)
             ->postJson('/cities', [
-                'name' => 'Skopje',
-                'country' => 'North Macedonia',
-                'iso_code' => 'MK',
-                'region_code' => 'SK',
-                'latitude' => 41.9962164,
-                'longitude' => 21.4318935,
                 'external_provider' => 'geoapify',
-                'external_id' => 'test-geoapify-skpoje',
+                'external_id' => 'test-geoapify-skopje',
+                'search_query' => 'Skopje',
             ]);
 
         $response
@@ -199,23 +197,70 @@ class CitySearchTest extends TestCase
         $this->assertDatabaseHas('cities', [
             'name' => 'Skopje',
             'external_provider' => 'geoapify',
-            'external_id' => 'test-geoapify-skpoje',
+            'external_id' => 'test-geoapify-skopje',
             'region_code' => 'SK',
         ]);
+    }
+
+    public function test_city_creation_ignores_client_supplied_catalog_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $this->fakeGeoapifySkopje();
+
+        $this
+            ->actingAs($user)
+            ->postJson('/cities', [
+                'external_provider' => 'geoapify',
+                'external_id' => 'test-geoapify-skopje',
+                'search_query' => 'Skopje',
+                'name' => 'Fake City',
+                'country' => 'Fake Country',
+                'iso_code' => 'ZZ',
+                'latitude' => 0,
+                'longitude' => 0,
+            ])
+            ->assertCreated();
+
+        $city = City::firstOrFail();
+
+        $this->assertSame('Skopje', $city->name);
+        $this->assertEqualsWithDelta(41.9962164, (float) $city->latitude, 0.000001);
+        $this->assertDatabaseMissing('countries', ['iso_code' => 'ZZ']);
+        $this->assertDatabaseMissing('countries', ['name' => 'Fake Country']);
+    }
+
+    public function test_city_that_geoapify_does_not_return_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        $this->fakeGeoapifySkopje();
+
+        $this
+            ->actingAs($user)
+            ->postJson('/cities', [
+                'external_provider' => 'geoapify',
+                'external_id' => 'made-up-id',
+                'search_query' => 'Skopje',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['external_id']);
+
+        $this->assertDatabaseCount('cities', 0);
+        $this->assertDatabaseCount('countries', 0);
+        $this->assertDatabaseCount('city_aliases', 0);
     }
 
     public function test_creating_the_same_external_city_does_not_create_a_duplicate(): void
     {
         $user = User::factory()->create();
 
+        $this->fakeGeoapifySkopje();
+
         $data = [
-            'name' => 'Skopje',
-            'country' => 'North Macedonia',
-            'iso_code' => 'MK',
-            'latitude' => 41.9962164,
-            'longitude' => 21.4318935,
             'external_provider' => 'geoapify',
-            'external_id' => 'test-geoapify-skpoje',
+            'external_id' => 'test-geoapify-skopje',
+            'search_query' => 'Skopje',
         ];
 
         $this
@@ -231,28 +276,137 @@ class CitySearchTest extends TestCase
         $this->assertSame(
             1,
             City::where('external_provider', 'geoapify')
-                ->where('external_id', 'test-geoapify-skpoje')
+                ->where('external_id', 'test-geoapify-skopje')
                 ->count()
         );
+
+        // La segunda verificación reutiliza el resultado en caché.
+        Http::assertSentCount(1);
     }
 
-    public function test_creating_city_requires_valid_coordinates(): void
+    public function test_creating_city_requires_the_search_query(): void
     {
         $user = User::factory()->create();
 
-        $response = $this
+        $this
             ->actingAs($user)
             ->postJson('/cities', [
-                'name' => 'Skopje',
-                'country' => 'North Macedonia',
-                'iso_code' => 'MK',
-                'latitude' => 200,
-                'longitude' => 21.4318935,
                 'external_provider' => 'geoapify',
-                'external_id' => 'test-geoapify-skpoje',
-            ]);
+                'external_id' => 'test-geoapify-skopje',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['search_query']);
+    }
 
-        $response->assertUnprocessable();
+    public function test_city_creation_returns_503_when_geoapify_is_unreachable(): void
+    {
+        $user = User::factory()->create();
+
+        Http::fake(fn () => throw new ConnectionException('Connection timed out'));
+
+        $this
+            ->actingAs($user)
+            ->postJson('/cities', [
+                'external_provider' => 'geoapify',
+                'external_id' => 'test-geoapify-skopje',
+                'search_query' => 'Skopje',
+            ])
+            ->assertStatus(503)
+            ->assertJsonMissingPath('errors');
+
+        $this->assertDatabaseCount('cities', 0);
+    }
+
+    public function test_city_creation_returns_503_without_an_api_key(): void
+    {
+        $user = User::factory()->create();
+
+        config(['services.geoapify.key' => null]);
+        Http::fake();
+
+        $this
+            ->actingAs($user)
+            ->postJson('/cities', [
+                'external_provider' => 'geoapify',
+                'external_id' => 'test-geoapify-skopje',
+                'search_query' => 'Skopje',
+            ])
+            ->assertStatus(503);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_city_search_degrades_gracefully_when_geoapify_is_unreachable(): void
+    {
+        $user = User::factory()->create();
+
+        $country = Country::create(['name' => 'Spain', 'iso_code' => 'ES']);
+        City::create([
+            'country_id' => $country->id,
+            'name' => 'Madrigal',
+            'latitude' => 40,
+            'longitude' => -3,
+        ]);
+
+        Http::fake(fn () => throw new ConnectionException('Connection timed out'));
+
+        $this->actingAs($user)
+            ->getJson('/cities/search?q=Madri')
+            ->assertOk()
+            ->assertJsonCount(1, 'results')
+            ->assertJsonPath('results.0.source', 'local');
+    }
+
+    public function test_city_search_degrades_gracefully_when_geoapify_returns_an_error(): void
+    {
+        $user = User::factory()->create();
+
+        Http::fake([
+            'https://api.geoapify.com/*' => Http::response(['message' => 'Unauthorized'], 401),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/cities/search?q=Nowhere')
+            ->assertOk()
+            ->assertJsonCount(0, 'results');
+    }
+
+    public function test_city_search_is_rate_limited(): void
+    {
+        $user = User::factory()->create();
+
+        $country = Country::create(['name' => 'Spain', 'iso_code' => 'ES']);
+        City::create(['country_id' => $country->id, 'name' => 'Madrid', 'latitude' => 40, 'longitude' => -3]);
+
+        for ($i = 0; $i < 60; $i++) {
+            $this->actingAs($user)->getJson('/cities/search?q=Madrid')->assertOk();
+        }
+
+        $this->actingAs($user)
+            ->getJson('/cities/search?q=Madrid')
+            ->assertStatus(429);
+    }
+
+    private function fakeGeoapifySkopje(): void
+    {
+        Http::fake([
+            'https://api.geoapify.com/v1/geocode/search*' => Http::response([
+                'results' => [
+                    [
+                        'name' => 'Skopje',
+                        'city' => 'Skopje',
+                        'country' => 'North Macedonia',
+                        'country_code' => 'mk',
+                        'state_code' => 'SK',
+                        'lat' => 41.9962164,
+                        'lon' => 21.4318935,
+                        'place_id' => 'test-geoapify-skopje',
+                        'result_type' => 'city',
+                        'rank' => ['importance' => 0.8],
+                    ],
+                ],
+            ], 200),
+        ]);
     }
 
     public function test_city_search_finds_a_city_using_a_learned_alias(): void

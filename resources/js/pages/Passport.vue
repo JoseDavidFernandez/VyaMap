@@ -10,6 +10,7 @@ interface Visit {
     city: string;
     country: string;
     iso_code: string;
+    is_sovereign: boolean;
     visited_from: string | null;
     visited_until: string | null;
 }
@@ -160,6 +161,7 @@ const visitedCountries = computed(() => {
             id: number;
             name: string;
             iso_code: string;
+            is_sovereign: boolean;
         }
     >();
 
@@ -169,6 +171,7 @@ const visitedCountries = computed(() => {
                 id: visit.city_id,
                 name: visit.country,
                 iso_code: visit.iso_code,
+                is_sovereign: visit.is_sovereign,
             });
         }
     });
@@ -179,6 +182,12 @@ const visitedCountries = computed(() => {
         a.name.localeCompare(b.name),
     );
 });
+
+// Los territorios se muestran en el mapa, pero el porcentaje y el
+// contador "X / total" solo cuentan Estados soberanos.
+const visitedSovereignCount = computed(() =>
+    visitedCountries.value.filter((country) => country.is_sovereign).length,
+);
 
 const visitedCities = computed(() => {
     return new Set(
@@ -194,7 +203,7 @@ const countriesPercentage = computed(() => {
     }
 
     return (
-        (visitedCountries.value.length /
+        (visitedSovereignCount.value /
             props.totalCountries) *
         100
     );
@@ -260,7 +269,7 @@ const passportCountriesPercentage = computed(() => {
     }
 
     return Number(
-        Math.min(100, (visitedCountries.value.length / props.totalCountries) * 100).toFixed(1),
+        Math.min(100, (visitedSovereignCount.value / props.totalCountries) * 100).toFixed(1),
     );
 });
 
@@ -612,7 +621,7 @@ const formatDate = (
                                     </div>
 
                                     <div class="passport-stat">
-                                        <strong>{{ visitedCountries.length }}</strong>
+                                        <strong>{{ visitedSovereignCount }}</strong>
                                         <span>/ {{ props.totalCountries }}</span>
                                         <small>countries</small>
                                     </div>
@@ -754,7 +763,7 @@ const formatDate = (
                             </div>
 
                             <div class="passport-map-counter">
-                                <span>{{ visitedCountries.length }}</span>
+                                <span>{{ visitedSovereignCount }}</span>
                                 / {{ props.totalCountries }} countries explored
                             </div>
                         </div>
@@ -781,7 +790,7 @@ const formatDate = (
                         <div class="analytics-grid">
                             <div class="analytics-item">
                                 <span>Countries</span>
-                                <strong>{{ visitedCountries.length }} / {{ props.totalCountries }}</strong>
+                                <strong>{{ visitedSovereignCount }} / {{ props.totalCountries }}</strong>
                                 <div class="analytics-bar">
                                     <div :style="{ width: `${passportCountriesPercentage}%` }"></div>
                                 </div>

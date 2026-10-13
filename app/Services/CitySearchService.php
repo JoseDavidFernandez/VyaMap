@@ -2,14 +2,24 @@
 
 namespace App\Services;
 
+use App\Exceptions\GeoapifyUnavailableException;
 use App\Models\City;
 use App\Models\CityAlias;
 use App\Support\CityAliasNormalizer;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CitySearchService
 {
+    /**
+     * Los resultados de Geoapify se guardan unos minutos para que la
+     * verificación al crear la ciudad no repita la llamada externa.
+     */
+    private const GEOAPIFY_CACHE_SECONDS = 600;
+
     public function search(string $query): array
     {
         $localResults = $this->searchLocal($query);
@@ -30,7 +40,7 @@ class CitySearchService
             return $this->formatLocalResults($localResults);
         }
 
-        $geoapifyResults = $this->searchGeoapify($query);
+        $geoapifyResults = $this->geoapifyResults($query) ?? [];
 
         // Conservamos las coincidencias locales y añadimos resultados externos.
         return collect($this->formatLocalResults($localResults))
@@ -103,21 +113,88 @@ class CitySearchService
         ])->values()->all();
     }
 
-    private function searchGeoapify(string $query): array
+    /**
+     * Comprueba en el servidor que la ciudad elegida es uno de los resultados
+     * que Geoapify devuelve para esa búsqueda, y devuelve sus datos.
+     *
+     * @throws GeoapifyUnavailableException
+     */
+    public function verifyGeoapifyCity(string $query, string $externalId): ?array
     {
-        $response = Http::get(
-            'https://api.geoapify.com/v1/geocode/search',
-            [
-                'text' => $query,
-                'format' => 'json',
-                'type' => 'city',
-                'limit' => 10,
-                'apiKey' => config('services.geoapify.key'),
-            ]
-        );
+        $results = $this->geoapifyResults($query);
+
+        if ($results === null) {
+            throw new GeoapifyUnavailableException();
+        }
+
+        foreach ($results as $result) {
+            if (($result['external_id'] ?? null) === $externalId) {
+                return $result;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resultados de Geoapify, o null si el servicio no está disponible.
+     */
+    private function geoapifyResults(string $query): ?array
+    {
+        $cacheKey = 'geoapify:city-search:' . sha1(CityAliasNormalizer::normalize($query));
+
+        $cached = Cache::get($cacheKey);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $results = $this->searchGeoapify($query);
+
+        if ($results !== null) {
+            Cache::put($cacheKey, $results, self::GEOAPIFY_CACHE_SECONDS);
+        }
+
+        return $results;
+    }
+
+    private function searchGeoapify(string $query): ?array
+    {
+        $apiKey = config('services.geoapify.key');
+
+        if (blank($apiKey)) {
+            return null;
+        }
+
+        try {
+            $response = Http::connectTimeout(3)
+                ->timeout(5)
+                ->acceptJson()
+                ->get(
+                    'https://api.geoapify.com/v1/geocode/search',
+                    [
+                        'text' => $query,
+                        'format' => 'json',
+                        'type' => 'city',
+                        'limit' => 10,
+                        'apiKey' => $apiKey,
+                    ]
+                );
+        } catch (Throwable $exception) {
+            // Solo la clase: el mensaje puede incluir la URL con la clave.
+            Log::warning('Geoapify no está disponible.', [
+                'exception' => $exception::class,
+            ]);
+
+            return null;
+        }
 
         if ($response->failed()) {
-            return [];
+            Log::warning('Geoapify ha devuelto un error.', [
+                'status' => $response->status(),
+            ]);
+
+            return null;
         }
 
         $normalizedQuery = CityAliasNormalizer::normalize($query);

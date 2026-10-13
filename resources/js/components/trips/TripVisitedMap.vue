@@ -31,11 +31,11 @@ let markerLayer: L.LayerGroup | null = null;
 
 const escapeHtml = (value: string | null | undefined) => {
     return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 };
 
 const formatVisitDate = (date: string | null) => {
@@ -117,7 +117,7 @@ const renderMap = async () => {
     if (bounds.length === 1) {
         map.setView(bounds[0], 8);
     } else if (bounds.length > 1) {
-        map.fitBounds(bounds, {
+        map.fitBounds(L.latLngBounds(bounds), {
             padding: [70, 70],
             maxZoom: 7,
         });

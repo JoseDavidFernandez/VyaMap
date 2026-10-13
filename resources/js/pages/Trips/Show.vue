@@ -114,6 +114,7 @@ const props = defineProps<{
 
 const citySearch = ref('');
 const cityResults = ref<CitySearchResult[]>([]);
+const cityError = ref('');
 
 let citySearchTimeout: ReturnType<typeof setTimeout> | null = null;
 let citySearchRequestId = 0;
@@ -126,6 +127,8 @@ const visitForm = useForm({
 });
 
 const searchCities = () => {
+    cityError.value = '';
+
     if (citySearchTimeout) {
         clearTimeout(citySearchTimeout);
     }
@@ -189,8 +192,7 @@ const addCityToTrip = (city: CitySearchResult) => {
         return;
     }
 
-    console.log('Ciudad seleccionada:', city);
-    console.log('Término de búsqueda al guardar:', citySearch.value);
+    cityError.value = '';
 
     fetch('/cities', {
         method: 'POST',
@@ -202,13 +204,8 @@ const addCityToTrip = (city: CitySearchResult) => {
                     .querySelector('meta[name="csrf-token"]')
                     ?.getAttribute('content') ?? '',
         },
+        // El servidor verifica la ciudad en Geoapify y obtiene sus datos.
         body: JSON.stringify({
-            name: city.name,
-            country: city.country,
-            iso_code: city.iso_code,
-            latitude: city.latitude,
-            longitude: city.longitude,
-            region_code: city.region_code,
             external_provider: 'geoapify',
             external_id: city.external_id,
             search_query: citySearch.value.trim(),
@@ -216,7 +213,11 @@ const addCityToTrip = (city: CitySearchResult) => {
     })
         .then(async (response) => {
             if (!response.ok) {
-                throw new Error('Unable to create city.');
+                throw new Error(
+                    response.status === 503
+                        ? 'City search is unavailable right now. Please try again later.'
+                        : 'This city could not be verified. Please search again.',
+                );
             }
 
             return response.json();
@@ -235,7 +236,10 @@ const addCityToTrip = (city: CitySearchResult) => {
             });
         })
         .catch((error) => {
-            console.error('Error creating city:', error);
+            cityError.value =
+                error instanceof Error
+                    ? error.message
+                    : 'This city could not be added.';
         });
 };
 
@@ -1300,6 +1304,14 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     class="h-9 w-9 cursor-text rounded-full border border-white/10 bg-white/[0.05] text-center text-sm text-white outline-none transition placeholder:text-white/30 focus:w-36 focus:px-4 focus:text-left"
                                     @input="searchCities"
                                 />
+
+                                <p
+                                    v-if="cityError"
+                                    role="alert"
+                                    class="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-red-400/20 bg-[#11171d] px-4 py-3 text-xs text-red-300 shadow-2xl"
+                                >
+                                    {{ cityError }}
+                                </p>
 
                                 <div
                                     v-if="cityResults.length"

@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\Photo;
+use App\Services\PhotoExifService;
+use App\Services\PhotoFileManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Storage;
@@ -10,7 +12,6 @@ use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
 use Throwable;
-use App\Services\PhotoExifService;
 
 class ProcessPhoto implements ShouldQueue
 {
@@ -22,9 +23,23 @@ class ProcessPhoto implements ShouldQueue
     ) {
     }
 
-    public function handle(): void
+    public function handle(PhotoExifService $exifService, PhotoFileManager $files): void
     {
-        $photo = Photo::findOrFail($this->photoId);
+        $photo = Photo::find($this->photoId);
+
+        // La foto (o su viaje) se borró antes de procesarla: solo queda
+        // eliminar el original pendiente.
+        if ($photo === null) {
+            $files->deleteTemporaryFile($this->temporaryPath);
+
+            return;
+        }
+
+        if ($photo->processing_status === 'ready') {
+            $files->deleteTemporaryFile($this->temporaryPath);
+
+            return;
+        }
 
         $photo->update([
             'processing_status' => 'processing',
@@ -36,12 +51,12 @@ class ProcessPhoto implements ShouldQueue
 
             $sourcePath = $sourceDisk->path($this->temporaryPath);
 
-            $exif = app(PhotoExifService::class)->extract($sourcePath);
+            $exif = $exifService->extract($sourcePath);
 
             $photo->update([
-                'taken_at' => $exif['taken_at'],
-                'latitude' => $exif['latitude'],
-                'longitude' => $exif['longitude'],
+                'taken_at' => $exif['taken_at'] ?? null,
+                'latitude' => $exif['latitude'] ?? null,
+                'longitude' => $exif['longitude'] ?? null,
             ]);
 
             $manager = new ImageManager(new Driver());
@@ -51,7 +66,7 @@ class ProcessPhoto implements ShouldQueue
             $width = $image->width();
             $height = $image->height();
 
-            $directory = 'photos/' . $photo->id;
+            $directory = $files->publicDirectory($photo->id);
 
             $filename = uniqid('photo_', true) . '.webp';
             $thumbnailFilename = pathinfo($filename, PATHINFO_FILENAME) . '_thumb.webp';
@@ -89,16 +104,29 @@ class ProcessPhoto implements ShouldQueue
                 'processing_status' => 'ready',
             ]);
 
-            $sourceDisk->delete($this->temporaryPath);
+            $files->deleteTemporaryFile($this->temporaryPath);
         } catch (Throwable $exception) {
+            // No dejamos imágenes a medio generar; el original se conserva
+            // por si la cola reintenta el trabajo.
+            $files->deletePublicFiles($photo->id);
+
             $photo->update([
                 'processing_status' => 'failed',
                 'metadata' => [
-                    'processing_error' => $exception->getMessage(),
+                    'processing_error' => $exception::class,
                 ],
             ]);
 
             throw $exception;
         }
+    }
+
+    /**
+     * Se ejecuta cuando la cola agota los reintentos: el original (que puede
+     * contener EXIF con ubicación) no debe quedarse huérfano.
+     */
+    public function failed(?Throwable $exception = null): void
+    {
+        app(PhotoFileManager::class)->deleteTemporaryFile($this->temporaryPath);
     }
 }

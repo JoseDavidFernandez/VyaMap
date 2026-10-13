@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useForm, Link } from '@inertiajs/vue3';
 
+defineProps<{
+    status?: string | null;
+}>();
+
 const form = useForm({
     email: '',
     password: '',
@@ -44,6 +48,14 @@ const submit = () => {
                             Continue building and exploring your travel history.
                         </p>
                     </div>
+
+                    <p
+                        v-if="status"
+                        role="status"
+                        class="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6"
+                    >
+                        {{ status }}
+                    </p>
 
                     <form
                         @submit.prevent="submit"
@@ -102,17 +114,26 @@ const submit = () => {
                         </div>
 
                         <!-- OPTIONS -->
-                        <label class="flex cursor-pointer items-center gap-3 pt-1">
-                            <input
-                                v-model="form.remember"
-                                type="checkbox"
-                                class="h-4 w-4 rounded border-white/20 bg-white/5 accent-white"
-                            />
+                        <div class="flex items-center justify-between gap-4 pt-1">
+                            <label class="flex cursor-pointer items-center gap-3">
+                                <input
+                                    v-model="form.remember"
+                                    type="checkbox"
+                                    class="h-4 w-4 rounded border-white/20 bg-white/5 accent-white"
+                                />
 
-                            <span class="text-xs vyamap-muted">
-                                Remember me
-                            </span>
-                        </label>
+                                <span class="text-xs vyamap-muted">
+                                    Remember me
+                                </span>
+                            </label>
+
+                            <Link
+                                href="/forgot-password"
+                                class="text-xs text-white/65 transition hover:text-white"
+                            >
+                                Forgot password?
+                            </Link>
+                        </div>
 
                         <!-- SUBMIT -->
                         <button
