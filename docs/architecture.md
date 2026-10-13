@@ -652,6 +652,36 @@ Estado actual:
 
 La suite debe mantenerse pasando antes de avanzar a cambios estructurales importantes.
 
+## Configuración del entorno de testing
+
+PHPUnit fija `APP_ENV=testing` en `phpunit.xml`, por lo que Laravel carga `.env.testing` en lugar de `.env`. Este archivo es local y está excluido de Git; nunca debe versionarse.
+
+1. Copiar la plantilla:
+
+```bash
+cp .env.testing.example .env.testing
+```
+
+2. Configurar en `.env.testing` una base de datos exclusiva para pruebas, distinta de la de desarrollo y de la de producción (`DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`). La base de datos debe existir antes de ejecutar los tests.
+
+3. Generar una `APP_KEY` exclusiva para testing. La opción `--show` solo muestra una clave nueva y no modifica ningún archivo, por lo que `.env` queda intacto:
+
+```bash
+php artisan key:generate --show
+```
+
+Copiar manualmente el valor mostrado en `APP_KEY=` dentro de `.env.testing`.
+
+4. Ejecutar la suite:
+
+```bash
+php artisan test
+```
+
+**Advertencia:** los tests que utilizan `RefreshDatabase` borran y reconstruyen todas las tablas de la base de datos configurada en `.env.testing`. Antes de ejecutarlos hay que comprobar que `DB_DATABASE` no apunta a una base de datos con datos reales.
+
+Tampoco debe existir una caché de configuración (`bootstrap/cache/config.php`): si existe, Laravel ignora `.env.testing` y los tests usarían la configuración cacheada. Se elimina con `php artisan config:clear`.
+
 ---
 
 # 19. Git y commits
