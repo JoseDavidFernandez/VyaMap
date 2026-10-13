@@ -189,6 +189,9 @@ const addCityToTrip = (city: CitySearchResult) => {
         return;
     }
 
+    console.log('Ciudad seleccionada:', city);
+    console.log('Término de búsqueda al guardar:', citySearch.value);
+
     fetch('/cities', {
         method: 'POST',
         headers: {
@@ -208,6 +211,7 @@ const addCityToTrip = (city: CitySearchResult) => {
             region_code: city.region_code,
             external_provider: 'geoapify',
             external_id: city.external_id,
+            search_query: citySearch.value.trim(),
         }),
     })
         .then(async (response) => {

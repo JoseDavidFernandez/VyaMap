@@ -22,6 +22,8 @@ class StoreCityRequest extends FormRequest
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'external_provider' => ['required', 'string', 'in:geoapify'],
             'external_id' => ['required', 'string', 'max:255'],
+            'search_query' => ['nullable', 'string', 'max:150'],
         ];
     }
+
 }

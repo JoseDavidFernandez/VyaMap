@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\User;
+use App\Models\CityAlias;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Http;
@@ -253,5 +254,70 @@ class CitySearchTest extends TestCase
 
         $response->assertUnprocessable();
     }
+
+    public function test_city_search_finds_a_city_using_a_learned_alias(): void
+    {
+        $user = User::factory()->create();
+
+        $country = Country::query()->create([
+            'name' => 'Italy',
+            'iso_code' => 'IT',
+        ]);
+
+        $city = City::query()->create([
+            'country_id' => $country->id,
+            'name' => 'Rome',
+            'latitude' => 41.9028,
+            'longitude' => 12.4964,
+        ]);
+
+        CityAlias::query()->create([
+            'city_id' => $city->id,
+            'alias' => 'Roma',
+            'normalized_alias' => 'roma',
+            'language' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/cities/search?q=Roma')
+            ->assertOk()
+            ->assertJsonPath('results.0.source', 'local')
+            ->assertJsonPath('results.0.id', $city->id)
+            ->assertJsonPath('results.0.name', 'Rome');
+    }
+
+    public function test_city_search_uses_geoapify_when_no_local_city_matches(): void
+    {
+        $user = User::factory()->create();
+
+        Http::fake([
+            'https://api.geoapify.com/v1/geocode/search*' => Http::response([
+                'results' => [
+                    [
+                        'name' => 'Skopje',
+                        'city' => 'Skopje',
+                        'country' => 'North Macedonia',
+                        'country_code' => 'mk',
+                        'lat' => 41.9962164,
+                        'lon' => 21.4318935,
+                        'place_id' => 'skopje-fallback-test',
+                        'result_type' => 'city',
+                        'rank' => ['importance' => 0.8],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/cities/search?q=Skopje')
+            ->assertOk()
+            ->assertJsonPath('results.0.source', 'geoapify')
+            ->assertJsonPath('results.0.name', 'Skopje');
+
+        Http::assertSent(fn ($request) =>
+            str_contains($request->url(), 'api.geoapify.com/v1/geocode/search')
+        );
+    }
+
 
 }

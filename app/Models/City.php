@@ -52,4 +52,9 @@ class City extends Model
     {
         return $this->hasMany(JournalEntry::class);
     }
+
+    public function aliases(): HasMany
+    {
+        return $this->hasMany(CityAlias::class);
+    }
 }
