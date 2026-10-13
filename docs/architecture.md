@@ -707,6 +707,10 @@ Reglas de aislamiento:
 
 La suite debe mantenerse pasando antes de avanzar a cambios estructurales importantes.
 
+## Fechas y zona horaria
+
+`app.timezone` sigue en `UTC`: las fechas y horas se guardan en UTC. Lo que depende del calendario del usuario ("hoy", el próximo viaje y los días que faltan en el dashboard) se calcula en `app.user_timezone`, configurable con `APP_USER_TIMEZONE` (por defecto `Europe/Madrid`). Así, a las 00:30 en Madrid un viaje que empieza ese día ya cuenta como "hoy" aunque en UTC aún sea el día anterior.
+
 ## Configuración del entorno de testing
 
 PHPUnit fija `APP_ENV=testing` en `phpunit.xml`, por lo que Laravel carga `.env.testing` en lugar de `.env`. Este archivo es local y está excluido de Git; nunca debe versionarse.

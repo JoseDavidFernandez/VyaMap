@@ -73,6 +73,13 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | Zona horaria del usuario para decidir qué día es "hoy" en la interfaz
+    | (p. ej. el próximo viaje del panel). Los datos se siguen guardando en UTC.
+    */
+
+    'user_timezone' => env('APP_USER_TIMEZONE', 'Europe/Madrid'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

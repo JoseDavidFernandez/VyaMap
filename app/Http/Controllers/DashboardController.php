@@ -73,13 +73,15 @@ class DashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $today = Carbon::today();
+        // "Hoy" es el día del calendario en la zona horaria del usuario, no en UTC:
+        // a las 00:30 en Madrid ya es el día siguiente aunque en UTC no lo sea.
+        $today = Carbon::parse(
+            Carbon::now(config('app.user_timezone'))->toDateString()
+        );
 
         $nextTrip = $trips
-            ->filter(function ($trip) use ($today) {
-                return $trip->start_date
-                    && Carbon::parse($trip->start_date)->greaterThanOrEqualTo($today);
-            })
+            ->filter(fn ($trip) => $trip->start_date
+                && $trip->start_date->toDateString() >= $today->toDateString())
             ->sortBy('start_date')
             ->first();
 
@@ -226,8 +228,8 @@ class DashboardController extends Controller
                     'end_date' => $nextTrip->end_date?->format('Y-m-d'),
                     'days_until' => max(
                         0,
-                        $today->diffInDays(
-                            Carbon::parse($nextTrip->start_date),
+                        (int) $today->diffInDays(
+                            Carbon::parse($nextTrip->start_date->toDateString()),
                             false
                         )
                     ),

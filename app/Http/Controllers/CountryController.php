@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Country;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,36 +30,25 @@ class CountryController extends Controller
                     });
                 },
             ])
-            ->with([
-                'cities' => function ($query) use ($user) {
-                    $query
-                        ->whereHas('visits', function ($visitQuery) use ($user) {
-                            $visitQuery->whereHas('trip', function ($tripQuery) use ($user) {
-                                $tripQuery->where('user_id', $user->id);
-                            });
-                        })
-                        ->orderBy('name');
-                },
-            ])
             ->orderBy('name')
             ->get();
 
-        $countries = $countries->map(function ($country) use ($user) {
-            $tripCount = Trip::query()
-                ->where('user_id', $user->id)
-                ->whereHas('visits.city', function ($query) use ($country) {
-                    $query->where('country_id', $country->id);
-                })
-                ->count();
+        // Viajes distintos por país en una sola consulta (antes, una por país).
+        $tripsPerCountry = DB::table('trips')
+            ->join('visits', 'visits.trip_id', '=', 'trips.id')
+            ->join('cities', 'cities.id', '=', 'visits.city_id')
+            ->where('trips.user_id', $user->id)
+            ->groupBy('cities.country_id')
+            ->selectRaw('cities.country_id, COUNT(DISTINCT trips.id) AS trips_count')
+            ->pluck('trips_count', 'country_id');
 
-            return [
-                'id' => $country->id,
-                'name' => $country->name,
-                'iso_code' => $country->iso_code,
-                'cities_count' => $country->visited_cities_count,
-                'trips_count' => $tripCount,
-            ];
-        });
+        $countries = $countries->map(fn ($country) => [
+            'id' => $country->id,
+            'name' => $country->name,
+            'iso_code' => $country->iso_code,
+            'cities_count' => $country->visited_cities_count,
+            'trips_count' => (int) ($tripsPerCountry[$country->id] ?? 0),
+        ]);
 
         return Inertia::render('Countries/Index', [
             'countries' => $countries->values(),
