@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/vue3';
 
 interface Photo {
     id: number;
-    path: string;
+    thumbnail_url: string;
     trip: {
         id: number;
         name: string;
@@ -40,7 +40,7 @@ defineProps<{
                 class="group relative aspect-square overflow-hidden rounded-[var(--vyamap-radius-md)] bg-[var(--vyamap-surface-muted)]"
             >
                 <img
-                    :src="photo.path"
+                    :src="photo.thumbnail_url"
                     alt=""
                     class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />

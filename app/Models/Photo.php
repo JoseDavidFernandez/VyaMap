@@ -38,6 +38,48 @@ class Photo extends Model
         'metadata' => 'array',
     ];
 
+    /** Variantes que sirve PhotoFileController. */
+    public const VARIANTS = ['full', 'thumb'];
+
+    /**
+     * URL autenticada de una variante (null si la foto aún no está lista).
+     * El parámetro v cambia si se regenera el archivo; no revela la ruta.
+     */
+    public function fileUrl(string $variant = 'full'): ?string
+    {
+        $path = $this->pathFor($variant);
+
+        if ($this->processing_status !== 'ready' || $path === null) {
+            return null;
+        }
+
+        return route('photos.file', [
+            'photo' => $this->id,
+            'variant' => $variant,
+            'v' => substr(hash('sha256', $path), 0, 10),
+        ], false);
+    }
+
+    public function thumbnailUrl(): ?string
+    {
+        return $this->fileUrl('thumb');
+    }
+
+    /**
+     * Ruta relativa en disco de una variante; la miniatura recurre a la
+     * imagen completa si no existe.
+     */
+    public function pathFor(string $variant): ?string
+    {
+        $path = match ($variant) {
+            'full' => $this->path,
+            'thumb' => $this->thumbnail_path ?: $this->path,
+            default => null,
+        };
+
+        return $path === '' ? null : $path;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

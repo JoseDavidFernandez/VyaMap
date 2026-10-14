@@ -70,7 +70,7 @@ class ProcessPhoto implements ShouldQueue
 
         try {
             $sourceDisk = Storage::disk('local');
-            $publicDisk = Storage::disk('public');
+            $outputDisk = Storage::disk(PhotoFileManager::DISK);
 
             $sourcePath = $sourceDisk->path($this->temporaryPath);
 
@@ -89,7 +89,7 @@ class ProcessPhoto implements ShouldQueue
             $width = $image->width();
             $height = $image->height();
 
-            $directory = $files->publicDirectory($photo->id);
+            $directory = $files->outputDirectory($photo->id);
 
             $filename = uniqid('photo_', true) . '.webp';
             $thumbnailFilename = pathinfo($filename, PATHINFO_FILENAME) . '_thumb.webp';
@@ -100,7 +100,7 @@ class ProcessPhoto implements ShouldQueue
                 new WebpEncoder(85)
             );
 
-            $publicDisk->put(
+            $outputDisk->put(
                 $directory . '/' . $filename,
                 $encodedImage
             );
@@ -113,7 +113,7 @@ class ProcessPhoto implements ShouldQueue
                 new WebpEncoder(80)
             );
 
-            $publicDisk->put(
+            $outputDisk->put(
                 $directory . '/' . $thumbnailFilename,
                 $encodedThumbnail
             );
@@ -121,7 +121,7 @@ class ProcessPhoto implements ShouldQueue
             $photo->update([
                 'path' => $directory . '/' . $filename,
                 'thumbnail_path' => $directory . '/' . $thumbnailFilename,
-                'size' => $publicDisk->size($directory . '/' . $filename),
+                'size' => $outputDisk->size($directory . '/' . $filename),
                 'width' => $width,
                 'height' => $height,
                 'processing_status' => 'ready',
@@ -131,7 +131,7 @@ class ProcessPhoto implements ShouldQueue
         } catch (Throwable $exception) {
             // No dejamos imágenes a medio generar; el original se conserva
             // por si la cola reintenta el trabajo.
-            $files->deletePublicFiles($photo->id);
+            $files->deleteOutputFiles($photo->id);
 
             // Mientras queden reintentos la foto sigue pendiente; el estado
             // definitivo 'failed' lo fija failed() al agotarlos.
@@ -158,7 +158,7 @@ class ProcessPhoto implements ShouldQueue
         $photo = Photo::find($this->photoId);
 
         if ($photo !== null && $photo->processing_status !== 'ready') {
-            $files->deletePublicFiles($photo->id);
+            $files->deleteOutputFiles($photo->id);
 
             $photo->update([
                 'processing_status' => 'failed',

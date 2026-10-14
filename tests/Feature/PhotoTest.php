@@ -290,8 +290,8 @@ class PhotoTest extends TestCase
         $this->assertSame(1200, $photo->width);
         $this->assertSame(800, $photo->height);
 
-        Storage::disk('public')->assertExists($photo->path);
-        Storage::disk('public')->assertExists($photo->thumbnail_path);
+        Storage::disk('photos')->assertExists($photo->path);
+        Storage::disk('photos')->assertExists($photo->thumbnail_path);
 
         Storage::disk('local')->assertMissing($temporaryPath);
     }
@@ -369,8 +369,8 @@ class PhotoTest extends TestCase
         $this->assertEqualsWithDelta(SyntheticExifJpeg::EXPECTED_LATITUDE, (float) $photo->latitude, 0.0001);
         $this->assertEqualsWithDelta(SyntheticExifJpeg::EXPECTED_LONGITUDE, (float) $photo->longitude, 0.0001);
 
-        Storage::disk('public')->assertExists($photo->path);
-        Storage::disk('public')->assertExists($photo->thumbnail_path);
+        Storage::disk('photos')->assertExists($photo->path);
+        Storage::disk('photos')->assertExists($photo->thumbnail_path);
 
         Storage::disk('local')->assertMissing($temporaryPath);
     }
@@ -407,8 +407,8 @@ class PhotoTest extends TestCase
         $this->assertNull($photo->latitude);
         $this->assertNull($photo->longitude);
 
-        Storage::disk('public')->assertExists($photo->path);
-        Storage::disk('public')->assertExists($photo->thumbnail_path);
+        Storage::disk('photos')->assertExists($photo->path);
+        Storage::disk('photos')->assertExists($photo->thumbnail_path);
         Storage::disk('local')->assertMissing($temporaryPath);
     }
 
@@ -430,7 +430,7 @@ class PhotoTest extends TestCase
         $this->assertSame('failed', $photo->processing_status);
         $this->assertSame('', $photo->path);
 
-        Storage::disk('public')->assertMissing('photos/' . $photo->id);
+        Storage::disk('photos')->assertMissing('photos/' . $photo->id);
         Storage::disk('local')->assertMissing($temporaryPath);
     }
 
@@ -450,7 +450,7 @@ class PhotoTest extends TestCase
         ProcessPhoto::dispatchSync($photoId, $temporaryPath);
 
         Storage::disk('local')->assertMissing($temporaryPath);
-        Storage::disk('public')->assertMissing('photos/' . $photoId);
+        Storage::disk('photos')->assertMissing('photos/' . $photoId);
     }
 
     public function test_deleting_a_photo_removes_its_record_and_files(): void
@@ -464,8 +464,8 @@ class PhotoTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseMissing('photos', ['id' => $photo->id]);
-        Storage::disk('public')->assertMissing($photo->path);
-        Storage::disk('public')->assertMissing($photo->thumbnail_path);
+        Storage::disk('photos')->assertMissing($photo->path);
+        Storage::disk('photos')->assertMissing($photo->thumbnail_path);
     }
 
     public function test_deleting_a_pending_photo_removes_its_original(): void
@@ -500,7 +500,7 @@ class PhotoTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('photos', ['id' => $photo->id]);
-        Storage::disk('public')->assertExists($photo->path);
+        Storage::disk('photos')->assertExists($photo->path);
     }
 
     public function test_deleting_a_trip_removes_its_photo_files(): void
@@ -529,13 +529,13 @@ class PhotoTest extends TestCase
         $this->assertDatabaseMissing('photos', ['id' => $ready->id]);
         $this->assertDatabaseMissing('photos', ['id' => $pending->id]);
 
-        Storage::disk('public')->assertMissing($ready->path);
-        Storage::disk('public')->assertMissing($ready->thumbnail_path);
+        Storage::disk('photos')->assertMissing($ready->path);
+        Storage::disk('photos')->assertMissing($ready->thumbnail_path);
         Storage::disk('local')->assertMissing($temporaryPath);
 
         // Las fotos de otros viajes no se tocan.
         $this->assertDatabaseHas('photos', ['id' => $unrelated->id]);
-        Storage::disk('public')->assertExists($unrelated->path);
+        Storage::disk('photos')->assertExists($unrelated->path);
     }
 
     public function test_user_cannot_delete_another_users_trip_or_its_photos(): void
@@ -551,7 +551,7 @@ class PhotoTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('trips', ['id' => $trip->id]);
-        Storage::disk('public')->assertExists($photo->path);
+        Storage::disk('photos')->assertExists($photo->path);
     }
 
     public function test_trip_page_only_lists_processed_photos(): void
@@ -653,8 +653,8 @@ class PhotoTest extends TestCase
         $path = 'photos/' . $photo->id . '/photo.webp';
         $thumbnail = 'photos/' . $photo->id . '/photo_thumb.webp';
 
-        Storage::disk('public')->put($path, 'image');
-        Storage::disk('public')->put($thumbnail, 'thumbnail');
+        Storage::disk('photos')->put($path, 'image');
+        Storage::disk('photos')->put($thumbnail, 'thumbnail');
 
         $photo->update([
             'path' => $path,

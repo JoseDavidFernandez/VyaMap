@@ -34,7 +34,7 @@ class PhotoController extends Controller
         $albums = $user->albums()
             ->withCount('photos')
             ->with([
-                'coverPhoto:id,path,thumbnail_path',
+                'coverPhoto:id,path,thumbnail_path,processing_status',
             ])
             ->latest()
             ->get();
@@ -54,8 +54,8 @@ class PhotoController extends Controller
             'photos' => $photos->map(fn (Photo $photo) => [
                 'id' => $photo->id,
                 'trip_id' => $photo->trip_id,
-                'path' => $photo->path,
-                'thumbnail_path' => $photo->thumbnail_path,
+                'url' => $photo->fileUrl(),
+                'thumbnail_url' => $photo->thumbnailUrl(),
                 'original_filename' => $photo->original_filename,
                 'width' => $photo->width,
                 'height' => $photo->height,
@@ -64,7 +64,14 @@ class PhotoController extends Controller
                 'trip' => $photo->trip?->only(['id', 'name']),
                 'albums' => $photo->albums->map->only(['id', 'name'])->values(),
             ])->values(),
-            'albums' => $albums,
+            'albums' => $albums->map(fn ($album) => [
+                'id' => $album->id,
+                'name' => $album->name,
+                'description' => $album->description,
+                'cover_photo_id' => $album->cover_photo_id,
+                'photos_count' => $album->photos_count,
+                'cover_url' => $album->coverPhoto?->thumbnailUrl(),
+            ])->values(),
             'trips' => $trips,
         ]);
     }

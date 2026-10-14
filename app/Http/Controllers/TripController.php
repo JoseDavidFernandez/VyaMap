@@ -141,8 +141,8 @@ class TripController extends Controller
 
             'photos' => $trip->photos->map(fn ($photo) => [
                 'id' => $photo->id,
-                'path' => $photo->path,
-                'thumbnail_path' => $photo->thumbnail_path,
+                'url' => $photo->fileUrl(),
+                'thumbnail_url' => $photo->thumbnailUrl(),
                 'original_filename' => $photo->original_filename,
                 'width' => $photo->width,
                 'height' => $photo->height,
@@ -187,8 +187,8 @@ class TripController extends Controller
                 ->where('processing_status', 'ready')
                 ->map(fn ($photo) => [
                     'id' => $photo->id,
-                    'path' => $photo->path,
-                    'thumbnail_path' => $photo->thumbnail_path,
+                    'url' => $photo->fileUrl(),
+                    'thumbnail_url' => $photo->thumbnailUrl(),
                     'original_filename' => $photo->original_filename,
                     'width' => $photo->width,
                     'height' => $photo->height,
@@ -222,8 +222,7 @@ class TripController extends Controller
                     'start_date' => $trip->start_date?->format('Y-m-d'),
                     'end_date' => $trip->end_date?->format('Y-m-d'),
 
-                    'cover' => $trip->photos->first()?->thumbnail_path
-                        ?? $trip->photos->first()?->path,
+                    'cover' => $trip->photos->first()?->thumbnailUrl(),
 
                     'cities' => $trip->visits
                         ->map(fn ($visit) => $visit->city?->name)

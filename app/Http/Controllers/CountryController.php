@@ -104,8 +104,7 @@ class CountryController extends Controller
                     'description' => $trip->description,
                     'start_date' => $trip->start_date?->format('Y-m-d'),
                     'end_date' => $trip->end_date?->format('Y-m-d'),
-                    'cover' => $trip->photos->first()?->thumbnail_path
-                        ?? $trip->photos->first()?->path,
+                    'cover' => $trip->photos->first()?->thumbnailUrl(),
                     'cities' => $cities,
                 ];
             })

@@ -185,8 +185,8 @@ class DashboardController extends Controller
 
             'recentPhotos' => $recentPhotos->map(fn ($photo) => [
                 'id' => $photo->id,
-                'path' => $photo->path,
-                'thumbnail_path' => $photo->thumbnail_path,
+                'url' => $photo->fileUrl(),
+                'thumbnail_url' => $photo->thumbnailUrl(),
                 'original_filename' => $photo->original_filename,
             ])->values(),
 

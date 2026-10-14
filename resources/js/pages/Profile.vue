@@ -245,7 +245,7 @@ const avatarUrl = computed(() => {
                             class="group relative aspect-[1.15/1] overflow-hidden rounded-[22px] bg-[var(--vyamap-surface)]"
                         >
                             <img
-                                :src="trip.cover ? `/storage/${trip.cover}` : '/images/trip-placeholder.jpg'"
+                                :src="trip.cover ?? '/images/trip-placeholder.jpg'"
                                 :alt="trip.name"
                                 class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
                             />

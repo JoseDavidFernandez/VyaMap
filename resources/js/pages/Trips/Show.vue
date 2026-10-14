@@ -53,8 +53,9 @@ interface Flight {
 
 interface Photo {
     id: number;
-    path: string;
-    thumbnail_path: string | null;
+    // URLs autenticadas (PhotoFileController); nunca rutas de disco.
+    url: string;
+    thumbnail_url: string;
     original_filename: string;
     width: number | null;
     height: number | null;
@@ -1296,7 +1297,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     >
 
                                         <img
-                                            :src="`/storage/${photo.thumbnail_path ?? photo.path}`"
+                                            :src="photo.thumbnail_url"
                                             :alt="photo.original_filename"
                                             class="h-full w-full object-cover"
                                             loading="lazy"

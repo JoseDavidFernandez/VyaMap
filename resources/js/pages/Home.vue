@@ -81,8 +81,9 @@ interface RecentTrip {
 
 interface Photo {
     id: number;
-    path: string;
-    thumbnail_path: string | null;
+    // URLs autenticadas (PhotoFileController); nunca rutas de disco.
+    url: string;
+    thumbnail_url: string;
     original_filename: string;
 }
 
@@ -691,7 +692,7 @@ const photoHoverPositions = computed(() => {
 
                                     <img
 
-                                        :src="`/storage/${photo.thumbnail_path ?? photo.path}`"
+                                        :src="photo.thumbnail_url"
 
                                         :alt="photo.original_filename"
 

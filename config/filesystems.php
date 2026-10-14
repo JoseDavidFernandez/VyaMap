@@ -44,6 +44,17 @@ return [
             'throw' => false,
         ],
 
+        // Fotos procesadas: fuera de public/storage, solo se sirven a través
+        // de PhotoFileController (con sesión y comprobando la propiedad).
+        // Usa las mismas rutas relativas (photos/{id}/...) que el disco
+        // público donde estaban antes, para migrar sin tocar la base de datos.
+        'photos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

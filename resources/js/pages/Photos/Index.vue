@@ -9,8 +9,9 @@ interface Photo {
     visit_id?: number | null;
     place_id?: number | null;
     journal_entry_id?: number | null;
-    path: string;
-    thumbnail_path?: string | null;
+    // URLs autenticadas (PhotoFileController); nunca rutas de disco.
+    url: string;
+    thumbnail_url: string;
     original_filename?: string | null;
     mime_type?: string | null;
     size?: number | null;
@@ -29,11 +30,7 @@ interface Album {
     description?: string | null;
     cover_photo_id?: number | null;
     photos_count?: number;
-    cover_photo?: {
-        id: number;
-        path: string;
-        thumbnail_path?: string | null;
-    } | null;
+    cover_url?: string | null;
 }
 
 interface Trip {
@@ -144,19 +141,15 @@ const filteredPhotos = computed(() => {
 });
 
 const photoUrl = (photo: Photo) => {
-    return `/storage/${photo.thumbnail_path ?? photo.path}`;
+    return photo.thumbnail_url;
 };
 
 const fullPhotoUrl = (photo: Photo) => {
-    return `/storage/${photo.path}`;
+    return photo.url;
 };
 
 const albumCoverUrl = (album: Album) => {
-    if (!album.cover_photo) {
-        return null;
-    }
-
-    return `/storage/${album.cover_photo.thumbnail_path ?? album.cover_photo.path}`;
+    return album.cover_url ?? null;
 };
 
 const openPhoto = (photo: Photo) => {

@@ -60,8 +60,8 @@ class PhotoQueueTest extends TestCase
         $photo->refresh();
         $this->assertSame('ready', $photo->processing_status);
         $this->assertSame(0, DB::table('jobs')->count());
-        Storage::disk('public')->assertExists($photo->path);
-        Storage::disk('public')->assertExists($photo->thumbnail_path);
+        Storage::disk('photos')->assertExists($photo->path);
+        Storage::disk('photos')->assertExists($photo->thumbnail_path);
         Storage::disk('local')->assertMissing('photo-processing/' . $photo->id . '/original.jpg');
     }
 
@@ -99,7 +99,7 @@ class PhotoQueueTest extends TestCase
         $this->assertSame(0, DB::table('jobs')->count());
         $this->assertSame(1, DB::table('failed_jobs')->count());
         Storage::disk('local')->assertMissing($source);
-        Storage::disk('public')->assertMissing('photos/' . $photo->id);
+        Storage::disk('photos')->assertMissing('photos/' . $photo->id);
     }
 
     public function test_oversized_original_fails_without_retries_or_decoding(): void
@@ -134,13 +134,13 @@ class PhotoQueueTest extends TestCase
             'mime_type' => 'image/jpeg',
             'processing_status' => 'ready',
         ]);
-        Storage::disk('public')->put('photos/' . $photo->id . '/photo.webp', 'x');
+        Storage::disk('photos')->put('photos/' . $photo->id . '/photo.webp', 'x');
 
         (new ProcessPhoto($photo->id, 'photo-processing/' . $photo->id . '/original.jpg'))
             ->failed(new RuntimeException('late failure'));
 
         $this->assertSame('ready', $photo->fresh()->processing_status);
-        Storage::disk('public')->assertExists('photos/' . $photo->id . '/photo.webp');
+        Storage::disk('photos')->assertExists('photos/' . $photo->id . '/photo.webp');
     }
 
     public function test_trip_page_reports_photos_still_being_processed(): void

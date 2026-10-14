@@ -5,6 +5,7 @@ namespace Tests;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -19,6 +20,12 @@ abstract class TestCase extends BaseTestCase
         // Ningún test debe llamar a servicios externos reales: las llamadas
         // sin Http::fake() fallan. La clave es ficticia.
         Http::preventStrayRequests();
+
+        // Ningún test escribe en storage/app real: todos los discos que usa
+        // la aplicación son temporales (los tests pueden volver a simularlos).
+        foreach (['local', 'public', 'photos'] as $disk) {
+            Storage::fake($disk);
+        }
 
         config(['services.geoapify.key' => 'testing-key']);
 

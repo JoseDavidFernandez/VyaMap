@@ -12,10 +12,12 @@ use App\Http\Controllers\GoogleMapListController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\PassportController;
 use App\Http\Controllers\PhotoController;
+use App\Http\Controllers\PhotoFileController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
 use App\Http\Middleware\GuardAuthEndpoints;
+use App\Models\Photo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -158,6 +160,12 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy'])
     ->name('photos.destroy');
+
+    // Archivos de las fotos (disco privado): solo para su propietario.
+    Route::get('/photos/{photo}/{variant}', PhotoFileController::class)
+    ->whereNumber('photo')
+    ->whereIn('variant', Photo::VARIANTS)
+    ->name('photos.file');
     
     Route::post('/albums', [AlbumController::class, 'store'])
     ->name('albums.store');

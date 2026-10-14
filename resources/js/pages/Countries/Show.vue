@@ -328,7 +328,7 @@ const getTripGradient = (index: number) => {
 
                                 <img
                                     v-if="trip.cover"
-                                    :src="`/storage/${trip.cover}`"
+                                    :src="trip.cover"
                                     :alt="trip.name"
                                     class="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                                 />

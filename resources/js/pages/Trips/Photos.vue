@@ -11,8 +11,9 @@ interface Trip {
 
 interface Photo {
     id: number;
-    path: string;
-    thumbnail_path: string | null;
+    // URLs autenticadas (PhotoFileController); nunca rutas de disco.
+    url: string;
+    thumbnail_url: string;
     original_filename: string;
     width: number | null;
     height: number | null;
@@ -40,11 +41,11 @@ const filteredPhotos = computed(() => {
 });
 
 const photoUrl = (photo: Photo) => {
-    return `/storage/${photo.thumbnail_path ?? photo.path}`;
+    return photo.thumbnail_url;
 };
 
 const fullPhotoUrl = (photo: Photo) => {
-    return `/storage/${photo.path}`;
+    return photo.url;
 };
 
 const openPhoto = (photo: Photo) => {

@@ -80,8 +80,7 @@ class ProfileController extends Controller
                     'name' => $trip->name,
                     'location' => $firstCountry?->city?->country?->name ?? 'Trip',
                     'year' => $trip->start_date?->format('Y'),
-                    'cover' => $trip->photos->first()?->thumbnail_path
-                        ?? $trip->photos->first()?->path,
+                    'cover' => $trip->photos->first()?->thumbnailUrl(),
                 ];
             })->values(),
         ]);
