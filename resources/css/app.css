@@ -295,6 +295,15 @@ body {
         var(--vyamap-shadow-floating);
 }
 
+/*
+ * Leaflet da z-index de 400 a 1000 a sus capas y controles. Sin un contexto de
+ * apilamiento propio compiten con el menú lateral (z-50) y lo tapan;
+ * isolation los encierra dentro de cada mapa.
+ */
+.leaflet-container {
+    isolation: isolate;
+}
+
 /* ============================================================
    EMPTY STATES
 \============================================================ */
