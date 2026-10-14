@@ -737,6 +737,23 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - Longitudes máximas: descripción del viaje y notas de la visita, 5000 caracteres (caben en `TEXT` incluso con caracteres de 4 bytes); contenido del diario, 50 000.
 - No hay API: se eliminó `GET /api/user`, que devolvía el modelo de usuario completo. `User` oculta `password`, `remember_token` y las columnas `two_factor_*` al serializarse.
 
+### Herramientas de desarrollo
+
+- **Inertia DevTools** graba las props de cada página (correo, viajes, rutas de fotos) en `storage/inertia-devtools` y, en `local`, sirve `/_inertia/devtools/entries` sin autenticación. `AppServiceProvider::register()` lo fuerza a desactivado en cualquier entorno distinto de `local`, aunque `INERTIA_DEVTOOLS_ENABLED=true`, y entonces sus rutas no se registran. En local, `.env.example` lo deja desactivado: activarlo solo mientras se use y vaciar después `storage/inertia-devtools` (el proyecto está en una carpeta sincronizada con iCloud).
+- **Ignition** está en `require-dev`: no se instala con `composer install --no-dev` y sus soluciones ejecutables solo funcionan con `APP_DEBUG=true` en `local`.
+
+### Lista para producción
+
+- `APP_ENV=production`, `APP_DEBUG=false` y `APP_KEY` propia.
+- `composer install --no-dev --optimize-autoloader`, `php artisan config:cache` y `php artisan route:cache`.
+- HTTPS con `SESSION_SECURE_COOKIE=true`; `APP_URL` con `https://`.
+- `REGISTRATION_ENABLED` sin definir (o `false`): las cuentas se crean con `php artisan users:create`.
+- `INERTIA_DEVTOOLS_ENABLED` sin definir o `false`.
+- Un worker de cola supervisado (Supervisor, systemd o el gestor del hosting) con `php artisan queue:work --queue=default --sleep=2` (los reintentos los fija `ProcessPhoto`), reiniciado con `php artisan queue:restart` en cada despliegue. Con unos 220 MB por foto de 50 MP, conviene un solo proceso por cada 512 MB libres.
+- `TrustProxies` configurado si hay balanceador o proxy inverso; si no, las IP de los límites de frecuencia serían las del proxy.
+- `LOG_LEVEL=warning` o superior; los logs no incluyen claves ni coordenadas.
+- Pendiente (fase 04, H1): las fotos se sirven desde el disco público sin autenticación. Se resolverá en un bloque aparte, pendiente de aprobar el diseño.
+
 ## Fechas y zona horaria
 
 `app.timezone` sigue en `UTC`: las fechas y horas se guardan en UTC. Lo que depende del calendario del usuario ("hoy", el próximo viaje y los días que faltan en el dashboard) se calcula en `app.user_timezone`, configurable con `APP_USER_TIMEZONE` (por defecto `Europe/Madrid`). Así, a las 00:30 en Madrid un viaje que empieza ese día ya cuenta como "hoy" aunque en UTC aún sea el día anterior.

@@ -16,7 +16,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Inertia DevTools graba las props de cada página y en local sirve
+        // /_inertia/devtools sin autenticación. Fuera de local se fuerza a
+        // desactivado aunque INERTIA_DEVTOOLS_ENABLED diga lo contrario; se
+        // hace en register() porque su proveedor registra las rutas en boot().
+        if (! $this->app->environment('local')) {
+            config(['inertia.devtools.enabled' => false]);
+        }
     }
 
     /**
