@@ -15,6 +15,7 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
+use App\Http\Middleware\GuardAuthEndpoints;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -36,10 +37,12 @@ Route::middleware('guest')->group(function () {
     // LOGIN
     Route::get('/login', fn () => Inertia::render('Auth/Login', [
         'status' => session('status'),
+        'canRegister' => (bool) config('auth.registration_enabled'),
     ]))->name('login');
 
-    // REGISTER
+    // REGISTER (desactivado fuera de local: ver auth.registration_enabled)
     Route::get('/register', fn () => Inertia::render('Auth/Register'))
+        ->middleware(GuardAuthEndpoints::class)
         ->name('register');
 
     // PASSWORD RESET (los POST los registra Fortify)

@@ -3,6 +3,7 @@ import { useForm, Link } from '@inertiajs/vue3';
 
 defineProps<{
     status?: string | null;
+    canRegister?: boolean;
 }>();
 
 const form = useForm({
@@ -146,7 +147,7 @@ const submit = () => {
                     </form>
 
                     <!-- REGISTER -->
-                    <p class="mt-8 text-center text-xs vyamap-muted">
+                    <p v-if="canRegister" class="mt-8 text-center text-xs vyamap-muted">
                         Don't have an account?
 
                         <Link

@@ -707,6 +707,21 @@ Reglas de aislamiento:
 
 La suite debe mantenerse pasando antes de avanzar a cambios estructurales importantes.
 
+## Seguridad
+
+### Cuentas y contraseñas
+
+- El registro público solo está activo en `local` (`auth.registration_enabled`, configurable con `REGISTRATION_ENABLED`). Con el registro desactivado, `/register` devuelve 404 y la pantalla de login oculta el enlace; las cuentas se crean con `php artisan users:create "Nombre" correo@example.com`, que pide la contraseña de forma oculta y aplica las mismas reglas que el formulario.
+- Contraseñas (`Password::defaults()` en `AppServiceProvider`): mínimo 10 caracteres y no filtradas según Have I Been Pwned. Solo se envían los 5 primeros caracteres del hash SHA-1; si el servicio no responde, la contraseña no se bloquea. En los tests el verificador se sustituye por uno local (`Tests\TestCase`).
+- Límites de frecuencia (`App\Http\Middleware\GuardAuthEndpoints`, aplicado a las rutas de Fortify):
+
+| Ruta | Límite |
+|---|---|
+| `POST /login` | 5 por minuto por correo e IP (Fortify) |
+| `POST /register` | 5 por minuto y 20 por hora por IP |
+| `POST /forgot-password` | 5 por minuto por IP y 3 cada 15 minutos por correo |
+| `POST /reset-password` | 5 por minuto por IP |
+
 ## Fechas y zona horaria
 
 `app.timezone` sigue en `UTC`: las fechas y horas se guardan en UTC. Lo que depende del calendario del usuario ("hoy", el próximo viaje y los días que faltan en el dashboard) se calcula en `app.user_timezone`, configurable con `APP_USER_TIMEZONE` (por defecto `Europe/Madrid`). Así, a las 00:30 en Madrid un viaje que empieza ese día ya cuenta como "hoy" aunque en UTC aún sea el día anterior.

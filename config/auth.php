@@ -112,4 +112,17 @@ return [
 
     'password_timeout' => 10800,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Registro público
+    |--------------------------------------------------------------------------
+    |
+    | VyaMap es una aplicación personal: el formulario de registro solo está
+    | disponible en local salvo que REGISTRATION_ENABLED lo active. Fuera de
+    | él, las cuentas se crean con `php artisan users:create`.
+    |
+    */
+
+    'registration_enabled' => (bool) env('REGISTRATION_ENABLED', env('APP_ENV', 'production') === 'local'),
+
 ];

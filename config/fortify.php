@@ -110,7 +110,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', \App\Http\Middleware\GuardAuthEndpoints::class],
 
     /*
     |--------------------------------------------------------------------------
