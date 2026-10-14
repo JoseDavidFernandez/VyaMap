@@ -174,6 +174,9 @@ class PhotoTest extends TestCase
         $response
             ->assertStatus(422)
             ->assertJsonValidationErrors(['journal_entry_id']);
+
+        // Ni se crea la foto ni se asocia al viaje ajeno.
+        $this->assertDatabaseCount('photos', 0);
     }
 
     public function test_user_can_upload_photo(): void
@@ -233,6 +236,148 @@ class PhotoTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['photo']);
+
+        $this->assertDatabaseCount('photos', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_photo_uploaded_for_a_journal_entry_inherits_the_journal_trip(): void
+    {
+        $user = User::factory()->create();
+        Queue::fake();
+
+        $trip = $this->createTrip($user);
+        $otherTrip = $this->createTrip($user);
+        $entry = $this->createJournalEntry($trip);
+        $this->createJournalEntry($otherTrip);
+
+        $this->actingAs($user)
+            ->postJson('/photos', [
+                'journal_entry_id' => $entry->id,
+                'photo' => UploadedFile::fake()->image('journal.jpg'),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('photo.trip_id', $trip->id);
+
+        $this->assertDatabaseHas('photos', [
+            'journal_entry_id' => $entry->id,
+            'trip_id' => $trip->id,
+        ]);
+    }
+
+    public function test_explicit_trip_is_kept_for_a_journal_entry_photo(): void
+    {
+        $user = User::factory()->create();
+        Queue::fake();
+
+        $trip = $this->createTrip($user);
+        $entry = $this->createJournalEntry($trip);
+
+        $this->actingAs($user)
+            ->postJson('/photos', [
+                'trip_id' => $trip->id,
+                'journal_entry_id' => $entry->id,
+                'photo' => UploadedFile::fake()->image('journal.jpg'),
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('photos', ['journal_entry_id' => $entry->id, 'trip_id' => $trip->id]);
+        $this->assertDatabaseCount('photos', 1);
+    }
+
+    public function test_journal_entry_photo_is_deleted_with_its_trip(): void
+    {
+        $user = User::factory()->create();
+        $trip = $this->createTrip($user);
+        $entry = $this->createJournalEntry($trip);
+
+        // Cola síncrona (phpunit.xml): la foto se procesa y deja sus archivos.
+        $this->actingAs($user)
+            ->postJson('/photos', [
+                'journal_entry_id' => $entry->id,
+                'photo' => UploadedFile::fake()->image('journal.jpg', 640, 480),
+            ])
+            ->assertCreated();
+
+        $photo = Photo::firstOrFail();
+        $this->assertSame('ready', $photo->processing_status);
+        Storage::disk('photos')->assertExists([$photo->path, $photo->thumbnail_path]);
+
+        $this->actingAs($user)
+            ->delete('/trips/' . $trip->id)
+            ->assertRedirect('/trips');
+
+        $this->assertDatabaseMissing('journal_entries', ['id' => $entry->id]);
+        $this->assertDatabaseMissing('photos', ['id' => $photo->id]);
+        Storage::disk('photos')->assertMissing('photos/' . $photo->id);
+        Storage::disk('local')->assertMissing('photo-processing/' . $photo->id);
+    }
+
+    public function test_visit_and_journal_entry_from_different_trips_are_rejected(): void
+    {
+        $user = User::factory()->create();
+        Queue::fake();
+
+        $visit = $this->createVisitFor($this->createTrip($user));
+        $entry = $this->createJournalEntry($this->createTrip($user));
+
+        $this->actingAs($user)
+            ->postJson('/photos', [
+                'visit_id' => $visit->id,
+                'journal_entry_id' => $entry->id,
+                'photo' => UploadedFile::fake()->image('mixed.jpg'),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['journal_entry_id' => 'La entrada del diario no pertenece al viaje de la visita.']);
+
+        $this->assertDatabaseCount('photos', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_visit_and_journal_entry_from_the_same_trip_are_accepted(): void
+    {
+        $user = User::factory()->create();
+        Queue::fake();
+
+        $trip = $this->createTrip($user);
+        $visit = $this->createVisitFor($trip);
+        $entry = $this->createJournalEntry($trip);
+
+        $this->actingAs($user)
+            ->postJson('/photos', [
+                'visit_id' => $visit->id,
+                'journal_entry_id' => $entry->id,
+                'photo' => UploadedFile::fake()->image('same.jpg'),
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('photos', [
+            'trip_id' => $trip->id,
+            'visit_id' => $visit->id,
+            'journal_entry_id' => $entry->id,
+        ]);
+    }
+
+    public function test_combining_own_and_foreign_visit_or_journal_entry_is_still_rejected(): void
+    {
+        $user = User::factory()->create();
+        $stranger = User::factory()->create();
+        Queue::fake();
+
+        $ownTrip = $this->createTrip($user);
+        $foreignTrip = $this->createTrip($stranger);
+
+        $cases = [
+            'visit_id' => ['visit_id' => $this->createVisitFor($foreignTrip)->id, 'journal_entry_id' => $this->createJournalEntry($ownTrip)->id],
+            'journal_entry_id' => ['visit_id' => $this->createVisitFor($ownTrip)->id, 'journal_entry_id' => $this->createJournalEntry($foreignTrip)->id],
+        ];
+
+        foreach ($cases as $field => $ids) {
+            $this->actingAs($user)
+                ->postJson('/photos', [...$ids, 'photo' => UploadedFile::fake()->image('foreign.jpg')])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors([$field]);
+        }
 
         $this->assertDatabaseCount('photos', 0);
         Queue::assertNothingPushed();
@@ -608,6 +753,25 @@ class PhotoTest extends TestCase
             'start_date' => '2026-09-10',
             'end_date' => '2026-09-12',
         ]);
+    }
+
+    private function createVisitFor(Trip $trip): Visit
+    {
+        return Visit::create([
+            'user_id' => $trip->user_id,
+            'trip_id' => $trip->id,
+            'city_id' => $this->createCity()->id,
+            'visited_from' => '2026-09-10',
+            'visited_until' => '2026-09-11',
+        ]);
+    }
+
+    private function createJournalEntry(Trip $trip): JournalEntry
+    {
+        $journal = Journal::create(['trip_id' => $trip->id, 'title' => 'Journal']);
+        $day = JournalDay::create(['journal_id' => $journal->id, 'day_number' => 1, 'date' => '2026-09-10']);
+
+        return JournalEntry::create(['journal_day_id' => $day->id, 'title' => 'Entry', 'content' => 'Text', 'sort_order' => 0]);
     }
 
     private function createCity(): City

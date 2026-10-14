@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePhotoRequest;
 use App\Jobs\ProcessPhoto;
+use App\Models\JournalEntry;
 use App\Models\Photo;
 use App\Models\Visit;
 use App\Services\PhotoFileManager;
@@ -80,14 +81,20 @@ class PhotoController extends Controller
     {
         $upload = $request->file('photo');
 
-        // Una foto asociada a una visita pertenece siempre al viaje de esa visita.
+        // Una foto asociada a una visita o a una entrada del diario pertenece
+        // siempre al viaje de esa visita o de ese diario (StorePhotoRequest
+        // ya comprueba que son del usuario y que coinciden con trip_id).
         $visit = $request->filled('visit_id')
             ? Visit::find($request->validated('visit_id'))
             : null;
 
+        $journalEntry = $request->filled('journal_entry_id')
+            ? JournalEntry::with('journalDay.journal')->find($request->validated('journal_entry_id'))
+            : null;
+
         $photo = Photo::create([
             'user_id' => $request->user()->id,
-            'trip_id' => $request->validated('trip_id') ?? $visit?->trip_id,
+            'trip_id' => $request->validated('trip_id') ?? $visit?->trip_id ?? $journalEntry?->journalDay->journal->trip_id,
             'visit_id' => $request->validated('visit_id'),
             'place_id' => $request->validated('place_id'),
             'journal_entry_id' => $request->validated('journal_entry_id'),

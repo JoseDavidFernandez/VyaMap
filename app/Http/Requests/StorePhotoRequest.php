@@ -104,6 +104,16 @@ class StorePhotoRequest extends FormRequest
                         'La entrada del diario no pertenece al viaje seleccionado.'
                     );
                 }
+
+                // Una foto tiene un único viaje: la visita y la entrada del
+                // diario deben pertenecer al mismo (sin trip_id, la foto toma
+                // el de la visita).
+                if ($visit && $visit->trip_id !== $journalTrip->id) {
+                    $validator->errors()->add(
+                        'journal_entry_id',
+                        'La entrada del diario no pertenece al viaje de la visita.'
+                    );
+                }
             }
 
 
