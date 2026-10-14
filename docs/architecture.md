@@ -378,8 +378,40 @@ Esto permite reutilizar una fotografía en diferentes contextos sin introducir u
 
 ```text
 Original pendiente   disco local    photo-processing/{photo_id}/original.{ext}
-Imagen procesada     disco public   photos/{photo_id}/*.webp (imagen y miniatura)
+Imagen procesada     disco photos   photos/{photo_id}/*.webp (imagen y miniatura)   storage/app/private
+Fotos anteriores     disco public   photos/{photo_id}/*.webp (misma ruta relativa)  hasta migrarlas
 ```
+
+### Acceso a los archivos (privado)
+
+Las fotos procesadas se guardan en el disco privado `photos` (`storage/app/private`), que no está bajo `public/storage`. El navegador nunca recibe rutas de disco: las props de Inertia llevan `url` y `thumbnail_url` (o `cover`, `cover_url`), generadas por `Photo::fileUrl()`:
+
+```text
+GET /photos/{photo}/{variant}?v={hash}      variant: full | thumb      (PhotoFileController)
+```
+
+1. `auth`: sin sesión redirige al login (401 en peticiones JSON).
+2. `PhotoPolicy::view`: la foto es del usuario y también lo son su viaje, su visita, su entrada del diario y los álbumes que la contienen.
+3. La foto está `ready` y la ruta guardada pertenece a `photos/{id}/` (sin `..`).
+4. `PhotoFileManager::locate()` busca el archivo en el disco privado y, si no está, en el público (fotos anteriores sin migrar).
+5. Respuesta con `Cache-Control: private, max-age=3600`, `Last-Modified` (permite 304), `X-Content-Type-Options: nosniff` y `Content-Disposition: inline; filename=photo-{id}-{variant}.webp`.
+
+Cualquier fallo de los pasos 2 a 4 (foto ajena, inexistente, sin procesar, sin archivo o con una ruta manipulada) devuelve el mismo 404, para no revelar qué IDs existen. El parámetro `v` cambia si se regenera el archivo e invalida la caché del navegador.
+
+### Migración de las fotos anteriores
+
+Las fotos procesadas antes de este cambio siguen en el disco público y, mientras no se migren, también son accesibles por `/storage/photos/...` para quien conozca la URL. La migración solo mueve archivos: las rutas relativas no cambian, así que no hay cambios en la base de datos.
+
+```bash
+php artisan photos:move-to-private                   # 1. simulación (no cambia nada)
+php artisan photos:move-to-private --copy            # 2. copia al disco privado, verifica SHA-256; no borra
+php artisan photos:move-to-private --remove-public   # 3. borra las copias públicas idénticas (pide confirmación)
+php artisan photos:move-to-private --revert=<manifiesto>   # deshace la fase 3 o la 2
+```
+
+- Cada fase escribe un manifiesto en `storage/app/photo-migration/`. Entre las fases 2 y 3 la aplicación ya sirve la copia privada y la pública sigue intacta.
+- Los archivos públicos que no pertenecen a ninguna foto (huérfanos) solo se listan; su limpieza es una decisión aparte.
+- Antes de la fase 3, hacer una copia de seguridad de `storage/app/public/photos`.
 
 - La extensión del original se deduce del contenido, no del nombre enviado.
 - La ausencia de EXIF (habitual en PNG y WebP) es válida: fecha y coordenadas quedan a `null`.
@@ -752,7 +784,7 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - Un worker de cola supervisado (Supervisor, systemd o el gestor del hosting) con `php artisan queue:work --queue=default --sleep=2` (los reintentos los fija `ProcessPhoto`), reiniciado con `php artisan queue:restart` en cada despliegue. Con unos 220 MB por foto de 50 MP, conviene un solo proceso por cada 512 MB libres.
 - `TrustProxies` configurado si hay balanceador o proxy inverso; si no, las IP de los límites de frecuencia serían las del proxy.
 - `LOG_LEVEL=warning` o superior; los logs no incluyen claves ni coordenadas.
-- Pendiente (fase 04, H1): las fotos se sirven desde el disco público sin autenticación. Se resolverá en un bloque aparte, pendiente de aprobar el diseño.
+- Fotos: las nuevas se guardan en el disco privado `photos` (`storage/app/private`), que debe estar fuera del document root y persistir entre despliegues. Las anteriores se migran con `php artisan photos:move-to-private` (ver «Migración de las fotos anteriores»).
 
 ## Fechas y zona horaria
 
