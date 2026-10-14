@@ -22,8 +22,20 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
         <env name="LOG_CHANNEL" value="null"/>
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <!-- Base de pruebas fija aunque falte .env.testing o el entorno defina
+             otra. Tests\Support\TestDatabaseGuard lo comprueba al arrancar. -->
+        <env name="DB_CONNECTION" value="mysql" force="true"/>
+        <env name="DB_DATABASE" value="vyamap_testing" force="true"/>
+        <env name="DATABASE_URL" value="" force="true"/>
+        <!-- Ignora una posible caché de configuración (php artisan config:cache),
+             que no lee el entorno y apuntaría a la base de desarrollo. -->
+        <env name="APP_CONFIG_CACHE" value="bootstrap/cache/config.phpunit-never-cached.php" force="true"/>
+        <!-- Laravel lee $_SERVER antes que $_ENV: sin estas entradas, una variable
+             exportada en la shell (p. ej. DB_DATABASE=vyamap) ganaría a <env>. -->
+        <server name="DB_CONNECTION" value="mysql" force="true"/>
+        <server name="DB_DATABASE" value="vyamap_testing" force="true"/>
+        <server name="DATABASE_URL" value="" force="true"/>
+        <server name="APP_CONFIG_CACHE" value="bootstrap/cache/config.phpunit-never-cached.php" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
