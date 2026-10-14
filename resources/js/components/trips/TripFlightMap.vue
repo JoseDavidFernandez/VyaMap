@@ -66,20 +66,21 @@ const renderMap = async () => {
         }
 
         const route = L.polyline([origin, destination], {
-            color: '#ffffff',
+            color: '#67e8f9',
             weight: 1,
-            opacity: 0.45,
+            opacity: 0.6,
             dashArray: '4 7',
             interactive: false,
         });
 
         route.addTo(layerGroup!);
 
+        // Origen: anillo cian. Destino: punto cian relleno.
         const originMarker = L.circleMarker(origin, {
             radius: 4,
-            color: '#ffffff',
-            weight: 1,
-            fillColor: '#111111',
+            color: '#67e8f9',
+            weight: 1.5,
+            fillColor: '#0d1119',
             fillOpacity: 1,
         });
 
@@ -96,9 +97,9 @@ const renderMap = async () => {
 
         const destinationMarker = L.circleMarker(destination, {
             radius: 5,
-            color: '#111111',
+            color: '#0d1119',
             weight: 2,
-            fillColor: '#ffffff',
+            fillColor: '#67e8f9',
             fillOpacity: 1,
         });
 
@@ -196,7 +197,7 @@ onBeforeUnmount(() => {
 }
 
 .flight-history-map :deep(.leaflet-tile-pane) {
-    filter: invert(1) hue-rotate(180deg) brightness(0.62) contrast(0.92) saturate(0.35);
+    filter: invert(1) hue-rotate(180deg) brightness(0.66) contrast(0.92) saturate(0.6);
 }
 
 .flight-history-map :deep(.leaflet-control-zoom) {
@@ -217,8 +218,8 @@ onBeforeUnmount(() => {
 }
 
 .flight-history-map :deep(.leaflet-control-zoom a:hover) {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: #ffffff !important;
+    background: rgba(103, 232, 249, 0.1) !important;
+    color: #a5f3fc !important;
 }
 
 .flight-history-map :deep(.leaflet-control-attribution) {
@@ -234,7 +235,7 @@ onBeforeUnmount(() => {
 }
 
 .flight-history-map :deep(.vyamap-flight-tooltip) {
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(103, 232, 249, 0.18);
     border-radius: 10px;
     background: rgba(15, 18, 21, 0.95);
     color: rgba(255, 255, 255, 0.82);

@@ -86,7 +86,7 @@ const renderMap = async () => {
             className: 'vyamap-visited-icon',
             html: `
                 <div class="vyamap-visited-marker">
-                    <div class="vyamap-visited-pin">📍</div>
+                    <div class="vyamap-visited-pin"><span class="vyamap-visited-dot"></span></div>
                     <div class="vyamap-visited-label">
                         <span>${escapeHtml(visit.city.name)}</span>
                         <small>${escapeHtml(dateLine)}</small>
@@ -187,11 +187,12 @@ onBeforeUnmount(() => {
     min-height: 100%;
     width: 100%;
     overflow: hidden;
-    background: #d9dcdf;
+    background: #10191c;
 }
 
 .visited-map :deep(.leaflet-tile-pane) {
-    filter: grayscale(1) brightness(0.62) contrast(0.95) saturate(0.25);
+    /* Base oscura como en los mapas de vuelos, con algo de color en agua y tierra. */
+    filter: invert(1) hue-rotate(180deg) brightness(0.68) contrast(0.92) saturate(0.6);
 }
 
 .visited-map :deep(.leaflet-control-zoom) {
@@ -212,8 +213,8 @@ onBeforeUnmount(() => {
 }
 
 .visited-map :deep(.leaflet-control-zoom a:hover) {
-    background: rgba(255, 255, 255, 0.08) !important;
-    color: #ffffff !important;
+    background: rgba(103, 232, 249, 0.1) !important;
+    color: #a5f3fc !important;
 }
 
 .visited-map :deep(.leaflet-control-attribution) {
@@ -252,10 +253,19 @@ onBeforeUnmount(() => {
     height: 30px;
     border-radius: 999px;
     background: rgba(15, 18, 21, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
-    font-size: 18px;
-    line-height: 1;
+    border: 1px solid rgba(103, 232, 249, 0.45);
+    box-shadow:
+        0 0 0 4px rgba(103, 232, 249, 0.08),
+        0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+/* Punto de la ciudad: acento cian (cyan-300) de la paleta de VyaMap. */
+.visited-map :deep(.vyamap-visited-dot) {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #67e8f9;
+    box-shadow: 0 0 10px rgba(103, 232, 249, 0.65);
 }
 
 .visited-map :deep(.vyamap-visited-label) {
@@ -279,13 +289,13 @@ onBeforeUnmount(() => {
 }
 
 .visited-map :deep(.vyamap-visited-label small) {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(165, 243, 252, 0.6);
     font-size: 8px;
     line-height: 1.2;
 }
 
 .visited-map :deep(.vyamap-visited-tooltip) {
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(103, 232, 249, 0.18);
     border-radius: 9px;
     background: rgba(15, 18, 21, 0.96);
     color: rgba(255, 255, 255, 0.8);
@@ -318,7 +328,7 @@ onBeforeUnmount(() => {
 }
 
 .visited-map-kicker {
-    color: rgba(255, 255, 255, 0.38);
+    color: rgba(103, 232, 249, 0.7);
     font-size: 8px;
     font-weight: 600;
     letter-spacing: 0.16em;
