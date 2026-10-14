@@ -3,13 +3,21 @@
 namespace Tests\Feature;
 
 use App\Models\Airport;
+use App\Models\Album;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Flight;
+use App\Models\GoogleMapList;
+use App\Models\Journal;
+use App\Models\JournalDay;
+use App\Models\JournalEntry;
+use App\Models\Photo;
 use App\Models\Trip;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -94,6 +102,82 @@ class TripFlowTest extends TestCase
         $this->assertDatabaseHas('visits', ['id' => $otherVisit->id]);
         $this->assertDatabaseHas('cities', ['id' => $this->madrid->id]);
         $this->assertDatabaseHas('airports', ['id' => $this->mad->id]);
+    }
+
+    /**
+     * Borrado completo: todo lo que cuelga del viaje desaparece (cascadas de
+     * la base y archivos de las fotos); álbumes, listas, ciudades y
+     * aeropuertos se conservan y solo pierden la relación con el viaje.
+     */
+    public function test_deleting_a_trip_removes_every_dependent_row_and_photo_file(): void
+    {
+        $target = $this->createTripGraph($this->trip);
+        $other = $this->createTrip($this->owner, '2026-10-01', '2026-10-05');
+        $otherPhoto = $this->createPhotoWithFiles($other);
+
+        // El álbum también contiene una foto de otro viaje y tiene como portada
+        // una foto del viaje que se borra; la lista también está en otro viaje.
+        $target['album']->photos()->attach($otherPhoto->id);
+        $other->googleMapLists()->attach($target['list']->id);
+
+        $this->actingAs($this->owner)
+            ->delete("/trips/{$this->trip->id}")
+            ->assertRedirect('/trips');
+
+        $this->assertDatabaseMissing('trips', ['id' => $this->trip->id]);
+        $this->assertDatabaseMissing('visits', ['id' => $target['visit']->id]);
+        $this->assertDatabaseMissing('flights', ['id' => $target['flight']->id]);
+        $this->assertDatabaseMissing('journals', ['id' => $target['journal']->id]);
+        $this->assertDatabaseMissing('journal_days', ['id' => $target['day']->id]);
+        $this->assertDatabaseMissing('journal_entries', ['id' => $target['entry']->id]);
+
+        foreach ($target['photos'] as $photo) {
+            $this->assertDatabaseMissing('photos', ['id' => $photo->id]);
+            $this->assertDatabaseMissing('album_photo', ['photo_id' => $photo->id]);
+            Storage::disk('photos')->assertMissing("photos/{$photo->id}");
+            Storage::disk('local')->assertMissing("photo-processing/{$photo->id}");
+        }
+
+        $this->assertDatabaseMissing('google_map_list_trip', ['trip_id' => $this->trip->id]);
+
+        // Entidades compartidas: siguen existiendo, solo sin la relación.
+        $this->assertDatabaseHas('albums', ['id' => $target['album']->id, 'cover_photo_id' => null]);
+        $this->assertDatabaseHas('album_photo', ['album_id' => $target['album']->id, 'photo_id' => $otherPhoto->id]);
+        $this->assertDatabaseHas('google_map_lists', ['id' => $target['list']->id]);
+        $this->assertDatabaseHas('google_map_list_trip', ['trip_id' => $other->id, 'google_map_list_id' => $target['list']->id]);
+        $this->assertDatabaseHas('cities', ['id' => $this->madrid->id]);
+        $this->assertDatabaseHas('airports', ['id' => $this->mad->id]);
+        $this->assertDatabaseHas('airports', ['id' => $this->bcn->id]);
+        Storage::disk('photos')->assertExists($otherPhoto->path);
+    }
+
+    /**
+     * Aislamiento: otro viaje del mismo usuario y el viaje de otro usuario,
+     * con todos sus datos y archivos, quedan exactamente igual.
+     */
+    public function test_deleting_a_trip_leaves_other_trips_of_any_user_untouched(): void
+    {
+        $this->createTripGraph($this->trip);
+
+        $sameUser = $this->createTripGraph($this->createTrip($this->owner, '2026-10-01', '2026-10-05'));
+        $stranger = User::factory()->create();
+        $otherUser = $this->createTripGraph($this->createTrip($stranger, '2026-09-10', '2026-09-12'));
+
+        $before = $this->rowsOf([$sameUser, $otherUser]);
+
+        $this->actingAs($this->owner)
+            ->delete("/trips/{$this->trip->id}")
+            ->assertRedirect('/trips');
+
+        $this->assertSame($before, $this->rowsOf([$sameUser, $otherUser]));
+
+        foreach ([$sameUser, $otherUser] as $graph) {
+            foreach ($graph['photos'] as $photo) {
+                $photo->processing_status === 'ready'
+                    ? Storage::disk('photos')->assertExists([$photo->path, $photo->thumbnail_path])
+                    : Storage::disk('local')->assertExists("photo-processing/{$photo->id}/original.jpg");
+            }
+        }
     }
 
     public function test_a_flight_cannot_be_changed_through_another_trip_of_the_same_user(): void
@@ -216,6 +300,110 @@ class TripFlowTest extends TestCase
             ->assertJsonValidationErrors(['visited_until']);
 
         $this->assertSame('2026-09-11', $visit->fresh()->visited_until->format('Y-m-d'));
+    }
+
+    /**
+     * Un viaje con todo lo que puede colgar de él: visita, vuelo, foto lista
+     * (archivos en el disco privado), foto pendiente (original en el disco de
+     * procesamiento), diario con día y entrada, foto de la entrada, álbum del
+     * usuario con esas fotos (y portada) y una lista de Google Maps.
+     *
+     * @return array{trip: Trip, visit: Visit, flight: Flight, journal: Journal, day: JournalDay, entry: JournalEntry, photos: list<Photo>, album: Album, list: GoogleMapList}
+     */
+    private function createTripGraph(Trip $trip): array
+    {
+        $visit = $this->createVisit($trip, $trip->start_date->toDateString(), $trip->start_date->toDateString());
+        $flight = Flight::create([
+            'user_id' => $trip->user_id,
+            'trip_id' => $trip->id,
+            'origin_airport_id' => $this->mad->id,
+            'destination_airport_id' => $this->bcn->id,
+            'flight_number' => 'VY' . $trip->id,
+            'departure_at' => $trip->start_date->toDateString() . ' 08:00:00',
+            'arrival_at' => $trip->start_date->toDateString() . ' 09:15:00',
+        ]);
+
+        $journal = Journal::create(['trip_id' => $trip->id, 'title' => 'Journal']);
+        $day = JournalDay::create(['journal_id' => $journal->id, 'day_number' => 1, 'date' => $trip->start_date->toDateString()]);
+        $entry = JournalEntry::create(['journal_day_id' => $day->id, 'title' => 'Entry', 'content' => 'Text', 'city_id' => $this->madrid->id, 'sort_order' => 0]);
+
+        $tripPhoto = $this->createPhotoWithFiles($trip, ['visit_id' => $visit->id]);
+        $journalPhoto = $this->createPhotoWithFiles($trip, ['journal_entry_id' => $entry->id]);
+        $pendingPhoto = $this->createPendingPhotoWithOriginal($trip);
+
+        $album = Album::create(['user_id' => $trip->user_id, 'name' => 'Album', 'cover_photo_id' => $tripPhoto->id]);
+        $album->photos()->attach([$tripPhoto->id, $journalPhoto->id]);
+
+        $list = GoogleMapList::create(['user_id' => $trip->user_id, 'name' => 'List', 'url' => 'https://maps.app.goo.gl/list' . $trip->id]);
+        $trip->googleMapLists()->attach($list->id);
+
+        return [
+            'trip' => $trip, 'visit' => $visit, 'flight' => $flight,
+            'journal' => $journal, 'day' => $day, 'entry' => $entry,
+            'photos' => [$tripPhoto, $journalPhoto, $pendingPhoto],
+            'album' => $album, 'list' => $list,
+        ];
+    }
+
+    private function createPhotoWithFiles(Trip $trip, array $attributes = []): Photo
+    {
+        $photo = Photo::create([
+            'user_id' => $trip->user_id,
+            'trip_id' => $trip->id,
+            'path' => '',
+            'original_filename' => 'photo.jpg',
+            'processing_status' => 'ready',
+            ...$attributes,
+        ]);
+
+        $photo->update([
+            'path' => "photos/{$photo->id}/photo.webp",
+            'thumbnail_path' => "photos/{$photo->id}/photo_thumb.webp",
+        ]);
+
+        Storage::disk('photos')->put($photo->path, 'image');
+        Storage::disk('photos')->put($photo->thumbnail_path, 'thumbnail');
+
+        return $photo;
+    }
+
+    private function createPendingPhotoWithOriginal(Trip $trip): Photo
+    {
+        $photo = Photo::create([
+            'user_id' => $trip->user_id,
+            'trip_id' => $trip->id,
+            'path' => '',
+            'original_filename' => 'pending.jpg',
+            'processing_status' => 'pending',
+        ]);
+
+        Storage::disk('local')->put("photo-processing/{$photo->id}/original.jpg", 'original');
+
+        return $photo;
+    }
+
+    /**
+     * Filas de varios grafos de viaje (y de sus pivotes), para comparar.
+     */
+    private function rowsOf(array $graphs): array
+    {
+        $rows = fn (string $table, string $column, array $ids) => DB::table($table)->whereIn($column, $ids)->orderBy($column)->get()->map(fn ($row) => (array) $row)->all();
+        $ids = fn (string $key) => array_map(fn ($graph) => $graph[$key]->id, $graphs);
+        $photoIds = array_merge(...array_map(fn ($graph) => array_map(fn ($photo) => $photo->id, $graph['photos']), $graphs));
+
+        return [
+            'trips' => $rows('trips', 'id', $ids('trip')),
+            'visits' => $rows('visits', 'id', $ids('visit')),
+            'flights' => $rows('flights', 'id', $ids('flight')),
+            'journals' => $rows('journals', 'id', $ids('journal')),
+            'journal_days' => $rows('journal_days', 'id', $ids('day')),
+            'journal_entries' => $rows('journal_entries', 'id', $ids('entry')),
+            'photos' => $rows('photos', 'id', $photoIds),
+            'albums' => $rows('albums', 'id', $ids('album')),
+            'album_photo' => $rows('album_photo', 'album_id', $ids('album')),
+            'google_map_lists' => $rows('google_map_lists', 'id', $ids('list')),
+            'google_map_list_trip' => $rows('google_map_list_trip', 'trip_id', $ids('trip')),
+        ];
     }
 
     private function createTrip(User $user, string $start, string $end): Trip
