@@ -129,9 +129,24 @@ class DashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        // Solo viajes ya empezados (terminados o en curso), con el mismo "hoy"
+        // que nextTrip. Las demás cifras siguen usando todos los viajes.
         $recentTrips = $trips
+            ->filter(fn ($trip) => $trip->start_date
+                && $trip->start_date->toDateString() <= $today->toDateString())
             ->take(4)
             ->values();
+
+        // Portada: primera foto lista y propia por id, como en TripController,
+        // ProfileController y CountryController. Solo para estos viajes.
+        $recentTrips->load([
+            'photos' => function ($query) use ($user) {
+                $query
+                    ->where('user_id', $user->id)
+                    ->where('processing_status', 'ready')
+                    ->orderBy('id');
+            },
+        ]);
 
         /*
         |--------------------------------------------------------------------------
@@ -357,6 +372,7 @@ class DashboardController extends Controller
                     'description' => $trip->description,
                     'start_date' => $trip->start_date?->format('Y-m-d'),
                     'end_date' => $trip->end_date?->format('Y-m-d'),
+                    'cover' => $trip->photos->first()?->thumbnailUrl(),
 
                     'cities' => $tripVisits
                         ->unique('city_id')
