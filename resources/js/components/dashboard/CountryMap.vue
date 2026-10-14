@@ -1,8 +1,8 @@
 <script setup lang="ts">
-//import { onMounted, onBeforeUnmount, ref } from 'vue';
 import L from 'leaflet';
 
 import {
+    computed,
     onMounted,
     onBeforeUnmount,
     ref,
@@ -16,15 +16,56 @@ interface Country {
     iso_code: string;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     countries: Country[];
-}>();
+    // 'light': estilo original (Passport). 'dark': mapa personal de la Home,
+    // sin teselas, solo las siluetas de los países sobre la tarjeta.
+    theme?: 'light' | 'dark';
+}>(), {
+    theme: 'light',
+});
+
+const PALETTES = {
+    light: {
+        visited: { fillColor: '#1D2235', fillOpacity: 0.9, color: '#C9D7DC', weight: 1 },
+        other: { fillColor: '#EBF3F8', fillOpacity: 0.7, color: '#C9D7DC', weight: 1 },
+    },
+    // Acento cian, el mismo tono que los degradados de la Home (cyan-300).
+    dark: {
+        visited: { fillColor: '#67E8F9', fillOpacity: 0.55, color: 'rgba(103, 232, 249, 0.85)', weight: 0.8 },
+        other: { fillColor: '#FFFFFF', fillOpacity: 0.05, color: 'rgba(255, 255, 255, 0.14)', weight: 0.5 },
+    },
+} satisfies Record<'light' | 'dark', Record<'visited' | 'other', L.PathOptions>>;
+
+// Encuadre del tema oscuro: el mundo habitado, sin la Antártida.
+const DARK_WORLD_BOUNDS = L.latLngBounds([-58, -170], [78, 180]);
 
 const mapElement = ref<HTMLElement | null>(null);
 
 let map: L.Map | null = null;
 let geoJsonLayer: L.GeoJSON | null = null;
 
+const visitedCountries = computed(() => new Set(
+    props.countries.map(
+        (country) => country.iso_code,
+    ),
+));
+
+const countryStyle = (feature?: GeoJSON.Feature): L.PathOptions => {
+    const isoCode = normalizeGeoJsonIsoCode(
+        feature?.properties?.ISO_A2,
+    );
+
+    const visited = isoCode
+        ? visitedCountries.value.has(isoCode)
+        : false;
+
+    return PALETTES[props.theme][visited ? 'visited' : 'other'];
+};
+
+const fitDarkWorld = () => {
+    map?.fitBounds(DARK_WORLD_BOUNDS, { padding: [8, 8] });
+};
 
 watch(
     () => props.countries,
@@ -33,37 +74,14 @@ watch(
             return;
         }
 
-        const visitedCountries = new Set(
-            props.countries.map(
-                (country) => country.iso_code,
-            ),
-        );
-
         geoJsonLayer.eachLayer((layer) => {
             const feature =
                 (layer as L.Layer & {
                     feature?: GeoJSON.Feature;
                 }).feature;
 
-            const isoCode = normalizeGeoJsonIsoCode(
-                feature?.properties?.ISO_A2,
-            );
-
-            const visited = isoCode
-                ? visitedCountries.has(isoCode)
-                : false;
-
             if (layer instanceof L.Path) {
-                layer.setStyle({
-                    fillColor: visited
-                        ? '#1D2235'
-                        : '#EBF3F8',
-                    fillOpacity: visited
-                        ? 0.9
-                        : 0.7,
-                    color: '#C9D7DC',
-                    weight: 1,
-                });
+                layer.setStyle(countryStyle(feature));
             }
         });
     },
@@ -73,6 +91,8 @@ onMounted(async () => {
     if (!mapElement.value) {
         return;
     }
+
+    const dark = props.theme === 'dark';
 
     map = L.map(mapElement.value, {
         zoomControl: false,
@@ -88,26 +108,28 @@ onMounted(async () => {
         dragging: false,
         touchZoom: false,
 
-        minZoom: 2,
-        maxZoom: 2,
+        // El tema oscuro se ajusta al tamaño de la tarjeta (zoom fraccionario);
+        // el claro conserva su zoom fijo.
+        ...(dark
+            ? { zoomSnap: 0.1, minZoom: 0, maxZoom: 3 }
+            : { minZoom: 2, maxZoom: 2 }),
         worldCopyJump: false,
     });
 
-    map.setView([20, 0], 2);
+    if (dark) {
+        fitDarkWorld();
+        map.on('resize', fitDarkWorld);
+    } else {
+        map.setView([20, 0], 2);
 
-    L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-            attribution:
-                '&copy; OpenStreetMap contributors',
-        },
-    ).addTo(map);
-
-    const visitedCountries = new Set(
-        props.countries.map(
-            (country) => country.iso_code,
-        ),
-    );
+        L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {
+                attribution:
+                    '&copy; OpenStreetMap contributors',
+            },
+        ).addTo(map);
+    }
 
     const response = await fetch(
         '/data/world.json',
@@ -125,28 +147,7 @@ onMounted(async () => {
     geoJsonLayer = L.geoJSON(
         worldGeoJson,
         {
-            style: (feature) => {
-                const isoCode = normalizeGeoJsonIsoCode(
-                    feature?.properties?.ISO_A2,
-                );
-
-                const visited = isoCode
-                    ? visitedCountries.has(
-                          isoCode,
-                      )
-                    : false;
-
-                return {
-                    fillColor: visited
-                        ? '#1D2235'
-                        : '#EBF3F8',
-                    fillOpacity: visited
-                        ? 0.9
-                        : 0.7,
-                    color: '#C9D7DC',
-                    weight: 1,
-                };
-            },
+            style: countryStyle,
 
             onEachFeature: (
                 feature,
@@ -169,6 +170,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    map?.off('resize', fitDarkWorld);
     geoJsonLayer?.remove();
     map?.remove();
 
@@ -180,6 +182,15 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="mapElement"
-        class="h-full min-h-[460px] w-full"
+        :class="theme === 'dark'
+            ? 'country-map-dark vyamap-leaflet-dark h-full w-full'
+            : 'h-full min-h-[460px] w-full'"
     />
 </template>
+
+<style scoped>
+/* Sin teselas: el fondo es el de la tarjeta que contiene el mapa. */
+.country-map-dark {
+    background: transparent;
+}
+</style>

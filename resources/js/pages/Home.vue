@@ -536,6 +536,7 @@ const photoHoverPositions = computed(() => {
                         <div class="h-[380px] w-full sm:h-[500px]">
                             <CountryMap
                                 :countries="visitedCountries"
+                                theme="dark"
                             />
                         </div>
                     </div>
