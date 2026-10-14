@@ -769,7 +769,7 @@ const formatDate = (
                         </div>
 
                         <div class="passport-map">
-                            <CountryMap :countries="visitedCountries" />
+                            <CountryMap :countries="visitedCountries" theme="dark" />
                         </div>
                     </div>
                 </section>

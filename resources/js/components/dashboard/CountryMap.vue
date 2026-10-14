@@ -18,7 +18,7 @@ interface Country {
 
 const props = withDefaults(defineProps<{
     countries: Country[];
-    // 'light': estilo original (Passport). 'dark': mapa personal de la Home,
+    // 'light': estilo original (prototipos). 'dark': mapa personal de Home y Passport,
     // sin teselas, solo las siluetas de los países sobre la tarjeta.
     theme?: 'light' | 'dark';
 }>(), {
@@ -37,6 +37,12 @@ const PALETTES = {
     },
 } satisfies Record<'light' | 'dark', Record<'visited' | 'other', L.PathOptions>>;
 
+// Al pasar el cursor, en el tema oscuro, el país se ilumina ligeramente.
+const DARK_HOVER = {
+    visited: { fillOpacity: 0.75, color: '#A5F3FC', weight: 1 },
+    other: { fillOpacity: 0.1, color: 'rgba(255, 255, 255, 0.3)', weight: 0.8 },
+} satisfies Record<'visited' | 'other', L.PathOptions>;
+
 // Encuadre del tema oscuro: el mundo habitado, sin la Antártida.
 const DARK_WORLD_BOUNDS = L.latLngBounds([-58, -170], [78, 180]);
 
@@ -51,17 +57,18 @@ const visitedCountries = computed(() => new Set(
     ),
 ));
 
-const countryStyle = (feature?: GeoJSON.Feature): L.PathOptions => {
+const isVisited = (feature?: GeoJSON.Feature) => {
     const isoCode = normalizeGeoJsonIsoCode(
         feature?.properties?.ISO_A2,
     );
 
-    const visited = isoCode
+    return isoCode
         ? visitedCountries.value.has(isoCode)
         : false;
-
-    return PALETTES[props.theme][visited ? 'visited' : 'other'];
 };
+
+const countryStyle = (feature?: GeoJSON.Feature): L.PathOptions =>
+    PALETTES[props.theme][isVisited(feature) ? 'visited' : 'other'];
 
 const fitDarkWorld = () => {
     map?.fitBounds(DARK_WORLD_BOUNDS, { padding: [8, 8] });
@@ -161,8 +168,19 @@ onMounted(async () => {
                         name,
                         {
                             sticky: true,
+                            ...(dark ? { className: 'country-map-tooltip' } : {}),
                         },
                     );
+                }
+
+                if (dark && layer instanceof L.Path) {
+                    layer.on('mouseover', () => {
+                        layer.setStyle(DARK_HOVER[isVisited(feature) ? 'visited' : 'other']);
+                    });
+
+                    layer.on('mouseout', () => {
+                        layer.setStyle(countryStyle(feature));
+                    });
                 }
             },
         },
@@ -192,5 +210,19 @@ onBeforeUnmount(() => {
 /* Sin teselas: el fondo es el de la tarjeta que contiene el mapa. */
 .country-map-dark {
     background: transparent;
+}
+
+.country-map-dark :deep(.country-map-tooltip) {
+    padding: 4px 9px;
+    border: 1px solid rgba(103, 232, 249, 0.18);
+    border-radius: 8px;
+    background: rgba(13, 17, 25, 0.95);
+    color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+    font-size: 11px;
+}
+
+.country-map-dark :deep(.country-map-tooltip::before) {
+    display: none;
 }
 </style>
