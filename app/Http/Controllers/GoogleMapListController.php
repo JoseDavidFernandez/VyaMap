@@ -11,7 +11,7 @@ class GoogleMapListController extends Controller
 {
     public function store(Request $request, Trip $trip): RedirectResponse
     {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -33,7 +33,7 @@ class GoogleMapListController extends Controller
 
     public function attach(Request $request, Trip $trip, GoogleMapList $googleMapList): RedirectResponse
     {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         abort_unless(
             $googleMapList->user_id === $request->user()->id,
@@ -49,7 +49,7 @@ class GoogleMapListController extends Controller
 
     public function detach(Request $request, Trip $trip, GoogleMapList $googleMapList): RedirectResponse
     {
-        $this->authorize('view', $trip);
+        $this->authorize('update', $trip);
 
         abort_unless(
             $googleMapList->user_id === $request->user()->id,

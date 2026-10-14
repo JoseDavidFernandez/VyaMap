@@ -15,7 +15,21 @@ class StoreJournalEntryRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        // Un día de diario ajeno es una denegación (403), no un error de
+        // validación. Si el día no existe, lo resuelve la regla exists (422).
+        $journalDayId = $this->input('journal_day_id');
+
+        if (! is_numeric($journalDayId)) {
+            return true;
+        }
+
+        $tripOwnerId = JournalDay::query()
+            ->join('journals', 'journals.id', '=', 'journal_days.journal_id')
+            ->join('trips', 'trips.id', '=', 'journals.trip_id')
+            ->where('journal_days.id', (int) $journalDayId)
+            ->value('trips.user_id');
+
+        return $tripOwnerId === null || (int) $tripOwnerId === (int) $this->user()->id;
     }
 
     /**
@@ -26,7 +40,7 @@ class StoreJournalEntryRequest extends FormRequest
         return [
             'journal_day_id' => ['required', 'integer', 'exists:journal_days,id'],
             'title' => ['required', 'string', 'max:200'],
-            'content' => ['required', 'string'],
+            'content' => ['required', 'string', 'max:50000'],
             'city_id' => ['nullable', 'integer', Rule::exists('cities', 'id')->whereNull('merged_into_id')],
             'place_id' => ['nullable', 'integer', 'exists:places,id'],
             'sort_order' => ['required', 'integer', 'min:0'],
@@ -41,23 +55,6 @@ class StoreJournalEntryRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $cityId = $this->input('city_id');
             $placeId = $this->input('place_id');
-            $journalDayId = $this->input('journal_day_id');
-
-            $journalDay = JournalDay::find($journalDayId);
-
-            if ($journalDay) {
-                $journalTrip = $journalDay
-                    ->journal
-                    ->trip;
-
-                if ($journalTrip->user_id !== $this->user()->id) {
-                    $validator->errors()->add(
-                        'journal_day_id',
-                        'El día del diario no pertenece al usuario autenticado.'
-                    );
-                }
-            }
-
             if (!$placeId) {
                 return;
             }

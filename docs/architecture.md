@@ -728,6 +728,15 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - **Dimensiones** (`App\Rules\ImageWithinPixelLimit`): GD necesita unos 4,5 bytes por píxel y esa memoria no cuenta en el `memory_limit` de PHP (medido: 48 MP → unos 220 MB). Las fotos admiten hasta 50 MP y 12 000 px por lado; los avatares, 25 MP. `ProcessPhoto` vuelve a comprobarlo antes de decodificar y, si se supera, marca la foto como `failed` sin reintentos.
 - **Frecuencia**: `POST /photos` admite 30 subidas por minuto y usuario.
 
+### Autorización y validación
+
+- Toda ruta que recibe un ID comprueba la propiedad: `TripPolicy` (`view`, `update`, `delete`) para viajes y todo lo que cuelga de ellos (visitas, vuelos, listas de Google Maps), y comprobaciones directas de `user_id` en fotos y álbumes. Visitas y vuelos usan `scopeBindings()`: un ID de otro viaje da 404. `Tests\Feature\SecurityIsolationTest` recorre todas estas rutas como intruso y sin sesión.
+- Las operaciones de escritura sobre listas de Google Maps exigen `update`, no `view`.
+- Crear una entrada en el diario de otro usuario devuelve 403; un día inexistente, 422.
+- Quitar de un álbum una foto que no está en él devuelve 404.
+- Longitudes máximas: descripción del viaje y notas de la visita, 5000 caracteres (caben en `TEXT` incluso con caracteres de 4 bytes); contenido del diario, 50 000.
+- No hay API: se eliminó `GET /api/user`, que devolvía el modelo de usuario completo. `User` oculta `password`, `remember_token` y las columnas `two_factor_*` al serializarse.
+
 ## Fechas y zona horaria
 
 `app.timezone` sigue en `UTC`: las fechas y horas se guardan en UTC. Lo que depende del calendario del usuario ("hoy", el próximo viaje y los días que faltan en el dashboard) se calcula en `app.user_timezone`, configurable con `APP_USER_TIMEZONE` (por defecto `Europe/Madrid`). Así, a las 00:30 en Madrid un viaje que empieza ese día ya cuenta como "hoy" aunque en UTC aún sea el día anterior.

@@ -82,6 +82,9 @@ class AlbumController extends Controller
     ): RedirectResponse {
         abort_unless($album->user_id === $request->user()->id, 403);
 
+        // Una foto que no está en el álbum (o es de otro usuario) no existe aquí.
+        abort_unless($album->photos()->whereKey($photo->id)->exists(), 404);
+
         $album->photos()->detach($photo->id);
 
         if ($album->cover_photo_id === $photo->id) {

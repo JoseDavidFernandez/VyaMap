@@ -60,9 +60,8 @@ class JournalEntryTest extends TestCase
                 'sort_order' => 1,
             ]);
 
-        $response
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['journal_day_id']);
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('journal_entries', ['title' => 'Unauthorized Entry']);
     }
 
     public function test_place_must_belong_to_the_selected_city(): void

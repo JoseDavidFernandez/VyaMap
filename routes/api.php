@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,6 +13,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// Sin rutas: la aplicación no usa tokens de API. La antigua GET /api/user
+// devolvía el modelo de usuario completo y se eliminó en la auditoría de
+// seguridad (fase 04).

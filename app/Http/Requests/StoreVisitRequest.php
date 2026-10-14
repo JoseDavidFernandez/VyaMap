@@ -41,7 +41,7 @@ class StoreVisitRequest extends FormRequest
                 'before_or_equal:' . $trip->end_date->format('Y-m-d'),
             ],
 
-            'notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:5000'],
         ];
     }
 }
