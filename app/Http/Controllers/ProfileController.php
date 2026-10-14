@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\Visit;
+use App\Rules\ImageWithinPixelLimit;
+use App\Services\AvatarImageService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -99,26 +100,36 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request, AvatarImageService $avatars)
     {
         $user = $request->user();
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'avatar' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,jpg,png,webp',
+                'max:5120',
+                new ImageWithinPixelLimit(ImageWithinPixelLimit::AVATAR_MAX_PIXELS),
+            ],
         ]);
 
-        if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
-            }
+        $previousAvatar = $user->avatar;
 
-            $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        if ($request->hasFile('avatar')) {
+            // Se guarda recodificado (sin EXIF); el anterior se borra solo
+            // cuando el nuevo ya está guardado y asignado.
+            $validated['avatar'] = $avatars->store($request->file('avatar'));
         } else {
             unset($validated['avatar']);
         }
 
         $user->update($validated);
+
+        if (isset($validated['avatar']) && $previousAvatar !== $validated['avatar']) {
+            $avatars->delete($previousAvatar);
+        }
 
         return redirect()
             ->route('profile')

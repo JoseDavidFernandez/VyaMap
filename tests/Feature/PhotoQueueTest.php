@@ -102,6 +102,28 @@ class PhotoQueueTest extends TestCase
         Storage::disk('public')->assertMissing('photos/' . $photo->id);
     }
 
+    public function test_oversized_original_fails_without_retries_or_decoding(): void
+    {
+        $photo = Photo::create([
+            'user_id' => User::factory()->create()->id,
+            'path' => '',
+            'original_filename' => 'huge.png',
+            'mime_type' => 'image/png',
+            'processing_status' => 'pending',
+        ]);
+        $source = 'photo-processing/' . $photo->id . '/original.png';
+        // 20000 x 20000 declarados: decodificarla necesitaría unos 1,8 GB.
+        Storage::disk('local')->put($source, UploadSecurityTest::pngBytes(20000, 20000));
+
+        ProcessPhoto::dispatch($photo->id, $source);
+        $this->runWorkerOnce();
+
+        $this->assertSame('failed', $photo->fresh()->processing_status);
+        $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame(1, DB::table('failed_jobs')->count());
+        Storage::disk('local')->assertMissing($source);
+    }
+
     public function test_failed_handler_never_downgrades_a_processed_photo(): void
     {
         $photo = Photo::create([

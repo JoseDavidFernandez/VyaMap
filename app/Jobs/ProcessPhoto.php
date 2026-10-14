@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Photo;
+use App\Rules\ImageWithinPixelLimit;
 use App\Services\PhotoExifService;
 use App\Services\PhotoFileManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
+use RuntimeException;
 use Throwable;
 
 class ProcessPhoto implements ShouldQueue
@@ -46,6 +48,18 @@ class ProcessPhoto implements ShouldQueue
 
         if ($photo->processing_status === 'ready') {
             $files->deleteTemporaryFile($this->temporaryPath);
+
+            return;
+        }
+
+        // Defensa ante originales que no pasaron por StorePhotoRequest: una
+        // imagen enorme agotaría la memoria del worker al decodificarla.
+        $size = @getimagesize(Storage::disk('local')->path($this->temporaryPath));
+
+        // Reintentar no cambiaría el resultado: falla sin más intentos. Si la
+        // cabecera no se puede leer, la decodificación decide (con reintentos).
+        if ($size !== false && ImageWithinPixelLimit::exceeds($size[0], $size[1], ImageWithinPixelLimit::PHOTO_MAX_PIXELS)) {
+            $this->fail(new RuntimeException('La imagen supera el tamaño máximo.'));
 
             return;
         }

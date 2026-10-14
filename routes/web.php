@@ -151,7 +151,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/photos', [PhotoController::class, 'index'])->name('photos.index');
 
+    // Cada subida ocupa disco y un trabajo de la cola.
     Route::post('/photos', [PhotoController::class, 'store'])
+    ->middleware('throttle:30,1')
     ->name('photos.store');
 
     Route::delete('/photos/{photo}', [PhotoController::class, 'destroy'])

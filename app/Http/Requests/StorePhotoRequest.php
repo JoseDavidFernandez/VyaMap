@@ -6,6 +6,7 @@ use App\Models\JournalEntry;
 use App\Models\Place;
 use App\Models\Trip;
 use App\Models\Visit;
+use App\Rules\ImageWithinPixelLimit;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -30,6 +31,7 @@ class StorePhotoRequest extends FormRequest
                     'file',
                     'mimes:jpg,jpeg,png,webp',
                     'max:20480',
+                    new ImageWithinPixelLimit(ImageWithinPixelLimit::PHOTO_MAX_PIXELS),
                 ],
 
                 'trip_id' => ['nullable', 'integer', 'exists:trips,id'],

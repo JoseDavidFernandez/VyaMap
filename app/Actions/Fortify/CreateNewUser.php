@@ -3,6 +3,8 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Rules\ImageWithinPixelLimit;
+use App\Services\AvatarImageService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -32,13 +34,20 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
-            'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'avatar' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,jpg,png,webp',
+                'max:5120',
+                new ImageWithinPixelLimit(ImageWithinPixelLimit::AVATAR_MAX_PIXELS),
+            ],
         ])->validate();
 
         $avatar = null;
 
         if (isset($input['avatar'])) {
-            $avatar = $input['avatar']->store('avatars', 'public');
+            // Recodificado sin EXIF: nunca se publica el archivo original.
+            $avatar = app(AvatarImageService::class)->store($input['avatar']);
         }
 
         return User::create([

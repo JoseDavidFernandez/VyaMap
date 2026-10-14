@@ -722,6 +722,12 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 | `POST /forgot-password` | 5 por minuto por IP y 3 cada 15 minutos por correo |
 | `POST /reset-password` | 5 por minuto por IP |
 
+### Subidas de imágenes
+
+- **Avatares** (`App\Services\AvatarImageService`): se recodifican a WebP de como mucho 512 px con Intervention, lo que elimina EXIF, GPS y XMP; el archivo original nunca se guarda. El avatar anterior se borra solo después de guardar el nuevo.
+- **Dimensiones** (`App\Rules\ImageWithinPixelLimit`): GD necesita unos 4,5 bytes por píxel y esa memoria no cuenta en el `memory_limit` de PHP (medido: 48 MP → unos 220 MB). Las fotos admiten hasta 50 MP y 12 000 px por lado; los avatares, 25 MP. `ProcessPhoto` vuelve a comprobarlo antes de decodificar y, si se supera, marca la foto como `failed` sin reintentos.
+- **Frecuencia**: `POST /photos` admite 30 subidas por minuto y usuario.
+
 ## Fechas y zona horaria
 
 `app.timezone` sigue en `UTC`: las fechas y horas se guardan en UTC. Lo que depende del calendario del usuario ("hoy", el próximo viaje y los días que faltan en el dashboard) se calcula en `app.user_timezone`, configurable con `APP_USER_TIMEZONE` (por defecto `Europe/Madrid`). Así, a las 00:30 en Madrid un viaje que empieza ese día ya cuenta como "hoy" aunque en UTC aún sea el día anterior.
