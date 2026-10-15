@@ -22,6 +22,15 @@ interface Stats {
     trips: number;
     upcoming_trips: number;
     flights: number;
+    // null si ningún vuelo realizado tiene coordenadas (desconocido, no cero).
+    flight_km: number | null;
+}
+
+interface ThisYear {
+    year: number;
+    days: number;
+    countries: number;
+    new_countries: { iso_code: string; name: string }[];
 }
 
 interface PlannedCountry {
@@ -119,6 +128,7 @@ interface TripsByYear {
 const props = defineProps<{
     user: User;
     stats: Stats;
+    thisYear: ThisYear;
     nextTrip: NextTrip | null;
     pendingTrips: PendingTrip[];
     map: {
@@ -560,7 +570,35 @@ const photoHoverPositions = computed(() => {
                             <div class="mt-1 vyamap-eyebrow">
                                 Flights
                             </div>
+
+                            <div
+                                v-if="stats.flight_km !== null"
+                                class="mt-1 text-[11px] vyamap-muted"
+                            >
+                                {{ stats.flight_km.toLocaleString('en-GB') }} km
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Este año: días viajando (sin duplicar solapes) y países nuevos, del servidor. -->
+                    <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-[20px] border border-[var(--vyamap-border)] px-5 py-4 text-sm">
+                        <span class="vyamap-eyebrow">This year · {{ thisYear.year }}</span>
+
+                        <span class="vyamap-muted">
+                            <strong class="text-white">{{ thisYear.days }}</strong>
+                            {{ thisYear.days === 1 ? 'day' : 'days' }} traveling
+                        </span>
+
+                        <span class="vyamap-muted">
+                            <strong class="text-white">{{ thisYear.new_countries.length }}</strong>
+                            new {{ thisYear.new_countries.length === 1 ? 'country' : 'countries' }}
+                            <template v-if="thisYear.new_countries.length">
+                                ({{ thisYear.new_countries.map((country) => country.name).join(', ') }})
+                            </template>
+                        </span>
+
+                        <Link href="/trips" class="ml-auto text-xs vyamap-muted transition hover:text-white">Trips</Link>
+                        <Link href="/passport" class="text-xs vyamap-muted transition hover:text-white">Passport</Link>
                     </div>
                 </section>
 

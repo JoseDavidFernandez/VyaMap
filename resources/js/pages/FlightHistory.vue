@@ -9,17 +9,13 @@ import FlightForm from '../components/flights/FlightForm.vue';
 import { calendarDate, flightDepartureLabel } from '../utils/flightTime';
 import { calendarYear } from '../utils/tripDates';
 import type { FlightRecord as Flight, FlightStatus, TripOption } from '../types/flights';
-
-interface VisitedAirport {
-    code: string | null;
-    city: string | null;
-    airport: string;
-    count: number;
-}
+import type { FlightStats } from '../types/statistics';
 
 const props = defineProps<{
     flights: Flight[];
     trips: TripOption[];
+    // Cifras del servidor por combinación de filtros: "periodo:vínculo".
+    stats: Record<string, FlightStats>;
 }>();
 
 const selectedPeriod = ref<number | 'all'>('all');
@@ -85,102 +81,27 @@ const lastFlight = computed(() => flownFlights.value[0] ?? null);
 |--------------------------------------------------------------------------
 */
 
-// Distancia y duración solo de los vuelos que tienen el dato (nunca se estiman).
-const flightsWithDistance = computed(() => flownFlights.value.filter((flight) => flight.distance_km !== null));
-const flightsWithDuration = computed(() => flownFlights.value.filter((flight) => flight.duration_minutes !== null));
-
-const totalDistance = computed(() =>
-    flightsWithDistance.value.reduce((total, flight) => total + (flight.distance_km ?? 0), 0),
+// Cifras de los vuelos realizados del periodo y vínculo elegidos, calculadas en
+// el servidor (TravelStatistics). Distancia y tiempo son null cuando ningún
+// vuelo tiene el dato: se muestran como desconocidos, nunca como cero.
+const periodStats = computed<FlightStats | null>(() =>
+    props.stats[`${selectedPeriod.value}:${selectedLink.value}`] ?? null,
 );
 
-const totalDuration = computed(() =>
-    flightsWithDuration.value.reduce((total, flight) => total + (flight.duration_minutes ?? 0), 0),
-);
+const flownCount = computed(() => periodStats.value?.flights ?? 0);
+const totalDistance = computed(() => periodStats.value?.distance_km ?? null);
+const totalDuration = computed(() => periodStats.value?.air_minutes ?? null);
+const uniqueAirports = computed(() => periodStats.value?.airports ?? 0);
+const uniqueCities = computed(() => periodStats.value?.cities ?? 0);
+const mostVisitedAirports = computed(() => periodStats.value?.top_airports ?? []);
+const longestFlight = computed(() => periodStats.value?.longest ?? null);
 
-const uniqueAirports = computed(() => {
-    const airports = new Set<string>();
-
-    flownFlights.value.forEach((flight) => {
-        const origin =
-            flight.origin.code ??
-            `${flight.origin.city}-${flight.origin.airport}`;
-
-        const destination =
-            flight.destination.code ??
-            `${flight.destination.city}-${flight.destination.airport}`;
-
-        airports.add(origin);
-        airports.add(destination);
-    });
-
-    return airports.size;
-});
-
-const uniqueCities = computed(() => {
-    const cities = new Set<string>();
-
-    flownFlights.value.forEach((flight) => {
-        [flight.origin.city, flight.destination.city].forEach((city) => city && cities.add(city));
-    });
-
-    return cities.size;
-});
-
-const averageDistance = computed(() =>
-    flightsWithDistance.value.length ? Math.round(totalDistance.value / flightsWithDistance.value.length) : 0,
-);
-
-const averageDuration = computed(() =>
-    flightsWithDuration.value.length ? Math.round(totalDuration.value / flightsWithDuration.value.length) : 0,
-);
-
-// "en 5 de 7 vuelos" cuando falta el dato en alguno.
+// "5 of 7 flights with times" cuando falta el dato en alguno.
 const durationCoverage = computed(() =>
-    flightsWithDuration.value.length < flownFlights.value.length
-        ? `${flightsWithDuration.value.length} of ${flownFlights.value.length} flights with times`
+    periodStats.value && periodStats.value.flights_without_times > 0
+        ? `${periodStats.value.flights_with_times} of ${periodStats.value.flights} flights with times`
         : '',
 );
-
-/*
-|--------------------------------------------------------------------------
-| Most visited airports
-|--------------------------------------------------------------------------
-*/
-
-const mostVisitedAirports = computed<VisitedAirport[]>(() => {
-    const airports = new Map<string, VisitedAirport>();
-
-    flownFlights.value.forEach((flight) => {
-        const points = [
-            flight.origin,
-            flight.destination,
-        ];
-
-        points.forEach((airport) => {
-            const key =
-                airport.code ??
-                `${airport.city ?? ''}-${airport.airport}`;
-
-            const existing = airports.get(key);
-
-            if (existing) {
-                existing.count += 1;
-                return;
-            }
-
-            airports.set(key, {
-                code: airport.code,
-                city: airport.city,
-                airport: airport.airport,
-                count: 1,
-            });
-        });
-    });
-
-    return Array.from(airports.values())
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -280,12 +201,16 @@ const periodLabel = computed(() => {
 });
 
 const flightCountLabel = computed(() => {
-    return flownFlights.value.length === 1
+    return flownCount.value === 1
         ? 'flight'
         : 'flights';
 });
 
 const formattedTotalDistance = computed(() => {
+    if (totalDistance.value === null) {
+        return '—';
+    }
+
     if (totalDistance.value < 1000) {
         return `${totalDistance.value.toLocaleString('en-GB')} km`;
     }
@@ -298,26 +223,20 @@ const formattedTotalDistance = computed(() => {
     ).format(totalDistance.value / 1000)}k`;
 });
 
-const formattedTotalDuration = computed(() => {
-    return formatDuration(totalDuration.value);
-});
+const formattedTotalDuration = computed(() =>
+    totalDuration.value === null ? '—' : formatDuration(totalDuration.value),
+);
 
 const formattedAverageDistance = computed(() => {
-    if (!averageDistance.value) {
-        return '—';
-    }
+    const average = periodStats.value?.average_distance_km ?? null;
 
-    return `${averageDistance.value.toLocaleString('en-GB')} km`;
+    return average === null ? '—' : `${average.toLocaleString('en-GB')} km`;
 });
 
 const formattedAverageDuration = computed(() => {
-    if (!averageDuration.value) {
-        return '—';
-    }
+    const average = periodStats.value?.average_air_minutes ?? null;
 
-    return formatDuration(
-        averageDuration.value,
-    );
+    return average === null ? '—' : formatDuration(average);
 });
 
 </script>
@@ -476,7 +395,7 @@ const formattedAverageDuration = computed(() => {
                             <p
                                 class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
                             >
-                                {{ flownFlights.length }}
+                                {{ flownCount }}
                             </p>
 
                             <p
@@ -506,6 +425,14 @@ const formattedAverageDuration = computed(() => {
                                 class="mt-1 text-xs vyamap-text-subtle"
                             >
                                 total flown
+                            </p>
+
+                            <p
+                                v-if="longestFlight"
+                                class="mt-1 text-xs vyamap-text-subtle"
+                            >
+                                Longest: {{ longestFlight.origin || '—' }} → {{ longestFlight.destination || '—' }}
+                                · {{ longestFlight.distance_km.toLocaleString('en-GB') }} km
                             </p>
 
                         </div>
@@ -701,7 +628,7 @@ const formattedAverageDuration = computed(() => {
                                 <div
                                     class="text-right text-xs vyamap-muted"
                                 >
-                                    {{ flownFlights.length }}
+                                    {{ flownCount }}
                                     {{ flightCountLabel }}
                                 </div>
 
@@ -921,10 +848,7 @@ const formattedAverageDuration = computed(() => {
 
                             <div
                                 v-for="airport in mostVisitedAirports"
-                                :key="
-                                    airport.code ??
-                                    `${airport.city}-${airport.airport}`
-                                "
+                                :key="airport.id"
                                 class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 sm:gap-4 sm:py-4"
                             >
 
@@ -1009,7 +933,7 @@ const formattedAverageDuration = computed(() => {
                             <div
                                 class="text-right text-xs vyamap-muted"
                             >
-                                {{ flownFlights.length }}
+                                {{ flownCount }}
                                 {{ flightCountLabel }}
                             </div>
 

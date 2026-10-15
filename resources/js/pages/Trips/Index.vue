@@ -4,7 +4,8 @@ import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import { calendarYear, tripDays as calendarTripDays } from '../../utils/tripDates';
-import { countCountries, type CountryStatus } from '../../utils/countryStatus';
+import type { CountryStatus } from '../../utils/countryStatus';
+import { emptyYear, type PlaceCounts, type YearPlaceStats } from '../../types/statistics';
 
 interface Country {
     name: string;
@@ -28,16 +29,18 @@ interface Trip {
 
 const props = defineProps<{
     trips: Trip[];
+    // Cifras calculadas en el servidor (solo viajes completados).
+    stats: { total: PlaceCounts; by_year: Record<string, YearPlaceStats> };
 }>();
 
 const selectedYear = ref<'all' | number>('all');
 
+// Un viaje se lista en el año en que empieza (las cifras de viajes del servidor
+// usan la misma regla); sus días se reparten por año natural en el servidor.
 const years = computed(() =>
     [...new Set(
         props.trips
-            .map((trip) =>
-                calendarYear(trip.start_date),
-            )
+            .map((trip) => calendarYear(trip.start_date))
             .filter((year): year is number => year !== null),
     )].sort((a, b) => b - a),
 );
@@ -47,43 +50,20 @@ const filteredTrips = computed(() => {
         return props.trips;
     }
 
-    return props.trips.filter((trip) => {
-        if (!trip.start_date) {
-            return false;
-        }
-
-        return (
-            calendarYear(trip.start_date) ===
-            selectedYear.value
-        );
-    });
+    return props.trips.filter((trip) => calendarYear(trip.start_date) === selectedYear.value);
 });
 
-// Las cifras resumen solo cuentan viajes completados (historial real).
-const completedTrips = computed(() =>
-    filteredTrips.value.filter((trip) => trip.status === 'completed'),
+// Cifras resumen del servidor: solo viajes completados (historial real).
+// Viajes por año de inicio; días como unión de intervalos repartida por año
+// natural (un viaje de fin de año aporta días a los dos años).
+const periodStats = computed<PlaceCounts>(() =>
+    selectedYear.value === 'all'
+        ? props.stats.total
+        : props.stats.by_year[selectedYear.value] ?? emptyYear(),
 );
 
 const plannedCount = computed(() =>
     filteredTrips.value.filter((trip) => trip.status === 'planned').length,
-);
-
-// Suma de los días de viaje (inicio y fin incluidos) de los viajes completados.
-const totalDays = computed(() =>
-    completedTrips.value.reduce(
-        (total, trip) => total + (calendarTripDays(trip.start_date, trip.end_date) ?? 0),
-        0,
-    ),
-);
-
-// Estados soberanos distintos; los territorios se cuentan aparte.
-const countryTotals = computed(() =>
-    countCountries(completedTrips.value.flatMap((trip) => trip.countries)),
-);
-
-// Ciudades distintas por identidad (city_id), no por nombre.
-const totalCities = computed(() =>
-    new Set(completedTrips.value.flatMap((trip) => trip.city_ids)).size,
 );
 
 const formatDate = (date: string | null) => {
@@ -201,13 +181,13 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ completedTrips.length }}
+                                            {{ periodStats.trips }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            {{ completedTrips.length === 1 ? 'Trip' : 'Trips' }}
+                                            {{ periodStats.trips === 1 ? 'Trip' : 'Trips' }}
                                         </div>
 
                                         <div
@@ -224,7 +204,7 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ totalDays }}
+                                            {{ periodStats.days }}
                                         </div>
 
                                         <div
@@ -240,20 +220,20 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ countryTotals.countries }}
+                                            {{ periodStats.countries }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            {{ countryTotals.countries === 1 ? 'Country' : 'Countries' }}
+                                            {{ periodStats.countries === 1 ? 'Country' : 'Countries' }}
                                         </div>
 
                                         <div
-                                            v-if="countryTotals.territories"
+                                            v-if="periodStats.territories"
                                             class="mt-1 text-[11px] text-white/40"
                                         >
-                                            + {{ countryTotals.territories }} {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
+                                            + {{ periodStats.territories }} {{ periodStats.territories === 1 ? 'territory' : 'territories' }}
                                         </div>
 
                                     </div>
@@ -263,13 +243,13 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ totalCities }}
+                                            {{ periodStats.cities }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            {{ totalCities === 1 ? 'City' : 'Cities' }}
+                                            {{ periodStats.cities === 1 ? 'City' : 'Cities' }}
                                         </div>
 
                                     </div>
@@ -342,6 +322,14 @@ const getTripGradient = (index: number) => {
                         </span>
 
                     </div>
+
+                    <!-- Criterios distintos: viajes por año de inicio; días, países y ciudades por año natural. -->
+                    <p
+                        v-if="selectedYear !== 'all'"
+                        class="mt-3 text-[11px] text-white/35"
+                    >
+                        Trips that start in {{ selectedYear }}. Days, countries and cities count everything within {{ selectedYear }}, including trips that started the year before.
+                    </p>
 
                 </section>
 

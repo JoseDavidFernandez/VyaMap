@@ -3,8 +3,9 @@ import { computed, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AppLayout from '../layouts/AppLayout.vue';
 import CountryMap from '../components/dashboard/CountryMap.vue';
-import { calendarYear } from '../utils/tripDates';
-import { countCountries, type CountryStatus } from '../utils/countryStatus';
+import { calendarYear, touchesYear } from '../utils/tripDates';
+import type { CountryStatus } from '../utils/countryStatus';
+import { emptyYear, type FlightStats, type PlaceStats } from '../types/statistics';
 
 interface Visit {
     id: number;
@@ -86,6 +87,9 @@ const props = defineProps<{
     trips: Trip[];
     flights: Flight[];
     plannedCountries: { iso_code: string; name: string; ongoing: boolean }[];
+    // Cifras calculadas en el servidor (total y por año natural).
+    stats: PlaceStats;
+    flightStats: { all: FlightStats; by_year: Record<string, FlightStats> };
 }>();
 
 const selectedPeriod = ref<number | 'all'>(
@@ -103,42 +107,9 @@ const periodVisits = computed(() => {
         return props.visits;
     }
 
-    return props.visits.filter((visit) => {
-        if (!visit.visited_from) {
-            return false;
-        }
+    const year = selectedPeriod.value;
 
-        return (
-            calendarYear(visit.visited_from) ===
-            selectedPeriod.value
-        );
-    });
-});
-
-const periodTrips = computed(() => {
-    if (selectedPeriod.value === 'all') {
-        return props.trips;
-    }
-
-    return props.trips.filter((trip) => {
-        if (!trip.start_date) {
-            return false;
-        }
-
-        return (
-            calendarYear(trip.start_date) ===
-            selectedPeriod.value
-        );
-    });
-});
-
-const periodFlights = computed(() => {
-    if (selectedPeriod.value === 'all') {
-        return props.flights;
-    }
-
-    // Año de la fecha local de salida (con o sin hora).
-    return props.flights.filter((flight) => calendarYear(flight.departure_date) === selectedPeriod.value);
+    return props.visits.filter((visit) => touchesYear(visit.visited_from, visit.visited_until, year));
 });
 
 /*
@@ -176,24 +147,44 @@ const visitedCountries = computed(() => {
     );
 });
 
+/*
+|--------------------------------------------------------------------------
+| Cifras del periodo (servidor)
+|--------------------------------------------------------------------------
+*/
+
+const periodStats = computed(() =>
+    selectedPeriod.value === 'all'
+        ? props.stats.total
+        : props.stats.by_year[selectedPeriod.value] ?? emptyYear(),
+);
+
+// null: ese año no hay vuelos realizados.
+const periodFlightStats = computed<FlightStats | null>(() =>
+    selectedPeriod.value === 'all'
+        ? props.flightStats.all
+        : props.flightStats.by_year[selectedPeriod.value] ?? null,
+);
+
 // Los territorios se muestran en el mapa, pero el porcentaje y el
 // contador "X / total" solo cuentan Estados soberanos.
-const visitedSovereignCount = computed(() =>
-    visitedCountries.value.filter((country) => country.is_sovereign).length,
-);
+const visitedSovereignCount = computed(() => periodStats.value.countries);
 
 // Territorios visitados en el periodo: se muestran aparte, no suman a los 193.
-const visitedTerritoriesCount = computed(() =>
-    countCountries(periodVisits.value).territories,
-);
+const visitedTerritoriesCount = computed(() => periodStats.value.territories);
 
-const visitedCities = computed(() => {
-    return new Set(
-        periodVisits.value.map(
-            (visit) => visit.city_id,
-        ),
-    ).size;
-});
+const visitedCities = computed(() => periodStats.value.cities);
+
+const visitedContinents = computed(() => props.stats.continents.items.filter((continent) => continent.visited));
+
+// Primeras visitas: países soberanos que se visitaron por primera vez cada año.
+const discoveriesByYear = computed(() =>
+    Object.entries(props.stats.by_year)
+        .map(([year, stats]) => ({ year: Number(year), countries: stats.new_countries, territories: stats.new_territories }))
+        .filter((item) => item.countries.length || item.territories)
+        .filter((item) => selectedPeriod.value === 'all' || item.year === selectedPeriod.value)
+        .sort((a, b) => b.year - a.year),
+);
 
 const countriesPercentage = computed(() => {
     if (!props.totalCountries) {
@@ -271,9 +262,8 @@ const passportCountriesPercentage = computed(() => {
     );
 });
 
-const passportTotalDistance = computed(() =>
-    periodFlights.value.reduce((total, flight) => total + (flight.distance_km ?? 0), 0),
-);
+// null si ningún vuelo del periodo tiene coordenadas en ambos aeropuertos.
+const passportTotalDistance = computed(() => periodFlightStats.value?.distance_km ?? null);
 
 const stampLabel = (stamp: PassportStamp) => {
     return stamp.type === 'entry' ? 'ENTRY' : 'VISIT';
@@ -337,33 +327,14 @@ const recentVisits = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const tripsByYear = computed(() => {
-    const groups = new Map<
-        number,
-        number
-    >();
-
-    periodTrips.value.forEach((trip) => {
-        if (!trip.start_date) {
-            return;
-        }
-
-        const year = calendarYear(trip.start_date)!;
-        groups.set(
-            year,
-            (groups.get(year) ?? 0) + 1,
-        );
-    });
-
-    return Array.from(
-        groups.entries(),
-    )
-        .map(([year, count]) => ({
-            year,
-            count,
-        }))
-        .sort((a, b) => b.year - a.year);
-});
+// Viajes completados por año natural (servidor): un viaje está en cada año que toca.
+const tripsByYear = computed(() =>
+    Object.entries(props.stats.by_year)
+        .map(([year, stats]) => ({ year: Number(year), count: stats.trips }))
+        .filter((item) => item.count > 0)
+        .filter((item) => selectedPeriod.value === 'all' || item.year === selectedPeriod.value)
+        .sort((a, b) => b.year - a.year),
+);
 
 const maxTripsByYear = computed(() => {
     return Math.max(
@@ -631,7 +602,7 @@ const formatDate = (
                                     </div>
 
                                     <div class="passport-stat">
-                                        <strong>{{ periodTrips.length }}</strong>
+                                        <strong>{{ periodStats.trips }}</strong>
                                         <small>trips</small>
                                     </div>
                                 </div>
@@ -812,22 +783,69 @@ const formatDate = (
 
                             <div class="analytics-item">
                                 <span>Trips</span>
-                                <strong>{{ periodTrips.length }}</strong>
+                                <strong>{{ periodStats.trips }}</strong>
+                                <small v-if="selectedPeriod !== 'all'" class="analytics-note">Starting in {{ selectedPeriod }}</small>
                                 <div class="analytics-bars">
                                     <i
                                         v-for="n in 8"
                                         :key="n"
-                                        :class="{ filled: n <= Math.min(8, Math.ceil(periodTrips.length / 2)) }"
+                                        :class="{ filled: n <= Math.min(8, Math.ceil(periodStats.trips / 2)) }"
                                     ></i>
                                 </div>
                             </div>
 
                             <div class="analytics-item">
+                                <span>Days traveling</span>
+                                <strong>{{ formatNumber(periodStats.days) }}</strong>
+                                <small class="analytics-note">
+                                    {{ selectedPeriod === 'all' ? 'Completed trips' : `Within ${selectedPeriod}` }}, overlaps counted once
+                                </small>
+                            </div>
+
+                            <div class="analytics-item">
+                                <span>Continents</span>
+                                <strong>{{ periodStats.continents }} / {{ props.stats.continents.items.length }}</strong>
+                                <small v-if="selectedPeriod === 'all' && visitedContinents.length" class="analytics-note">
+                                    {{ visitedContinents.map((continent) => `${continent.name} ${continent.countries}/${continent.total_countries}`).join(' · ') }}
+                                </small>
+                            </div>
+
+                            <div class="analytics-item">
                                 <span>Flights</span>
-                                <strong>{{ periodFlights.length }}</strong>
+                                <strong>{{ periodFlightStats?.flights ?? 0 }}</strong>
                                 <div class="analytics-distance">
-                                    {{ formatNumber(passportTotalDistance) }} km
+                                    <template v-if="passportTotalDistance !== null">{{ formatNumber(passportTotalDistance) }} km</template>
+                                    <template v-else-if="periodFlightStats?.flights">Distance unknown</template>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- =====================================================
+                     COUNTRIES DISCOVERED BY YEAR (primeras visitas)
+                ====================================================== -->
+
+                <section v-if="discoveriesByYear.length" class="mt-8">
+                    <div class="vyamap-card-lg p-6 sm:p-8">
+                        <p class="vyamap-section-title">First visits</p>
+                        <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">Countries discovered by year</h2>
+
+                        <div class="mt-7 divide-y divide-[var(--vyamap-border)]">
+                            <div
+                                v-for="item in discoveriesByYear"
+                                :key="item.year"
+                                class="flex flex-wrap items-baseline gap-x-4 gap-y-2 py-4 first:pt-0 last:pb-0"
+                            >
+                                <span class="w-14 shrink-0 text-sm font-medium">{{ item.year }}</span>
+                                <span class="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1 text-sm">
+                                    <span v-for="country in item.countries" :key="country.iso_code">
+                                        {{ flagEmoji(country.iso_code) }} {{ country.name }}
+                                    </span>
+                                    <span v-if="item.territories" class="vyamap-muted">
+                                        + {{ item.territories }} {{ item.territories === 1 ? 'territory' : 'territories' }}
+                                    </span>
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -882,7 +900,7 @@ const formatDate = (
                                     <p class="vyamap-section-title">Travel history</p>
                                     <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">Trips by year</h2>
                                 </div>
-                                <span class="text-xs vyamap-muted">{{ periodTrips.length }} trips</span>
+                                <span class="text-xs vyamap-muted">{{ periodStats.trips }} trips</span>
                             </div>
 
                             <div v-if="tripsByYear.length" class="mt-9 space-y-6">
@@ -1485,7 +1503,7 @@ const formatDate = (
 
 .analytics-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 22px;
 }
 

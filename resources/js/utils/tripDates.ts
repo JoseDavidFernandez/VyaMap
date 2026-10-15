@@ -41,3 +41,15 @@ export const calendarYear = (date: string | null | undefined): number | null => 
 
     return match ? Number(match[1]) : null;
 };
+
+/*
+ * Un viaje o una visita pertenece a cada año natural que toca (misma regla que
+ * App\Services\TravelStatistics): del 30-12 al 02-01 está en los dos años.
+ * Solo se usa para filtrar listas; las cifras llegan calculadas del servidor.
+ */
+export const touchesYear = (start: string | null | undefined, end: string | null | undefined, year: number): boolean => {
+    const from = calendarYear(start);
+    const until = calendarYear(end ?? start);
+
+    return from !== null && until !== null && from <= year && year <= until;
+};
