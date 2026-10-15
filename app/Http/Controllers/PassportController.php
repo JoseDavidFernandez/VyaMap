@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TravelStatistics;
 use App\Support\FlightPresenter;
 use App\Support\SovereignCountries;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\Visit;
-use Carbon\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PassportController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(TravelStatistics $statistics): Response
     {
         $user = request()->user();
 
@@ -52,13 +52,15 @@ class PassportController extends Controller
 
         $flightData = $flights->map(fn (Flight $flight) => FlightPresenter::toArray($flight))->values();
 
-        $years = collect()
-            ->merge($trips->pluck('start_date'))
-            ->merge($visits->pluck('visited_from'))
-            // Un vuelo pertenece al año de su fecha local de salida.
-            ->merge($flights->map(fn (Flight $flight) => $flight->departure_date?->toDateString()))
-            ->filter()
-            ->map(fn ($date) => Carbon::parse($date)->year)
+        // Cifras del servidor: total y por año natural (viajes y visitas en
+        // cada año que tocan; vuelos en el de su fecha local de salida).
+        $places = $statistics->summarisePlaces($trips, $visits);
+
+        $flightYears = $flights->groupBy(fn (Flight $flight) => $flight->departure_date->year);
+
+        $years = collect(array_keys($places['by_year']))
+            ->merge($flightYears->keys())
+            ->map(fn ($year) => (int) $year)
             ->unique()
             ->sortDesc()
             ->values();
@@ -107,6 +109,13 @@ class PassportController extends Controller
             ])->values(),
 
             'flights' => $flightData,
+
+            'stats' => $places,
+
+            'flightStats' => [
+                'all' => $statistics->flights($flights),
+                'by_year' => $flightYears->map(fn ($yearFlights) => $statistics->flights($yearFlights))->all(),
+            ],
 
             // Destinos planificados para el mapa (lima); no cuentan en el progreso.
             'plannedCountries' => $plannedCountries,

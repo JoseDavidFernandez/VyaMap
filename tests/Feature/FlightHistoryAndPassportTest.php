@@ -149,8 +149,9 @@ class FlightHistoryAndPassportTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Passport')
                 ->where('totalCountries', 193)
-                // Inicio de viajes, visitas y salidas de vuelos; sin repetir, de más reciente a más antiguo.
-                ->where('years', [2026, 2025, 2023])
+                // Años con días de viaje o visitas (el viaje de fin de año tiene días en 2023 y 2024)
+                // y el de salida de los vuelos; sin repetir, de más reciente a más antiguo.
+                ->where('years', [2026, 2025, 2024, 2023])
                 // Visitas por fecha de inicio, más reciente primero; sin fecha, al final.
                 ->where('visits', [
                     $this->expectedVisit($late, $london, 'United Kingdom', 'GB', '2025-07-05T00:00:00.000000Z', '2025-07-10T00:00:00.000000Z'),

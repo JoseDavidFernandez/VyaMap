@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\Visit;
+use App\Services\TravelStatistics;
 use App\Support\SovereignCountries;
 use App\Models\Photo;
 use Carbon\Carbon;
@@ -13,7 +14,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): Response
+    public function __invoke(TravelStatistics $statistics): Response
     {
         $user = request()->user();
 
@@ -118,6 +119,13 @@ class DashboardController extends Controller
             ->where('status', Trip::COMPLETED)
             ->values();
 
+        // "Este año" (año natural del usuario) y km volados: TravelStatistics,
+        // con los viajes, visitas y vuelos ya cargados.
+        $places = $statistics->summarisePlaces($completedTrips, $completedTrips->flatMap->visits->values());
+        $flightStats = $statistics->flights($flights);
+        $currentYear = (int) substr($todayDate, 0, 4);
+        $thisYear = $places['by_year'][$currentYear] ?? null;
+
         /*
         |--------------------------------------------------------------------------
         | Visited cities
@@ -220,13 +228,13 @@ class DashboardController extends Controller
             $countries->map(fn ($visit) => $visit->city->country->iso_code)
         );
 
-        // Historial: solo viajes completados.
-        $tripsByYear = $completedTrips
-            ->filter(fn ($trip) => $trip->start_date)
-            ->groupBy(fn ($trip) => Carbon::parse($trip->start_date)->year)
-            ->map(fn ($yearTrips, $year) => [
-                'year' => (int) $year,
-                'count' => $yearTrips->count(),
+        // Historial: viajes completados por año natural (TravelStatistics): un
+        // viaje que cruza de año cuenta en los dos.
+        $tripsByYear = collect($places['by_year'])
+            ->filter(fn ($year) => $year['trips'] > 0)
+            ->map(fn ($year, $number) => [
+                'year' => (int) $number,
+                'count' => $year['trips'],
             ])
             ->sortBy('year')
             ->values();
@@ -265,6 +273,17 @@ class DashboardController extends Controller
                 'trips' => $completedTrips->count(),
                 'upcoming_trips' => $trips->filter(fn ($trip) => $trip->phase($todayDate) === 'upcoming')->count(),
                 'flights' => $flownFlights->count(),
+                // null si ningún vuelo realizado tiene coordenadas en ambos aeropuertos.
+                'flight_km' => $flightStats['distance_km'],
+            ],
+
+            // Año natural en curso: días viajando (unión de viajes completados)
+            // y países soberanos visitados por primera vez.
+            'thisYear' => [
+                'year' => $currentYear,
+                'days' => $thisYear['days'] ?? 0,
+                'countries' => $thisYear['countries'] ?? 0,
+                'new_countries' => $thisYear['new_countries'] ?? [],
             ],
 
             /*

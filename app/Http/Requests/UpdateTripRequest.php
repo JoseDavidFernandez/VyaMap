@@ -26,8 +26,8 @@ class UpdateTripRequest extends FormRequest
 
     /**
      * Las nuevas fechas no pueden dejar fuera visitas ni vuelos existentes.
-     * Los vuelos se comparan con su fecha local de salida y de llegada, el
-     * mismo criterio que se usa al crearlos.
+     * Los vuelos se comparan con su fecha local de salida, el mismo criterio
+     * que se usa al crearlos (la llegada no se limita).
      */
     public function after(): array
     {

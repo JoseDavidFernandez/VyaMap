@@ -9,6 +9,7 @@ use App\Models\Flight;
 use App\Models\GoogleMapList;
 use App\Models\Trip;
 use App\Services\PhotoFileManager;
+use App\Services\TravelStatistics;
 use App\Support\FlightPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -229,7 +230,7 @@ class TripController extends Controller
         ]);
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request, TravelStatistics $statistics): Response
     {
         $trips = Trip::query()
             ->where('user_id', $request->user()->id)
@@ -246,7 +247,16 @@ class TripController extends Controller
 
         $today = Trip::today();
 
+        // Cifras de la cabecera: solo viajes completados y sus visitas (ya cargadas).
+        $completed = $trips->where('status', Trip::COMPLETED)->values();
+        $stats = $statistics->summarisePlaces($completed, $completed->flatMap->visits->values());
+
         return Inertia::render('Trips/Index', [
+            'stats' => [
+                'total' => $stats['total'],
+                'by_year' => $stats['by_year'],
+            ],
+
             'trips' => $trips->map(function ($trip) use ($today) {
                 return [
                     'id' => $trip->id,
