@@ -66,18 +66,20 @@ Toda operación recibida desde Vue debe volver a validarse y autorizarse en back
 - TypeScript
 - Inertia.js
 - Tailwind CSS
-- shadcn/ui
 - Vite
+- Leaflet (mapas) y three-globe (globo del perfil)
+
+`shadcn/ui` figura en las decisiones de la sección 21, pero todavía no está instalado.
 
 ## Desarrollo
 
 - Git
 - GitHub
-- PHPUnit / Pest mediante la infraestructura de testing de Laravel
+- PHPUnit mediante la infraestructura de testing de Laravel
+- Vitest, @vue/test-utils y happy-dom para componentes Vue (`npm run test:js`)
 
 ## Futuras tecnologías
 
-- Leaflet para mapas
 - APIs externas para enriquecimiento de ciudades, aeropuertos, vuelos y lugares
 - Claude API para funcionalidades de IA
 
@@ -193,18 +195,21 @@ Las validaciones de entrada se realizarán mediante Form Requests.
 Ejemplos actuales:
 
 ```text
-StoreTripRequest
-StoreVisitRequest
-StoreFlightRequest
+StoreTripRequest / UpdateTripRequest
+UpdateTripStatusRequest
+StoreVisitRequest / UpdateVisitRequest
+FlightRequest
 StorePhotoRequest
 StoreJournalEntryRequest
 ```
+
+`FlightRequest` es la única validación de vuelos: la usan tanto las rutas anidadas en el viaje como las rutas generales `/flights`.
 
 Los Form Requests pueden contener reglas relacionadas con el contexto de la petición, como fechas, existencia de recursos, ownership y coherencia entre entidades.
 
 ## Policies
 
-Las Policies se utilizarán para centralizar la autorización sobre recursos a medida que se implementen las operaciones CRUD completas.
+Las Policies centralizan la autorización sobre recursos. Existen `TripPolicy`, `FlightPolicy` y `PhotoPolicy`.
 
 ## Services
 
@@ -274,7 +279,7 @@ User 1:N Flight
 User 1:N Photo
 
 Trip 1:N Visit
-Trip 1:N Flight
+Trip 1:N Flight (opcional: un vuelo puede no pertenecer a ningún viaje)
 Trip 1:N Photo
 Trip 1:1 Journal
 
@@ -314,6 +319,26 @@ Los vuelos se relacionan con Airports.
 
 Un vuelo con conexiones se representa mediante múltiples registros Flight, uno por segmento real.
 
+### Datos de un vuelo
+
+- `departure_date`: fecha local de salida en el aeropuerto de origen. Siempre obligatoria.
+- `departure_at` / `arrival_at`: instantes en UTC, opcionales. El formulario recoge las horas locales de cada aeropuerto en formato de 24 horas (`HH:MM`) y `FlightRequest` las convierte con la zona horaria del aeropuerto. Una hora que no existe por el cambio de horario se rechaza.
+- La hora de llegada solo se admite junto con la de salida; la llegada puede caer entre un día antes y dos días después de la fecha de salida.
+- `flight_number` y `airline` son opcionales.
+- `trip_id` es opcional. Si el vuelo pertenece a un viaje, su fecha local de salida debe estar entre las fechas del viaje, ambas incluidas.
+- `confirmed_at`: confirmación explícita de que el vuelo se realizó.
+
+### Estado de un vuelo
+
+El estado no se guarda: se deduce en un único lugar, `Flight::status()`, y todas las páginas usan `Flight::withStatuses()`. Reglas, en orden:
+
+1. `cancelled`: su viaje está cancelado.
+2. `upcoming`: aún no ha salido. Con hora, cuando `departure_at` es posterior al momento actual; sin hora, durante su fecha local de salida y antes.
+3. `flown`: ya salió y su viaje está completado, o tiene `confirmed_at`, o su viaje planificado ya empezó y se conoce la hora exacta de salida.
+4. `pending`: el resto de vuelos que ya salieron (sin hora y sin confirmar, o independientes sin confirmar). Se pueden confirmar con `PATCH /flights/{flight}/confirmation`.
+
+Las estadísticas de vuelos solo cuentan los `flown`. Editar un vuelo confirmado para moverlo al futuro elimina su confirmación.
+
 ## Visits
 
 Un Visit representa una declaración explícita de que el usuario ha visitado una City.
@@ -338,6 +363,22 @@ Puede contener:
 - Journal
 
 Un Trip puede existir inicialmente sin Visits.
+
+### Estado de un viaje
+
+`trips.status` guarda uno de tres estados: `planned`, `completed` o `cancelled`. Al crear un viaje sin estado explícito, es `completed` si su fecha de fin ya pasó y `planned` en otro caso.
+
+Transiciones manuales (`PATCH /trips/{trip}/status`, validadas por `UpdateTripStatusRequest`):
+
+- `planned → completed`, solo si el viaje ya ha empezado. Un viaje nunca se completa automáticamente por la fecha.
+- `planned → cancelled` y `cancelled → planned`.
+- `completed → planned`.
+
+Cualquier otra transición se rechaza.
+
+Para un viaje `planned`, `Trip::phase()` deduce la fase según el calendario del usuario (`app.user_timezone`): `upcoming` (aún no ha empezado), `ongoing` (en curso) o `pending` (ya terminó y falta confirmarlo).
+
+Solo los viajes `completed` cuentan como lugares visitados (`Visit::visitedBy`) en estadísticas y mapas. Los planificados se muestran aparte y los cancelados no cuentan.
 
 Un Visit puede existir sin Trip.
 
@@ -628,8 +669,8 @@ Las relaciones críticas están protegidas mediante foreign keys.
 Comportamientos de eliminación:
 
 - User → Trips / Visits / Flights / Photos: CASCADE
-- Trip → Visits / Flights / Photos: SET NULL
-- Trip → Journal: CASCADE
+- Trip → Visits / Photos / Journal / listas de Google Maps (tabla pivote): CASCADE
+- Trip → Flights: SET NULL. Al borrar un viaje, `TripController@destroy` conserva sus vuelos como independientes en una transacción; si el viaje no estaba cancelado, los vuelos que ya contaban como realizados quedan confirmados (`confirmed_at`).
 - Journal → JournalDays: CASCADE
 - JournalDay → JournalEntries: CASCADE
 - JournalEntry → Photos: SET NULL
@@ -669,7 +710,7 @@ El porcentaje ("% of the world") solo cuenta Estados soberanos, tanto en el nume
 
 La clasificación no modifica el catálogo: los territorios siguen apareciendo en el mapa y en el contador de países visitados, pero no en el porcentaje.
 
-Un vuelo o una escala no marcan una ciudad ni un país como visitados: solo cuentan las Visits.
+Un vuelo o una escala no marcan una ciudad ni un país como visitados: solo cuentan las Visits de viajes completados.
 
 ---
 
@@ -722,13 +763,14 @@ Los tests deben cubrir especialmente:
 - operaciones destructivas;
 - integraciones cuando existan.
 
-Estado actual (13-10-2026):
+Estado actual (15-10-2026):
 
 ```text
-109 tests
-557 assertions
-0 failures
+PHPUnit: 539 tests, 3771 assertions, 0 failures
+Vitest:   63 tests, 0 failures
 ```
+
+Los tests de componentes Vue están en `tests/js` y se ejecutan con `npm run test:js`.
 
 Reglas de aislamiento:
 
@@ -763,6 +805,7 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 ### Autorización y validación
 
 - Toda ruta que recibe un ID comprueba la propiedad: `TripPolicy` (`view`, `update`, `delete`) para viajes y todo lo que cuelga de ellos (visitas, vuelos, listas de Google Maps), y comprobaciones directas de `user_id` en fotos y álbumes. Visitas y vuelos usan `scopeBindings()`: un ID de otro viaje da 404. `Tests\Feature\SecurityIsolationTest` recorre todas estas rutas como intruso y sin sesión.
+- Las rutas generales de vuelos (`/flights`, `/flights/{flight}` y `/flights/{flight}/confirmation`) usan `FlightPolicy` y responden 403 a otro usuario. Un `trip_id` ajeno se rechaza en la validación. Están cubiertas por `Tests\Feature\FlightManagementTest`, no por `SecurityIsolationTest`.
 - Las operaciones de escritura sobre listas de Google Maps exigen `update`, no `view`.
 - Crear una entrada en el diario de otro usuario devuelve 403; un día inexistente, 422.
 - Quitar de un álbum una foto que no está en él devuelve 404.
@@ -943,4 +986,4 @@ La arquitectura debe facilitar que VyaMap crezca sin convertirse en una acumulac
 **Proyecto:** VyaMap  
 **Documento:** Architecture  
 **Estado:** Aprobado para implementación  
-**Stack:** Laravel 13 + MySQL + Vue 3 + TypeScript + Inertia + Tailwind + shadcn/ui
+**Stack:** Laravel 13 + MySQL + Vue 3 + TypeScript + Inertia + Tailwind
