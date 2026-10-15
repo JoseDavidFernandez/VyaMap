@@ -1,66 +1,106 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# VyaMap
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+VyaMap es una aplicación web personal para registrar, visualizar y explorar el historial de viajes: viajes, ciudades visitadas, vuelos y fotos, con mapas y estadísticas derivadas de esos datos.
 
-## About Laravel
+> My History → Map → Discover → New Trip → My History
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones están en [`docs/architecture.md`](docs/architecture.md).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Funcionalidades implementadas
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Viajes** con fechas y estado: planificado, completado o cancelado. El cambio de estado es siempre manual y está limitado a unas transiciones concretas (un viaje no se completa solo por la fecha). Para los planificados se deduce si son próximos, están en curso o están pendientes de confirmar.
+- **Visitas** a ciudades dentro de cada viaje. Solo los viajes completados cuentan como lugares visitados.
+- **Catálogo compartido** de países, ciudades y aeropuertos, con alias de ciudades y fusión reversible de duplicados.
+- **Vuelos** asociados a un viaje o independientes:
+  - fecha local de salida obligatoria; horas en formato de 24 horas, número de vuelo y aerolínea opcionales;
+  - horas interpretadas en la zona horaria de cada aeropuerto y guardadas en UTC;
+  - estado deducido (próximo, realizado, pendiente de confirmar o cancelado) y confirmación manual;
+  - al borrar un viaje, sus vuelos se conservan como independientes.
+- **Flight History**: lista, mapa de rutas con arcos de círculo máximo, filtros y gestión de vuelos.
+- **Países**: listado y detalle, distinguiendo Estados soberanos (porcentaje sobre los 193 miembros de la ONU) y territorios.
+- **Dashboard y Passport**: resúmenes, mapas, viajes recientes, viajes por año y vuelos.
+- **Fotos privadas**: subida con procesamiento en cola (variantes y fecha y ubicación EXIF), servidas solo a su propietario; álbumes y listas de Google Maps asociadas a viajes.
+- **Cuentas**: autenticación con Laravel Fortify, límites de frecuencia en el acceso y registro público solo en entorno local (en el resto, las cuentas se crean con `php artisan users:create`).
 
-## Learning Laravel
+## Stack
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Capa | Tecnologías |
+|---|---|
+| Backend | PHP 8.3+, Laravel 13, Laravel Fortify, Laravel Sanctum, Intervention Image (GD) |
+| Base de datos | MySQL |
+| Frontend | Vue 3, TypeScript, Inertia.js, Tailwind CSS 4, Vite 5 |
+| Mapas | Leaflet; three-globe para el globo del perfil |
+| Pruebas | PHPUnit (Laravel), Vitest con @vue/test-utils y happy-dom, vue-tsc |
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Requisitos
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- PHP 8.3 o superior, con la extensión GD
+- Composer
+- Node.js y npm
+- MySQL 8
 
-## Laravel Sponsors
+## Instalación en local
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer install
+npm install
 
-### Premium Partners
+cp .env.example .env
+php artisan key:generate
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+En `.env`, configura la base de datos (`DB_*`) y, si hace falta, la zona horaria del usuario (`APP_USER_TIMEZONE`, por defecto `Europe/Madrid`). No subas `.env` a Git.
 
-## Contributing
+```bash
+php artisan migrate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Catálogo de países, ciudades y aeropuertos
 
-## Code of Conduct
+Los archivos de datos se leen de `storage/app/data/` y **no están en el repositorio**: hay que añadirlos antes de importar. Comandos disponibles y archivo que lee cada uno:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Comando | Archivo |
+|---|---|
+| `php artisan countries:import --apply` | `countries.csv` y `countries_overrides.csv` |
+| `php artisan cities:import` | `vyamap_airport_city_mapping.csv` |
+| `php artisan app:import-airports` | `vyamap_airport_city_mapping.csv` |
+| `php artisan airports:map-cities --apply` | `vyamap_airport_city_mapping.csv` |
+| `php artisan airports:enrich-coordinates` | `airports.csv` |
+| `php artisan airports:import-timezones` | `airport_timezones.csv` |
 
-## Security Vulnerabilities
+Los países se importan primero, porque cada ciudad pertenece a un país. Los tres últimos comandos trabajan sobre aeropuertos y ciudades que ya existen. Varios comandos solo simulan por defecto; `php artisan help <comando>` muestra sus opciones.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Usuario y arranque
 
-## License
+```bash
+php artisan users:create "Nombre" correo@example.com   # pide la contraseña
+npm run dev                                             # Vite en desarrollo
+composer run queue                                      # worker de la cola (procesado de fotos)
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+La aplicación se sirve con el servidor web local o con `php artisan serve`. Sin un worker de cola en marcha, las fotos subidas se quedan pendientes de procesar.
+
+Para producción: `npm run build` y la lista de comprobación de la sección de seguridad de [`docs/architecture.md`](docs/architecture.md).
+
+## Pruebas
+
+Los tests de PHP usan una base de datos exclusiva configurada en `.env.testing`, que no se versiona. La plantilla es `.env.testing.example`, y el procedimiento completo está en [`docs/architecture.md`](docs/architecture.md) («Configuración del entorno de testing»). **Los tests borran y recrean las tablas de esa base de datos**: nunca debe apuntar a una con datos reales.
+
+```bash
+php artisan test        # PHPUnit
+npm run test:js         # Vitest (componentes Vue)
+npx vue-tsc --noEmit    # comprobación de tipos
+```
+
+## Documentación
+
+- [`docs/architecture.md`](docs/architecture.md): arquitectura, reglas del dominio, seguridad y testing.
+- [`docs/frontend.md`](docs/frontend.md): frontend.
+- [`docs/VyaMap_Map_System.md`](docs/VyaMap_Map_System.md) y [`docs/VyaMap_ADR-001_Separate_Map_Contexts.md`](docs/VyaMap_ADR-001_Separate_Map_Contexts.md): sistema de mapas.
+- [`docs/roadmap.md`](docs/roadmap.md): plan de desarrollo.
+
+## Estado del proyecto
+
+Implementado: viajes con estados, visitas, catálogo, vuelos independientes con su gestión completa, fotos privadas y las páginas descritas arriba.
+
+Pendiente, según el plan: estadísticas de viaje calculadas en el servidor (continentes, días viajando sin solapes, países por año, estadísticas de vuelo), reorganización de páginas, sugerencias asistidas e importación de vuelos desde CSV. El catálogo de aerolíneas está aplazado.
