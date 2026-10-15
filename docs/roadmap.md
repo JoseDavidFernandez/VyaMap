@@ -4,7 +4,7 @@ Plan de desarrollo de la versión V1 («My Travel History», ver la sección 20 
 
 El plan F0–F6 se acordó el 15-10-2026 en la auditoría del bloque 2 («estadísticas, viajes futuros y registro de vuelos»). Hasta ahora solo existía en esa conversación; este documento lo recoge tal como se aprobó, con el estado real de cada fase.
 
-Leyenda: **Completado** (implementado, con pruebas y en commits) · **Cerrado** (sin trabajo propio pendiente) · **Pendiente** (aún no empezado) · **Aplazado** (fuera del plan actual).
+Leyenda: **Completado** (implementado y con pruebas) · **En curso** (implementado en parte) · **Cerrado** (sin trabajo propio pendiente) · **Pendiente** (aún no empezado) · **Aplazado** (fuera del plan actual).
 
 ## Resumen
 
@@ -15,8 +15,8 @@ Leyenda: **Completado** (implementado, con pruebas y en commits) · **Cerrado** 
 | F1 | P1 | Vuelos independientes y gestión de vuelos | Completado |
 | F2 | P1 | Formulario simplificado y vuelos sin horas | Cerrado: cubierto por F1, salvo «repetir ruta» (pasa a F6) |
 | — | — | Corrección del formulario de horas | Completado |
-| F3 | P1 | Estadísticas | Pendiente de aprobación |
-| F4 | P2 | Reorganización de páginas | Pendiente |
+| F3 | P1 | Estadísticas | Completado (15-10-2026, pendiente de commit) |
+| F4 | P2 | Reorganización de páginas | En curso: estadísticas conectadas; falta la reorganización |
 | F5 | P2 | Sugerencias | Pendiente |
 | F6 | P3 | Estacionalidad, repeticiones, CSV, «repetir ruta» y sugerencia de aerolínea | Pendiente |
 | Bloque B | — | Catálogo de aerolíneas | Aplazado |
@@ -47,6 +47,18 @@ Reglas detalladas: secciones 9 y 15 de [`architecture.md`](architecture.md).
 
 Las horas de los vuelos pasan a campos de texto en formato de 24 horas (`HH:MM`), validados al salir del campo y al guardar, y con tests de componente (Vitest).
 
+### F3 — Estadísticas
+
+`App\Services\TravelStatistics`, sin cambios de base de datos. Reglas en la sección «Estadísticas de viaje» de [`architecture.md`](architecture.md).
+
+- Días viajados: unión de los intervalos de los viajes completados, repartida por año natural.
+- Países y territorios por año, primeras visitas por año y total histórico.
+- Continentes con `config/continents.php` (los 193 Estados cubiertos; códigos especiales fuera).
+- Vuelos realizados: número, km, tiempo en el aire con su cobertura, aeropuertos y ciudades distintos, vuelo más largo y aeropuertos más frecuentes.
+- Pruebas: `tests/Unit/TravelDaysTest.php`, `tests/Feature/TravelStatisticsTest.php` y `tests/js/tripDates.test.ts`.
+
+**Fuera de F3:** la ruta más repetida. No hay una definición de negocio (¿cuenta igual MAD → JFK que JFK → MAD?), así que queda pendiente de decisión.
+
 ## Cerrado
 
 ### F2 — Formulario simplificado
@@ -61,15 +73,18 @@ F1 incorporó todo menos «repetir ruta»:
 
 **«Repetir ruta» pasa a F6.**
 
-## Pendiente
-
-### F3 — Estadísticas (P1)
-
-Alcance del plan: estadísticas de vuelos, países por año, días viajando y continentes (con `config`, sin cambios de base de datos). Pruebas previstas: unión de intervalos, viajes que cruzan de año, solapes y continentes.
-
-Hay una propuesta de implementación pendiente de aprobación. No se ha empezado.
+## En curso
 
 ### F4 — Reorganización de páginas (P2)
+
+**Hecho:** las estadísticas de F3 están conectadas.
+- **Home:** km volados y franja «This year» (días viajando y países nuevos).
+- **Trips:** cabecera con días sin solapes, países, territorios y ciudades.
+- **Passport:** cifras del periodo, días viajando, continentes y «Countries discovered by year».
+- **Flight History:** cifras por año y por vínculo, vuelo más largo y aeropuertos más frecuentes, todo calculado en el servidor.
+- Los filtros por año coinciden con el servidor: los viajes, por año de inicio; los días y las visitas, por año natural.
+
+**Pendiente:** la reorganización completa según la distribución aprobada (abajo), por ejemplo las pestañas Upcoming / Past de Trips, la sección separada «Upcoming flights» o retirar de Passport los contadores que ya están en otras páginas.
 
 Distribución por página aprobada en el plan (se mantienen el estilo y los mapas ya validados):
 
@@ -102,6 +117,8 @@ Distribución por página aprobada en el plan (se mantienen el estilo y los mapa
 
 Algunas piezas ya existen por F0 y F1 (por ejemplo, las acciones de estado de la ficha del viaje y la gestión de vuelos en Flight History). F4 consiste en reorganizar las páginas según esta distribución.
 
+## Pendiente
+
 ### F5 — Sugerencias (P2)
 
 - Sugerir la visita de cada foto: la fecha de la foto cae dentro de la visita y su GPS está cerca de la ciudad. Siempre con confirmación, nunca automático; las coordenadas solo se comparan en el servidor.
@@ -114,6 +131,16 @@ Algunas piezas ya existen por F0 y F1 (por ejemplo, las acciones de estado de la
 - Importar vuelos pegando un CSV (fecha, origen IATA, destino IATA, número opcional), con vista previa, confirmación y control de duplicados (misma ruta y fecha).
 - **«Repetir ruta»**, trasladada desde F2.
 - Sugerir la aerolínea (depende de la decisión sobre el bloque B).
+
+**Propuesta para la importación CSV** (no implementada; necesita decisiones):
+- **Formato:** `fecha,origen,destino[,numero]`, con fecha local `YYYY-MM-DD` y códigos IATA; horas opcionales en una versión posterior.
+- **Flujo:** subir o pegar el CSV → validación completa sin guardar nada → vista previa con errores por línea y duplicados marcados → confirmación explícita → guardado en una transacción.
+- **Validaciones:** aeropuertos existentes por IATA (un código desconocido o ambiguo es un error, nunca se adivina), origen distinto de destino y fecha válida.
+- **Duplicados:** mismo usuario, misma ruta y misma fecha de salida, ya sea en la base de datos o dentro del propio archivo.
+- **Decisiones pendientes:**
+  - ¿Los vuelos importados se confirman como realizados (`confirmed_at`) o quedan pendientes?
+  - ¿Se asocian a un viaje cuando la fecha cae dentro de uno, o siempre como independientes (F5 lo sugeriría)?
+  - ¿Cuál es el tamaño máximo del archivo?
 
 ## Aplazado
 

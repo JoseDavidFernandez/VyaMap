@@ -706,6 +706,20 @@ Estos datos se derivarán de Visits, Trips y demás entidades relevantes.
 
 La fuente de verdad será siempre el dominio persistente.
 
+## Estadísticas de viaje
+
+`App\Services\TravelStatistics` es la única fuente de las cifras derivadas. Los controladores (Home, Trips, Passport y Flight History) le pasan los datos ya cargados y las páginas solo eligen el periodo que muestran; no recalculan nada en Vue.
+
+- **Qué cuenta:** solo los viajes completados y las visitas de esos viajes. Un vuelo nunca marca un país como visitado.
+- **Días viajados:** días naturales, inicio y fin incluidos, como unión de los intervalos de los viajes completados. Los solapes no duplican días y un viaje que cruza de año reparte sus días entre los dos años.
+- **Año natural:**
+  - un viaje cuenta y se lista en el año en que empieza (regla previa de «viajes por año»), pero sus días se reparten por año natural;
+  - una visita pertenece a cada año que toca, así que sus países cuentan en cada uno (`touchesYear` en `resources/js/utils/tripDates.ts` filtra las listas con la misma regla).
+- **Primeras visitas:** el año de la visita fechada más antigua de cada país. Las visitas sin fechas cuentan en el total, pero no en ningún año, y se informan como `undated_visits`.
+- **Continentes:** `config/continents.php`, generado a partir del CSV local de países y revisado a mano. Un código sin continente no suma a ninguno y se informa aparte.
+- **Vuelos:** solo los `flown`. La distancia solo cuenta con coordenadas en ambos aeropuertos y el tiempo en el aire solo con las dos horas. Si falta el dato en todos los vuelos, la cifra es `null` (desconocida), nunca 0. Los aeropuertos se cuentan por identidad, no por código.
+- **Ruta más repetida:** no se calcula. No hay una definición de negocio (¿importa el sentido del viaje?) y queda pendiente de decisión.
+
 ## Porcentaje de países visitados
 
 El porcentaje ("% of the world") solo cuenta Estados soberanos, tanto en el numerador como en el denominador. El criterio y las listas están en `config/countries.php` y se aplican con `App\Support\SovereignCountries`:

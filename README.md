@@ -65,10 +65,10 @@ Los archivos de datos se leen de `storage/app/data/` y **no están en el reposit
 | `php artisan cities:import` | `vyamap_airport_city_mapping.csv` |
 | `php artisan app:import-airports` | `vyamap_airport_city_mapping.csv` |
 | `php artisan airports:map-cities --apply` | `vyamap_airport_city_mapping.csv` |
-| `php artisan airports:enrich-coordinates` | `airports.csv` |
-| `php artisan airports:import-timezones` | `airport_timezones.csv` |
+| `php artisan airports:enrich-coordinates --apply` | `airports.csv` |
+| `php artisan airports:import-timezones --apply` | `airport_timezones.csv` |
 
-Los países se importan primero, porque cada ciudad pertenece a un país. Los tres últimos comandos trabajan sobre aeropuertos y ciudades que ya existen. Varios comandos solo simulan por defecto; `php artisan help <comando>` muestra sus opciones.
+Hay que ejecutarlos en este orden: cada ciudad pertenece a un país, y los tres últimos trabajan sobre aeropuertos y ciudades que ya existen. Sin `--apply`, los comandos que lo admiten solo simulan; `php artisan help <comando>` muestra sus opciones.
 
 ### Usuario y arranque
 
@@ -98,9 +98,12 @@ npx vue-tsc --noEmit    # comprobación de tipos
 - [`docs/frontend.md`](docs/frontend.md): frontend.
 - [`docs/VyaMap_Map_System.md`](docs/VyaMap_Map_System.md) y [`docs/VyaMap_ADR-001_Separate_Map_Contexts.md`](docs/VyaMap_ADR-001_Separate_Map_Contexts.md): sistema de mapas.
 - [`docs/roadmap.md`](docs/roadmap.md): plan de desarrollo.
+- [`docs/manual-testing.md`](docs/manual-testing.md): pruebas manuales por prioridad.
 
 ## Estado del proyecto
 
 Implementado: viajes con estados, visitas, catálogo, vuelos independientes con su gestión completa, fotos privadas y las páginas descritas arriba.
 
-Pendiente, según el plan: estadísticas de viaje calculadas en el servidor (continentes, días viajando sin solapes, países por año, estadísticas de vuelo), reorganización de páginas, sugerencias asistidas e importación de vuelos desde CSV. El catálogo de aerolíneas está aplazado.
+Implementado también: estadísticas de viaje calculadas en el servidor (días viajando sin solapes, países y primeras visitas por año, continentes y estadísticas de vuelo).
+
+Pendiente, según el plan: la reorganización completa de las páginas, sugerencias asistidas e importación de vuelos desde CSV. El catálogo de aerolíneas está aplazado.
