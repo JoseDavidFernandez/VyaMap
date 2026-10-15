@@ -6,6 +6,8 @@ import TravelMap from '../components/dashboard/TravelMap.vue';
 
 import { Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { flightDate, flightDepartureLabel, flightTimeWithZone } from '../utils/flightTime';
+import type { CountryStatus } from '../utils/countryStatus';
 
 interface User {
     name: string;
@@ -15,9 +17,23 @@ interface Stats {
     countries: number;
     sovereign_countries: number;
     total_sovereign_countries: number;
+    territories: number;
     cities: number;
     trips: number;
+    upcoming_trips: number;
     flights: number;
+}
+
+interface PlannedCountry {
+    iso_code: string;
+    name: string;
+    ongoing: boolean;
+}
+
+interface PendingTrip {
+    id: number;
+    name: string;
+    end_date: string | null;
 }
 
 interface NextTrip {
@@ -31,12 +47,14 @@ interface NextTrip {
 
 interface Visit {
     id: number;
+    trip_id: number;
     city: {
         id: number;
         name: string;
         country: string;
         country_id: number;
         iso_code: string;
+        country_status: CountryStatus;
         latitude: number | null;
         longitude: number | null;
     };
@@ -47,16 +65,20 @@ interface Visit {
 
 interface Flight {
     id: number;
-    flight_number: string;
+    // Fecha local de salida (siempre); horas y número, solo si se conocen.
+    departure_date: string;
+    flight_number: string | null;
     airline: string | null;
     departure: string | null;
     arrival: string | null;
+    status?: 'flown' | 'upcoming' | 'pending';
     origin: {
         id: number;
         name: string;
         city: string;
         latitude: number;
         longitude: number;
+        timezone: string | null;
     };
     destination: {
         id: number;
@@ -64,11 +86,13 @@ interface Flight {
         city: string;
         latitude: number;
         longitude: number;
+        timezone: string | null;
     };
 }
 
 interface RecentTrip {
     id: number;
+    phase: 'completed' | 'ongoing' | 'pending';
     name: string;
     description: string | null;
     start_date: string | null;
@@ -96,9 +120,11 @@ const props = defineProps<{
     user: User;
     stats: Stats;
     nextTrip: NextTrip | null;
+    pendingTrips: PendingTrip[];
     map: {
         visits: Visit[];
         flights: Flight[];
+        planned_countries: PlannedCountry[];
     };
     recentFlights: Flight[];
     recentTrips: RecentTrip[];
@@ -129,18 +155,9 @@ const formatDateShort = (date: string | null) => {
     }).format(new Date(`${date}T00:00:00`));
 };
 
-const formatDateTime = (date: string | null) => {
-    if (!date) {
-        return '—';
-    }
-
-    return new Intl.DateTimeFormat('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(date));
-};
+// Hora local del aeropuerto, con su zona (CET, GMT+9…).
+const formatFlightDateTime = (date: string | null, timezone: string | null) =>
+    date ? `${flightDate(date, timezone, false)}, ${flightTimeWithZone(date, timezone)}` : '—';
 
 const nextTripLabel = computed(() => {
     if (!props.nextTrip) {
@@ -175,7 +192,7 @@ const visitedCountries = computed(() => {
     props.map.visits.forEach((visit) => {
         if (!countries.has(visit.city.iso_code)) {
             countries.set(visit.city.iso_code, {
-                id: visit.city.id,
+                id: visit.city.country_id,
                 name: visit.city.country,
                 iso_code: visit.city.iso_code,
             });
@@ -206,7 +223,7 @@ const topCountries = computed(() => {
             name: string;
             iso_code: string;
             cities: string[];
-            visits: number;
+            tripIds: Set<number>;
         }
     >();
 
@@ -220,12 +237,13 @@ const topCountries = computed(() => {
                 name: visit.city.country,
                 iso_code: iso,
                 cities: [],
-                visits: 0,
+                tripIds: new Set(),
             });
         }
 
         const country = countryMap.get(iso)!;
-        country.visits += 1;
+        // Viajes distintos con al menos una visita en el país (no visitas).
+        country.tripIds.add(visit.trip_id);
 
         if (!country.cities.includes(visit.city.name)) {
             country.cities.push(visit.city.name);
@@ -233,8 +251,9 @@ const topCountries = computed(() => {
     });
 
     return Array.from(countryMap.values())
+        .map(({ tripIds, ...country }) => ({ ...country, trips: tripIds.size }))
         .sort((a, b) => {
-            if (b.visits !== a.visits) return b.visits - a.visits;
+            if (b.trips !== a.trips) return b.trips - a.trips;
             return b.cities.length - a.cities.length;
         })
         .slice(0, 3);
@@ -365,6 +384,27 @@ const photoHoverPositions = computed(() => {
             <main
                 class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
             >
+                <!-- Viajes cuya fecha de fin pasó y siguen planificados: nunca se
+                     completan solos; el usuario los confirma desde el viaje. -->
+                <section
+                    v-if="pendingTrips.length"
+                    class="mb-5 rounded-[20px] border border-lime-300/25 bg-lime-300/[0.06] px-5 py-4"
+                >
+                    <div class="text-sm font-medium text-lime-200">
+                        {{ pendingTrips.length === 1 ? 'A trip is waiting for confirmation' : `${pendingTrips.length} trips are waiting for confirmation` }}
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <Link
+                            v-for="trip in pendingTrips"
+                            :key="trip.id"
+                            :href="`/trips/${trip.id}`"
+                            class="rounded-full border border-lime-300/30 px-3 py-1 text-xs text-lime-100 transition hover:bg-lime-300/10"
+                        >
+                            {{ trip.name }} →
+                        </Link>
+                    </div>
+                </section>
+
                 <!-- =====================================================
                      WELCOME / NEXT TRIP
                 ====================================================== -->
@@ -465,13 +505,22 @@ const photoHoverPositions = computed(() => {
 
                 <section class="mb-7">
                     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <!-- Países: Estados soberanos sobre 193; los territorios, aparte. -->
                         <div class="vyamap-stat">
                             <div class="text-3xl font-semibold">
-                                {{ stats.countries }}
+                                {{ stats.sovereign_countries }}
+                                <span class="text-base font-medium vyamap-muted">/ {{ stats.total_sovereign_countries }}</span>
                             </div>
 
                             <div class="mt-1 vyamap-eyebrow">
                                 Countries
+                            </div>
+
+                            <div
+                                v-if="stats.territories"
+                                class="mt-1 text-[11px] vyamap-muted"
+                            >
+                                + {{ stats.territories }} {{ stats.territories === 1 ? 'territory' : 'territories' }}
                             </div>
                         </div>
 
@@ -486,12 +535,20 @@ const photoHoverPositions = computed(() => {
                         </div>
 
                         <div class="vyamap-stat">
+                            <!-- Viajes completados; los próximos, aparte (no son historial). -->
                             <div class="text-3xl font-semibold">
                                 {{ stats.trips }}
                             </div>
 
                             <div class="mt-1 vyamap-eyebrow">
                                 Trips
+                            </div>
+
+                            <div
+                                v-if="stats.upcoming_trips"
+                                class="mt-1 text-[11px] text-lime-300/80"
+                            >
+                                + {{ stats.upcoming_trips }} upcoming
                             </div>
                         </div>
 
@@ -529,13 +586,14 @@ const photoHoverPositions = computed(() => {
                             </div>
 
                             <div class="text-[10px] vyamap-muted">
-                                {{ stats.countries }} countries
+                                {{ stats.sovereign_countries }} / {{ stats.total_sovereign_countries }} countries
                             </div>
                         </div>
 
                         <div class="h-[380px] w-full sm:h-[500px]">
                             <CountryMap
                                 :countries="visitedCountries"
+                                :planned="map.planned_countries"
                                 theme="dark"
                             />
                         </div>
@@ -573,8 +631,8 @@ const photoHoverPositions = computed(() => {
                                         <div class="flex items-center justify-between gap-3">
                                             <h3 class="truncate text-xs font-semibold">{{ country.name }}</h3>
                                             <span class="shrink-0 text-[9px] text-white/25">
-                                                {{ country.visits }}
-                                                {{ country.visits === 1 ? 'trip' : 'trips' }}
+                                                {{ country.trips }}
+                                                {{ country.trips === 1 ? 'trip' : 'trips' }}
                                             </span>
                                         </div>
 
@@ -606,7 +664,7 @@ const photoHoverPositions = computed(() => {
                                 <div>
                                     <div class="text-[9px] uppercase tracking-[0.18em] text-white/20">Travel footprint</div>
                                     <div class="mt-1 text-[10px] text-white/30">
-                                        {{ countriesPercentage }}% of the world
+                                        {{ stats.sovereign_countries }} of {{ stats.total_sovereign_countries }} countries
                                     </div>
                                 </div>
 
@@ -620,29 +678,7 @@ const photoHoverPositions = computed(() => {
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-4 gap-2">
-                                <div class="rounded-[13px] border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                    <div class="text-base font-semibold">{{ stats.countries }}</div>
-                                    <div class="mt-0.5 text-[8px] uppercase tracking-[0.08em] text-white/25">Countries</div>
-                                </div>
-
-                                <div class="rounded-[13px] border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                    <div class="text-base font-semibold">{{ stats.cities }}</div>
-                                    <div class="mt-0.5 text-[8px] uppercase tracking-[0.08em] text-white/25">Cities</div>
-                                </div>
-
-                                <div class="rounded-[13px] border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                    <div class="text-base font-semibold">{{ stats.trips }}</div>
-                                    <div class="mt-0.5 text-[8px] uppercase tracking-[0.08em] text-white/25">Trips</div>
-                                </div>
-
-                                <div class="rounded-[13px] border border-white/[0.06] bg-white/[0.018] p-2.5">
-                                    <div class="text-base font-semibold">{{ stats.flights }}</div>
-                                    <div class="mt-0.5 text-[8px] uppercase tracking-[0.08em] text-white/25">Flights</div>
-                                </div>
-                            </div>
-
-                            <Link href="/passport" class="mt-3 block text-center text-[9px] font-medium text-white/30 transition hover:text-white">
+                            <Link href="/countries" class="mt-3 block text-center text-[9px] font-medium text-white/30 transition hover:text-white">
                                 View all countries →
                             </Link>
                         </div>
@@ -814,6 +850,13 @@ const photoHoverPositions = computed(() => {
                                             {{ trip.name }}
                                         </h3>
 
+                                        <span
+                                            v-if="trip.phase !== 'completed'"
+                                            class="mt-2 inline-flex rounded-full border border-lime-300/40 px-2.5 py-0.5 text-[11px] font-medium text-lime-300"
+                                        >
+                                            {{ trip.phase === 'ongoing' ? 'In progress' : 'Pending confirmation' }}
+                                        </span>
+
                                         <p class="mt-2 text-[10px] text-white/30">
                                             {{ formatDate(trip.start_date) }}
                                             <span v-if="trip.end_date"> — {{ formatDate(trip.end_date) }}</span>
@@ -859,10 +902,10 @@ const photoHoverPositions = computed(() => {
                 </section>
 
                  <!-- =====================================================
-                     TRIPS BY YEAR / AT A GLANCE
+                     TRIPS BY YEAR
                 ====================================================== -->
 
-                <section class="mb-7 grid gap-7 lg:grid-cols-[1fr_1fr]">
+                <section class="mb-7">
                     <div class="vyamap-card-lg p-6 sm:p-7">
                         <div class="vyamap-section-title">History</div>
                         <h2 class="vyamap-section-heading">Trips by year</h2>
@@ -886,51 +929,6 @@ const photoHoverPositions = computed(() => {
                         </div>
                     </div>
 
-                    <div class="vyamap-card-lg p-6 sm:p-7">
-                        <div class="vyamap-section-title">Overview</div>
-                        <h2 class="vyamap-section-heading">At a glance</h2>
-
-                        <div class="mt-7 grid grid-cols-2 gap-3">
-                            <div class="vyamap-card p-5">
-                                <div class="vyamap-eyebrow">Countries</div>
-                                <div class="mt-2 text-2xl font-semibold">{{ stats.countries }}</div>
-                            </div>
-                            <div class="vyamap-card p-5">
-                                <div class="vyamap-eyebrow">Cities</div>
-                                <div class="mt-2 text-2xl font-semibold">{{ stats.cities }}</div>
-                            </div>
-                            <div class="vyamap-card p-5">
-                                <div class="vyamap-eyebrow">Trips</div>
-                                <div class="mt-2 text-2xl font-semibold">{{ stats.trips }}</div>
-                            </div>
-                            <div class="vyamap-card p-5">
-                                <div class="vyamap-eyebrow">Flights</div>
-                                <div class="mt-2 text-2xl font-semibold">{{ stats.flights }}</div>
-                            </div>
-                        </div>
-
-                        <div class="mt-6 border-t border-[var(--vyamap-border)] pt-5">
-                            <div class="flex items-center justify-between gap-5">
-                                <div>
-                                    <div class="text-xs font-medium">Travel footprint</div>
-                                    <div class="mt-1 text-[10px] vyamap-text-subtle">
-                                        {{ countriesPercentage }}% of countries visited
-                                    </div>
-                                </div>
-
-                                <Link href="/passport" class="text-[10px] text-white/35 transition hover:text-white">
-                                    Passport →
-                                </Link>
-                            </div>
-
-                            <div class="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
-                                <div
-                                    class="h-full rounded-full bg-white/30"
-                                    :style="{ width: `${Math.min(countriesPercentage, 100)}%` }"
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
                 </section>
 
                  <!-- =====================================================
@@ -955,7 +953,7 @@ const photoHoverPositions = computed(() => {
                                 <div v-for="flight in recentFlights" :key="flight.id" class="vyamap-flight">
                                     <div class="flex items-start justify-between gap-4">
                                         <div>
-                                            <div class="text-sm font-semibold">{{ flight.flight_number }}</div>
+                                            <div class="text-sm font-semibold">{{ flight.flight_number || 'Flight' }}</div>
                                             <div v-if="flight.airline" class="mt-1 text-[10px] vyamap-muted">
                                                 {{ flight.airline }}
                                             </div>
@@ -970,13 +968,13 @@ const photoHoverPositions = computed(() => {
                                         <div>
                                             <div class="vyamap-eyebrow">Departure</div>
                                             <div class="mt-1 text-[10px] text-white/45">
-                                                {{ formatDateTime(flight.departure) }}
+                                                {{ flightDepartureLabel(flight, false) }}
                                             </div>
                                         </div>
                                         <div>
                                             <div class="vyamap-eyebrow">Arrival</div>
                                             <div class="mt-1 text-[10px] text-white/45">
-                                                {{ formatDateTime(flight.arrival) }}
+                                                {{ formatFlightDateTime(flight.arrival, flight.destination.timezone) }}
                                             </div>
                                         </div>
                                     </div>

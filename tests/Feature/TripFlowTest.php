@@ -82,7 +82,8 @@ class TripFlowTest extends TestCase
         $this->assertNotSame($other->id, $this->trip->id);
     }
 
-    public function test_deleting_a_trip_deletes_its_visits_and_flights_but_nothing_else(): void
+    // F1 (D2): los vuelos ya no se borran con el viaje; pasan a ser independientes.
+    public function test_deleting_a_trip_deletes_its_visits_and_keeps_its_flights_as_standalone(): void
     {
         $visit = $this->createVisit($this->trip, '2026-09-10', '2026-09-11');
         $flight = $this->createFlight($this->trip, '2026-09-10 06:00:00', '2026-09-10 07:10:00');
@@ -96,7 +97,14 @@ class TripFlowTest extends TestCase
 
         $this->assertDatabaseMissing('trips', ['id' => $this->trip->id]);
         $this->assertDatabaseMissing('visits', ['id' => $visit->id]);
-        $this->assertDatabaseMissing('flights', ['id' => $flight->id]);
+
+        // El viaje estaba completado: el vuelo, que ya contaba como realizado,
+        // se conserva sin viaje y confirmado.
+        $kept = $flight->fresh();
+        $this->assertNotNull($kept);
+        $this->assertNull($kept->trip_id);
+        $this->assertNotNull($kept->confirmed_at);
+        $this->assertSame('2026-09-10 06:00:00', $kept->departure_at->utc()->format('Y-m-d H:i:s'));
 
         $this->assertDatabaseHas('trips', ['id' => $otherTrip->id]);
         $this->assertDatabaseHas('visits', ['id' => $otherVisit->id]);
@@ -107,7 +115,8 @@ class TripFlowTest extends TestCase
     /**
      * Borrado completo: todo lo que cuelga del viaje desaparece (cascadas de
      * la base y archivos de las fotos); álbumes, listas, ciudades y
-     * aeropuertos se conservan y solo pierden la relación con el viaje.
+     * aeropuertos se conservan y solo pierden la relación con el viaje. Los
+     * vuelos también se conservan, como independientes (F1, D2).
      */
     public function test_deleting_a_trip_removes_every_dependent_row_and_photo_file(): void
     {
@@ -126,7 +135,8 @@ class TripFlowTest extends TestCase
 
         $this->assertDatabaseMissing('trips', ['id' => $this->trip->id]);
         $this->assertDatabaseMissing('visits', ['id' => $target['visit']->id]);
-        $this->assertDatabaseMissing('flights', ['id' => $target['flight']->id]);
+        // F1 (D2): el vuelo se conserva como independiente.
+        $this->assertDatabaseHas('flights', ['id' => $target['flight']->id, 'trip_id' => null]);
         $this->assertDatabaseMissing('journals', ['id' => $target['journal']->id]);
         $this->assertDatabaseMissing('journal_days', ['id' => $target['day']->id]);
         $this->assertDatabaseMissing('journal_entries', ['id' => $target['entry']->id]);
@@ -237,7 +247,8 @@ class TripFlowTest extends TestCase
         $this->actingAs($this->owner)
             ->postJson("/trips/{$this->trip->id}/flights", $this->flightPayload('VY2', '2026-09-13T00:30', '2026-09-13T01:40'))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['departure_at']);
+            // F1: la regla se aplica a la fecha local de salida.
+            ->assertJsonValidationErrors(['departure_date']);
     }
 
     public function test_flight_crossing_the_date_line_is_valid_when_it_arrives_after_departing_in_real_time(): void
@@ -254,8 +265,8 @@ class TripFlowTest extends TestCase
                 'origin_airport_id' => $hnd->id,
                 'destination_airport_id' => $hnl->id,
                 'flight_number' => 'NH186',
-                'departure_at' => '2026-09-11T21:00',
-                'arrival_at' => '2026-09-11T09:00',
+                'departure_date' => '2026-09-11', 'departure_time' => '21:00',
+                'arrival_date' => '2026-09-11', 'arrival_time' => '09:00',
             ])
             ->assertRedirect("/trips/{$this->trip->id}")
             ->assertSessionHasNoErrors();
@@ -275,8 +286,8 @@ class TripFlowTest extends TestCase
                 'origin_airport_id' => $this->mad->id,
                 'destination_airport_id' => $jfk->id,
                 'flight_number' => 'IB6251',
-                'departure_at' => '2026-09-10T12:00',
-                'arrival_at' => '2026-09-10T14:30',
+                'departure_date' => '2026-09-10', 'departure_time' => '12:00',
+                'arrival_date' => '2026-09-10', 'arrival_time' => '14:30',
             ])
             ->assertSessionHasNoErrors();
 
@@ -441,8 +452,11 @@ class TripFlowTest extends TestCase
             'origin_airport_id' => $this->mad->id,
             'destination_airport_id' => $this->bcn->id,
             'flight_number' => $number,
-            'departure_at' => $departure,
-            'arrival_at' => $arrival,
+            // F1: fecha local de salida obligatoria; horas opcionales.
+            'departure_date' => substr($departure, 0, 10),
+            'departure_time' => substr($departure, 11, 5),
+            'arrival_date' => substr($arrival, 0, 10),
+            'arrival_time' => substr($arrival, 11, 5),
         ];
     }
 }

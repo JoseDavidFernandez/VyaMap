@@ -11,6 +11,17 @@ const DEGREES_PER_STEP = 2;
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 const toDegrees = (radians: number) => (radians * 180) / Math.PI;
 
+// Punto válido a partir de coordenadas que pueden faltar (null nunca se convierte en 0).
+export const toPoint = (latitude: number | null | undefined, longitude: number | null | undefined): Point | null => {
+    if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
+        return null;
+    }
+
+    const point: Point = [Number(latitude), Number(longitude)];
+
+    return isValidPoint(point) ? point : null;
+};
+
 export const isValidPoint = ([latitude, longitude]: Point) =>
     Number.isFinite(latitude) &&
     Number.isFinite(longitude) &&

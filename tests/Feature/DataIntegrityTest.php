@@ -86,12 +86,13 @@ class DataIntegrityTest extends TestCase
     {
         config(['app.user_timezone' => 'Europe/Madrid']);
 
+        // 23:30 UTC del día 9 = 01:30 del día 10 en Madrid. La fecha se fija
+        // antes de crear los viajes: así nacen planificados (aún no terminan).
+        Carbon::setTestNow('2026-09-09 23:30:00');
+
         // En UTC este sería el próximo viaje; en Madrid ya empezó ayer.
         $this->trip($this->user, '2026-09-09', '2026-09-12');
         $today = $this->trip($this->user, '2026-09-10', '2026-09-15');
-
-        // 23:30 UTC del día 9 = 01:30 del día 10 en Madrid.
-        Carbon::setTestNow('2026-09-09 23:30:00');
 
         try {
             $this->actingAs($this->user)

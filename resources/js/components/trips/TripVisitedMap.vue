@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
 
 interface City {
@@ -20,9 +20,21 @@ interface Visit {
     notes: string | null;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     visits: Visit[];
-}>();
+    // Fase del viaje: lima para planificados, en curso o pendientes; gris si está cancelado.
+    phase?: 'upcoming' | 'ongoing' | 'pending' | 'completed' | 'cancelled';
+}>(), {
+    phase: 'completed',
+});
+
+const overlayKicker = computed(() => ({
+    completed: 'PLACES VISITED',
+    upcoming: 'PLANNED DESTINATIONS',
+    ongoing: 'TRIP IN PROGRESS',
+    pending: 'PENDING CONFIRMATION',
+    cancelled: 'CANCELLED TRIP',
+})[props.phase]);
 
 const mapElement = ref<HTMLElement | null>(null);
 
@@ -172,9 +184,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="mapElement" class="visited-map">
+    <div
+        ref="mapElement"
+        class="visited-map"
+        :class="{
+            'visited-map--planned': phase === 'upcoming' || phase === 'ongoing' || phase === 'pending',
+            'visited-map--ongoing': phase === 'ongoing',
+            'visited-map--cancelled': phase === 'cancelled',
+        }"
+    >
         <div class="visited-map-overlay">
-            <div class="visited-map-kicker">PLACES VISITED</div>
+            <div class="visited-map-kicker">{{ overlayKicker }}</div>
             <div class="visited-map-count">{{ visits.length }} cities</div>
         </div>
     </div>
@@ -338,5 +358,53 @@ onBeforeUnmount(() => {
     margin-top: 2px;
     color: rgba(255, 255, 255, 0.85);
     font-size: 11px;
+}
+
+/* Viaje planificado (lima), en curso (lima con pulso) o cancelado (gris). */
+.visited-map--planned :deep(.vyamap-visited-pin) {
+    border-color: rgba(190, 242, 100, 0.5);
+    box-shadow:
+        0 0 0 4px rgba(190, 242, 100, 0.08),
+        0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.visited-map--planned :deep(.vyamap-visited-dot) {
+    background: #bef264;
+    box-shadow: 0 0 10px rgba(190, 242, 100, 0.6);
+}
+
+.visited-map--planned :deep(.vyamap-visited-label small),
+.visited-map--planned .visited-map-kicker {
+    color: rgba(217, 249, 157, 0.75);
+}
+
+.visited-map--ongoing :deep(.vyamap-visited-dot) {
+    animation: visited-map-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes visited-map-pulse {
+    50% {
+        box-shadow: 0 0 0 6px rgba(190, 242, 100, 0.2);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .visited-map--ongoing :deep(.vyamap-visited-dot) {
+        animation: none;
+    }
+}
+
+.visited-map--cancelled :deep(.vyamap-visited-pin) {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: none;
+}
+
+.visited-map--cancelled :deep(.vyamap-visited-dot) {
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow: none;
+}
+
+.visited-map--cancelled .visited-map-kicker {
+    color: rgba(255, 255, 255, 0.4);
 }
 </style>

@@ -2,24 +2,7 @@
 
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
-
-interface FlightAirport {
-    id: number;
-    name: string;
-    city: string;
-    latitude: number;
-    longitude: number;
-}
-
-interface Flight {
-    id: number;
-    flight_number: string;
-    airline: string | null;
-    departure: string | null;
-    arrival: string | null;
-    origin: FlightAirport;
-    destination: FlightAirport;
-}
+import type { FlightRecord as Flight } from '../../types/flights';
 
 const props = defineProps<{
     flights: Flight[];
@@ -46,6 +29,11 @@ const renderMap = async () => {
     const bounds: L.LatLngExpression[] = [];
 
     props.flights.forEach((flight) => {
+        // Sin coordenadas no hay ruta (Number(null) sería 0 y la llevaría a 0,0).
+        if ([flight.origin.latitude, flight.origin.longitude, flight.destination.latitude, flight.destination.longitude].some((value) => value === null)) {
+            return;
+        }
+
         const origin: [number, number] = [
             Number(flight.origin.latitude),
             Number(flight.origin.longitude),
@@ -65,8 +53,16 @@ const renderMap = async () => {
             return;
         }
 
+        // Próximo en lima, cancelado en gris, realizado en cian.
+        // Próximo en lima; cancelado o pendiente de confirmar en gris; realizado en cian.
+        const accent = flight.status === 'upcoming'
+            ? '#bef264'
+            : flight.status === 'cancelled' || flight.status === 'pending'
+                ? 'rgba(255, 255, 255, 0.35)'
+                : '#67e8f9';
+
         const route = L.polyline([origin, destination], {
-            color: '#67e8f9',
+            color: accent,
             weight: 1,
             opacity: 0.6,
             dashArray: '4 7',
@@ -78,14 +74,14 @@ const renderMap = async () => {
         // Origen: anillo cian. Destino: punto cian relleno.
         const originMarker = L.circleMarker(origin, {
             radius: 4,
-            color: '#67e8f9',
+            color: accent,
             weight: 1.5,
             fillColor: '#0d1119',
             fillOpacity: 1,
         });
 
         originMarker.bindTooltip(
-            `<strong>${escapeHtml(flight.origin.city)}</strong><br>${escapeHtml(flight.origin.name)}`,
+            `<strong>${escapeHtml(flight.origin.city)}</strong><br>${escapeHtml(flight.origin.airport)}`,
             {
                 direction: 'top',
                 offset: [0, -6],
@@ -99,12 +95,12 @@ const renderMap = async () => {
             radius: 5,
             color: '#0d1119',
             weight: 2,
-            fillColor: '#67e8f9',
+            fillColor: accent,
             fillOpacity: 1,
         });
 
         destinationMarker.bindTooltip(
-            `<strong>${escapeHtml(flight.destination.city)}</strong><br>${escapeHtml(flight.destination.name)}`,
+            `<strong>${escapeHtml(flight.destination.city)}</strong><br>${escapeHtml(flight.destination.airport)}`,
             {
                 direction: 'top',
                 offset: [0, -6],

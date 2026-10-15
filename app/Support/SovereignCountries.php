@@ -52,6 +52,26 @@ class SovereignCountries
     }
 
     /**
+     * Número de territorios distintos entre los códigos dados: territorios
+     * dependientes y casos pendientes de decisión. Los códigos especiales
+     * (desconocido, zonas sin Estado) no cuentan ni aquí ni como países.
+     *
+     * @param  iterable<string|null>  $isoCodes
+     */
+    public static function countVisitedTerritories(iterable $isoCodes): int
+    {
+        $visited = [];
+
+        foreach ($isoCodes as $isoCode) {
+            if ($isoCode !== null && in_array(self::classify($isoCode), [self::TERRITORY, self::PENDING_DECISION], true)) {
+                $visited[strtoupper($isoCode)] = true;
+            }
+        }
+
+        return count($visited);
+    }
+
+    /**
      * Número de países soberanos distintos entre los códigos dados.
      *
      * @param  iterable<string|null>  $isoCodes

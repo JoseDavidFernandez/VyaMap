@@ -2,56 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Flight;
-use App\Models\Trip;
 use App\Models\Visit;
 use App\Rules\ImageWithinPixelLimit;
 use App\Services\AvatarImageService;
+use App\Support\SovereignCountries;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    /*
+     * Página de la cuenta. Las cifras generales viven en el dashboard, el
+     * progreso geográfico en Passport y la consulta de países en Countries;
+     * aquí solo se envían los países visitados para el globo.
+     */
     public function __invoke(): Response
     {
         $user = request()->user();
 
-        $trips = Trip::query()
-            ->where('user_id', $user->id)
-            ->with([
-                'visits.city.country',
-                'photos' => function ($query) {
-                    $query
-                        ->where('processing_status', 'ready')
-                        ->orderBy('id');
-                },
-            ])
-            ->orderByDesc('start_date')
-            ->get();
-
-        $visits = Visit::query()
-            ->whereHas('trip', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
+        // Solo lugares visitados (viajes completados).
+        $countries = Visit::query()
+            ->visitedBy($user->id)
             ->with('city.country')
-            ->get();
-
-        $flightsCount = Flight::query()
-            ->where('user_id', $user->id)
-            ->count();
-
-        $visitedCities = $visits
-            ->unique('city_id')
-            ->values();
-
-        $countries = $visits
+            ->get()
             ->filter(fn ($visit) => $visit->city?->country)
             ->map(fn ($visit) => [
                 'name' => $visit->city->country->name,
                 'iso_code' => $visit->city->country->iso_code,
+                'country_status' => SovereignCountries::classify($visit->city->country->iso_code),
             ])
             ->unique('iso_code')
+            ->sortBy('name')
             ->values();
 
         return Inertia::render('Profile', [
@@ -59,30 +41,10 @@ class ProfileController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'avatar' => $user->avatar,
-            ],
-
-            'stats' => [
-                'countries' => $countries->count(),
-                'cities' => $visitedCities->count(),
-                'trips' => $trips->count(),
-                'flights' => $flightsCount,
+                'member_since' => $user->created_at?->format('Y-m-d'),
             ],
 
             'countries' => $countries,
-
-            'trips' => $trips->map(function ($trip) {
-                $firstCountry = $trip->visits
-                    ->filter(fn ($visit) => $visit->city?->country)
-                    ->first();
-
-                return [
-                    'id' => $trip->id,
-                    'name' => $trip->name,
-                    'location' => $firstCountry?->city?->country?->name ?? 'Trip',
-                    'year' => $trip->start_date?->format('Y'),
-                    'cover' => $trip->photos->first()?->thumbnailUrl(),
-                ];
-            })->values(),
         ]);
     }
 

@@ -12,11 +12,14 @@ interface Country {
 interface City {
     id: number;
     name: string;
+    // Solo visitas de viajes completados.
     visits_count: number;
+    planned: boolean;
 }
 
 interface Trip {
     id: number;
+    phase: 'upcoming' | 'ongoing' | 'pending' | 'completed';
     name: string;
     description: string | null;
     start_date: string | null;
@@ -246,8 +249,16 @@ const getTripGradient = (index: number) => {
                                     <div
                                         class="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/25"
                                     >
-                                        {{ city.visits_count }}
-                                        {{ city.visits_count === 1 ? 'visit' : 'visits' }}
+                                        <template v-if="city.visits_count">
+                                            {{ city.visits_count }}
+                                            {{ city.visits_count === 1 ? 'visit' : 'visits' }}
+                                        </template>
+                                        <span
+                                            v-if="city.planned"
+                                            class="text-lime-300/80"
+                                        >
+                                            {{ city.visits_count ? '· planned' : 'Planned' }}
+                                        </span>
                                     </div>
 
                                 </div>
@@ -384,6 +395,13 @@ const getTripGradient = (index: number) => {
                                         >
                                             {{ trip.name }}
                                         </h3>
+
+                                        <span
+                                            v-if="trip.phase !== 'completed'"
+                                            class="mt-1 inline-flex rounded-full border border-lime-300/40 px-2.5 py-0.5 text-[11px] font-medium text-lime-300"
+                                        >
+                                            {{ { upcoming: 'Planned', ongoing: 'In progress', pending: 'Pending confirmation' }[trip.phase] }}
+                                        </span>
 
                                         <p
                                             v-if="trip.description"

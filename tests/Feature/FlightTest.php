@@ -61,8 +61,8 @@ class FlightTest extends TestCase
                 'origin_airport_id' => $madridAirport->id,
                 'destination_airport_id' => $barcelonaAirport->id,
                 'flight_number' => 'VY1234',
-                'departure_at' => '2026-09-10T08:00',
-                'arrival_at' => '2026-09-10T09:15',
+                'departure_date' => '2026-09-10', 'departure_time' => '08:00',
+                'arrival_date' => '2026-09-10', 'arrival_time' => '09:15',
                 'airline' => 'Vueling',
             ]);
 
@@ -120,14 +120,15 @@ class FlightTest extends TestCase
                 'origin_airport_id' => $madridAirport->id,
                 'destination_airport_id' => $barcelonaAirport->id,
                 'flight_number' => 'VY1234',
-                'departure_at' => '2026-09-10T10:00',
-                'arrival_at' => '2026-09-10T09:00',
+                'departure_date' => '2026-09-10', 'departure_time' => '10:00',
+                'arrival_date' => '2026-09-10', 'arrival_time' => '09:00',
                 'airline' => 'Vueling',
             ]);
 
         $response
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['arrival_at']);
+            // F1: la hora de llegada es un campo propio (arrival_time).
+            ->assertJsonValidationErrors(['arrival_time']);
 
         $this->assertDatabaseMissing('flights', [
             'trip_id' => $trip->id,
@@ -180,8 +181,8 @@ class FlightTest extends TestCase
                 'origin_airport_id' => $madridAirport->id,
                 'destination_airport_id' => $skopjeAirport->id,
                 'flight_number' => 'W64816',
-                'departure_at' => '2026-08-26T21:25',
-                'arrival_at' => '2026-08-27T00:50',
+                'departure_date' => '2026-08-26', 'departure_time' => '21:25',
+                'arrival_date' => '2026-08-27', 'arrival_time' => '00:50',
                 'airline' => 'Wizz Air',
             ])
             ->assertRedirect(route('trips.show', $trip));
@@ -232,8 +233,8 @@ class FlightTest extends TestCase
                     'timezone' => 'Europe/Madrid',
                 ])->id,
                 'flight_number' => 'DST123',
-                'departure_at' => '2026-03-29T01:30',
-                'arrival_at' => '2026-03-29T03:30',
+                'departure_date' => '2026-03-29', 'departure_time' => '01:30',
+                'arrival_date' => '2026-03-29', 'arrival_time' => '03:30',
                 'airline' => 'Test Airline',
             ])
             ->assertRedirect(route('trips.show', $trip));
@@ -286,11 +287,12 @@ class FlightTest extends TestCase
                 'origin_airport_id' => $origin->id,
                 'destination_airport_id' => $destination->id,
                 'flight_number' => 'DST456',
-                'departure_at' => '2026-03-29T02:30',
-                'arrival_at' => '2026-03-29T04:00',
+                'departure_date' => '2026-03-29', 'departure_time' => '02:30',
+                'arrival_date' => '2026-03-29', 'arrival_time' => '04:00',
                 'airline' => 'Test Airline',
             ])
-            ->assertSessionHasErrors('departure_at');
+            // F1: la hora inexistente se señala en su campo (departure_time).
+            ->assertSessionHasErrors('departure_time');
 
         $this->assertDatabaseMissing('flights', [
             'trip_id' => $trip->id,

@@ -226,6 +226,7 @@ class PrivatePhotoAccessTest extends TestCase
 
     /**
      * Páginas que muestran fotos: solo URLs autenticadas, nunca rutas de disco.
+     * El perfil ya no muestra fotos (es la página de la cuenta).
      *
      * @return array<string, array{string}>
      */
@@ -237,7 +238,6 @@ class PrivatePhotoAccessTest extends TestCase
             'viaje' => '/trips/{trip}',
             'fotos del viaje' => '/trips/{trip}/photos',
             'galería' => '/photos',
-            'perfil' => '/profile',
             'país' => '/countries/{country}',
         ]);
     }

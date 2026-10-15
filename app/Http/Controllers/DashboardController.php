@@ -37,14 +37,19 @@ class DashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        // Solo las visitas de viajes completados cuentan como lugares visitados.
         $visits = Visit::query()
-            ->whereHas('trip', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
+            ->visitedBy($user->id)
             ->with([
                 'city.country',
             ])
             ->orderBy('visited_from')
+            ->get();
+
+        // Destinos planificados: se pintan aparte (lima) y no cuentan.
+        $plannedVisits = Visit::query()
+            ->plannedBy($user->id)
+            ->with(['city.country', 'trip'])
             ->get();
 
         /*
@@ -53,17 +58,33 @@ class DashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $flights = Flight::query()
-            ->where('user_id', $user->id)
-            ->with([
-                'originAirport.city',
-                'destinationAirport.city',
-            ])
-            ->orderBy('departure_at')
-            ->get();
+        $now = now();
+        $todayDate = Trip::today();
 
-        $recentFlights = $flights
-            ->sortByDesc('departure_at')
+        $flights = Flight::withStatuses(
+            Flight::query()
+                ->where('user_id', $user->id)
+                ->with([
+                    'trip',
+                    'originAirport.city',
+                    'destinationAirport.city',
+                ])
+                ->chronological()
+                ->get(),
+            $now,
+            $todayDate,
+        )
+            ->filter(fn (Flight $flight) => $flight->flight_status !== Flight::CANCELLED)
+            ->values();
+
+        // Solo los vuelos realizados cuentan en las cifras y en "recientes".
+        $flownFlights = $flights
+            ->where('flight_status', Flight::FLOWN)
+            ->values();
+
+        // El orden cronológico ya viene de la consulta: los últimos, al final.
+        $recentFlights = $flownFlights
+            ->reverse()
             ->take(3)
             ->values();
 
@@ -79,11 +100,23 @@ class DashboardController extends Controller
             Carbon::now(config('app.user_timezone'))->toDateString()
         );
 
+        // Próximo viaje: planificado y que aún no ha empezado (o empieza hoy).
         $nextTrip = $trips
-            ->filter(fn ($trip) => $trip->start_date
+            ->filter(fn ($trip) => $trip->status === Trip::PLANNED
+                && $trip->start_date
                 && $trip->start_date->toDateString() >= $today->toDateString())
             ->sortBy('start_date')
             ->first();
+
+        // Viajes planificados cuya fecha de fin ya pasó: el usuario debe confirmarlos.
+        $pendingTrips = $trips
+            ->filter(fn ($trip) => $trip->phase($todayDate) === 'pending')
+            ->sortBy('end_date')
+            ->values();
+
+        $completedTrips = $trips
+            ->where('status', Trip::COMPLETED)
+            ->values();
 
         /*
         |--------------------------------------------------------------------------
@@ -132,7 +165,8 @@ class DashboardController extends Controller
         // Solo viajes ya empezados (terminados o en curso), con el mismo "hoy"
         // que nextTrip. Las demás cifras siguen usando todos los viajes.
         $recentTrips = $trips
-            ->filter(fn ($trip) => $trip->start_date
+            ->filter(fn ($trip) => $trip->status !== Trip::CANCELLED
+                && $trip->start_date
                 && $trip->start_date->toDateString() <= $today->toDateString())
             ->take(4)
             ->values();
@@ -154,9 +188,14 @@ class DashboardController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        // Las fotos de viajes cancelados no salen aquí (no se borran ni se
+        // desasocian); las de viajes planificados y las sin viaje, sí.
         $recentPhotos = Photo::query()
             ->where('user_id', $user->id)
             ->where('processing_status', 'ready')
+            ->where(fn ($query) => $query
+                ->whereNull('trip_id')
+                ->orWhereHas('trip', fn ($trip) => $trip->where('status', '!=', Trip::CANCELLED)))
             ->latest()
             ->take(7)
             ->get();
@@ -181,7 +220,8 @@ class DashboardController extends Controller
             $countries->map(fn ($visit) => $visit->city->country->iso_code)
         );
 
-        $tripsByYear = $trips
+        // Historial: solo viajes completados.
+        $tripsByYear = $completedTrips
             ->filter(fn ($trip) => $trip->start_date)
             ->groupBy(fn ($trip) => Carbon::parse($trip->start_date)->year)
             ->map(fn ($yearTrips, $year) => [
@@ -212,12 +252,19 @@ class DashboardController extends Controller
             */
 
             'stats' => [
+                // countries: todos los códigos visitados (incluye territorios).
+                // Las cifras generales usan sovereign_countries (sobre 193) y
+                // territories por separado.
                 'countries' => $visitedCountryCount,
                 'sovereign_countries' => $visitedSovereignCount,
+                'territories' => SovereignCountries::countVisitedTerritories(
+                    $countries->map(fn ($visit) => $visit->city->country->iso_code)
+                ),
                 'total_sovereign_countries' => SovereignCountries::total(),
                 'cities' => $visitedCities->count(),
-                'trips' => $trips->count(),
-                'flights' => $flights->count(),
+                'trips' => $completedTrips->count(),
+                'upcoming_trips' => $trips->filter(fn ($trip) => $trip->phase($todayDate) === 'upcoming')->count(),
+                'flights' => $flownFlights->count(),
             ],
 
             /*
@@ -251,6 +298,13 @@ class DashboardController extends Controller
                 ]
                 : null,
 
+            // Viajes planificados cuya fecha de fin ya pasó y esperan confirmación.
+            'pendingTrips' => $pendingTrips->map(fn ($trip) => [
+                'id' => $trip->id,
+                'name' => $trip->name,
+                'end_date' => $trip->end_date?->format('Y-m-d'),
+            ])->values(),
+
             /*
             |--------------------------------------------------------------------------
             | Maps
@@ -258,6 +312,19 @@ class DashboardController extends Controller
             */
 
             'map' => [
+
+                // Países con destinos planificados (no cuentan como visitados).
+                // ongoing: algún viaje de ese país está en curso hoy.
+                'planned_countries' => $plannedVisits
+                    ->filter(fn ($visit) => $visit->city?->country)
+                    ->groupBy(fn ($visit) => $visit->city->country->iso_code)
+                    ->map(fn ($countryVisits, $iso) => [
+                        'iso_code' => $iso,
+                        'name' => $countryVisits->first()->city->country->name,
+                        'ongoing' => $countryVisits->contains(fn ($visit) => $visit->trip->phase($todayDate) === 'ongoing'),
+                    ])
+                    ->sortBy('name')
+                    ->values(),
 
                 /*
                 |--------------------------------------------------------------------------
@@ -272,6 +339,7 @@ class DashboardController extends Controller
                 'visits' => $visits->map(function ($visit) {
                     return [
                         'id' => $visit->id,
+                        'trip_id' => $visit->trip_id,
 
                         'city' => [
                             'id' => $visit->city->id,
@@ -279,6 +347,7 @@ class DashboardController extends Controller
                             'country' => $visit->city->country->name,
                             'country_id' => $visit->city->country->id,
                             'iso_code' => $visit->city->country->iso_code,
+                            'country_status' => SovereignCountries::classify($visit->city->country->iso_code),
                             'latitude' => $visit->city->latitude,
                             'longitude' => $visit->city->longitude,
                         ],
@@ -298,11 +367,15 @@ class DashboardController extends Controller
                 |
                 */
 
-                'flights' => $flights->map(function ($flight) {
+                // Vuelos realizados y próximos (status). Ni cancelados ni pendientes
+                // de confirmar: estos no se dibujan como si se hubieran realizado.
+                'flights' => $flights->where('flight_status', '!=', Flight::PENDING)->values()->map(function ($flight) {
                     return [
                         'id' => $flight->id,
+                        'status' => $flight->flight_status,
                         'flight_number' => $flight->flight_number,
                         'airline' => $flight->airline,
+                        'departure_date' => $flight->departure_date?->format('Y-m-d'),
                         'departure' => $flight->departure_at?->toISOString(),
                         'arrival' => $flight->arrival_at?->toISOString(),
 
@@ -312,6 +385,7 @@ class DashboardController extends Controller
                             'city' => $flight->originAirport->city->name,
                             'latitude' => (float) $flight->originAirport->latitude,
                             'longitude' => (float) $flight->originAirport->longitude,
+                            'timezone' => $flight->originAirport->timezone,
                         ],
 
                         'destination' => [
@@ -320,6 +394,7 @@ class DashboardController extends Controller
                             'city' => $flight->destinationAirport->city->name,
                             'latitude' => (float) $flight->destinationAirport->latitude,
                             'longitude' => (float) $flight->destinationAirport->longitude,
+                            'timezone' => $flight->destinationAirport->timezone,
                         ],
                     ];
                 })->values(),
@@ -336,6 +411,7 @@ class DashboardController extends Controller
                     'id' => $flight->id,
                     'flight_number' => $flight->flight_number,
                     'airline' => $flight->airline,
+                    'departure_date' => $flight->departure_date?->format('Y-m-d'),
                     'departure' => $flight->departure_at?->toISOString(),
                     'arrival' => $flight->arrival_at?->toISOString(),
 
@@ -345,6 +421,7 @@ class DashboardController extends Controller
                         'city' => $flight->originAirport->city->name,
                         'latitude' => (float) $flight->originAirport->latitude,
                         'longitude' => (float) $flight->originAirport->longitude,
+                        'timezone' => $flight->originAirport->timezone,
                     ],
 
                     'destination' => [
@@ -353,6 +430,7 @@ class DashboardController extends Controller
                         'city' => $flight->destinationAirport->city->name,
                         'latitude' => (float) $flight->destinationAirport->latitude,
                         'longitude' => (float) $flight->destinationAirport->longitude,
+                        'timezone' => $flight->destinationAirport->timezone,
                     ],
                 ];
             })->values(),
@@ -363,11 +441,13 @@ class DashboardController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            'recentTrips' => $recentTrips->map(function ($trip) {
+            'recentTrips' => $recentTrips->map(function ($trip) use ($todayDate) {
                 $tripVisits = $trip->visits;
 
                 return [
                     'id' => $trip->id,
+                    // completed, ongoing o pending (los próximos y cancelados no llegan aquí).
+                    'phase' => $trip->phase($todayDate),
                     'name' => $trip->name,
                     'description' => $trip->description,
                     'start_date' => $trip->start_date?->format('Y-m-d'),

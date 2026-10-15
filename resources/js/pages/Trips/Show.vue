@@ -6,6 +6,13 @@ import TripFlightMap from '../../components/trips/TripFlightMap.vue';
 
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { tripDays as calendarTripDays, tripNights as calendarTripNights } from '../../utils/tripDates';
+import { flightDepartureLabel, flightTimeWithZone } from '../../utils/flightTime';
+import FlightForm from '../../components/flights/FlightForm.vue';
+import type { FlightRecord as Flight } from '../../types/flights';
+import { countCountries, type CountryStatus } from '../../utils/countryStatus';
+
+type TripPhase = 'upcoming' | 'ongoing' | 'pending' | 'completed' | 'cancelled';
 
 interface Trip {
     id: number;
@@ -13,6 +20,9 @@ interface Trip {
     description: string | null;
     start_date: string | null;
     end_date: string | null;
+    status: 'planned' | 'completed' | 'cancelled';
+    phase: TripPhase;
+    can_complete: boolean;
 }
 
 interface City {
@@ -20,6 +30,7 @@ interface City {
     name: string;
     country: string;
     iso_code: string;
+    country_status?: CountryStatus;
     latitude: number | null;
     longitude: number | null;
 }
@@ -30,25 +41,6 @@ interface Visit {
     visited_from: string | null;
     visited_until: string | null;
     notes: string | null;
-}
-
-interface FlightAirport {
-    id: number;
-    name: string;
-    city: string;
-    latitude: number;
-    longitude: number;
-    timezone: string | null;
-}
-
-interface Flight {
-    id: number;
-    flight_number: string;
-    airline: string | null;
-    departure: string | null;
-    arrival: string | null;
-    origin: FlightAirport;
-    destination: FlightAirport;
 }
 
 interface Photo {
@@ -72,18 +64,6 @@ interface CitySearchResult {
     latitude: number | null;
     longitude: number | null;
     external_id?: string | null;
-}
-
-interface AirportSearchResult {
-    id: number;
-    name: string;
-    iata_code: string | null;
-    icao_code: string | null;
-    city: string | null;
-    country: string | null;
-    latitude: number;
-    longitude: number;
-    timezone: string | null;
 }
 
 interface DestinationGroup {
@@ -356,7 +336,69 @@ const deleteVisit = (visit: Visit) => {
 |--------------------------------------------------------------------------
 */
 
+// Formulario de vuelo compartido (FlightForm): crear o editar.
 const showFlightForm = ref(false);
+const editingFlight = ref<Flight | null>(null);
+const flightFormKey = ref(0);
+
+const openFlightForm = (flight: Flight | null = null) => {
+    editingFlight.value = flight;
+    flightFormKey.value += 1;
+    showFlightForm.value = true;
+};
+
+const closeFlightForm = () => {
+    showFlightForm.value = false;
+    editingFlight.value = null;
+};
+
+/*
+|--------------------------------------------------------------------------
+| Trip status
+|--------------------------------------------------------------------------
+| Un viaje solo se completa a mano (nunca por la fecha). Planificados, en
+| curso y pendientes se muestran en lima; cancelados, sin color.
+*/
+
+const phaseLabel = computed(() => ({
+    upcoming: 'Planned',
+    ongoing: 'In progress',
+    pending: 'Pending confirmation',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+})[props.trip.phase]);
+
+const phaseBadgeClass = computed(() => {
+    if (props.trip.phase === 'completed') {
+        return 'border-cyan-300/40 text-cyan-200';
+    }
+
+    if (props.trip.phase === 'cancelled') {
+        return 'border-white/15 text-white/45';
+    }
+
+    return 'border-lime-300/40 text-lime-300';
+});
+
+const isChangingStatus = ref(false);
+const statusError = ref('');
+
+const changeStatus = (status: Trip['status']) => {
+    statusError.value = '';
+
+    router.patch(`/trips/${props.trip.id}/status`, { status }, {
+        preserveScroll: true,
+        onStart: () => {
+            isChangingStatus.value = true;
+        },
+        onError: (errors) => {
+            statusError.value = errors.status ?? 'The trip status could not be changed.';
+        },
+        onFinish: () => {
+            isChangingStatus.value = false;
+        },
+    });
+};
 
 const isDeletingTrip = ref(false);
 
@@ -378,165 +420,9 @@ const deleteTrip = () => {
     });
 };
 
-const flightForm = useForm({
-    origin_airport_id: 0,
-    destination_airport_id: 0,
-    flight_number: '',
-    departure_at: '',
-    arrival_at: '',
-    airline: '',
-});
-
-watch(
-    () => flightForm.departure_at,
-    (departure) => {
-        if (!departure) {
-            return;
-        }
-
-        if (
-            !flightForm.arrival_at ||
-            flightForm.arrival_at < departure
-        ) {
-            flightForm.arrival_at = departure;
-        }
-    },
-);
-
-const originSearch = ref('');
-const destinationSearch = ref('');
-
-const originResults = ref<AirportSearchResult[]>([]);
-const destinationResults = ref<AirportSearchResult[]>([]);
-
-const searchAirports = async (
-    query: string,
-    type: 'origin' | 'destination',
-) => {
-    if (query.trim().length < 2) {
-        if (type === 'origin') {
-            originResults.value = [];
-        } else {
-            destinationResults.value = [];
-        }
-
-        return;
-    }
-
-    try {
-        const response = await fetch(
-            `/airports/search?q=${encodeURIComponent(query)}`,
-        );
-
-        const data = await response.json();
-
-        if (type === 'origin') {
-            originResults.value = data.results ?? [];
-        } else {
-            destinationResults.value = data.results ?? [];
-        }
-    } catch (error) {
-        console.error('Error searching airports:', error);
-
-        if (type === 'origin') {
-            originResults.value = [];
-        } else {
-            destinationResults.value = [];
-        }
-    }
-};
-
-const selectOrigin = (airport: AirportSearchResult) => {
-    flightForm.origin_airport_id = airport.id;
-    originSearch.value = formatAirport(airport);
-    originResults.value = [];
-};
-
-const selectDestination = (airport: AirportSearchResult) => {
-    flightForm.destination_airport_id = airport.id;
-    destinationSearch.value = formatAirport(airport);
-    destinationResults.value = [];
-};
-
-const resetFlightForm = () => {
-    flightForm.reset();
-
-    flightForm.departure_at = tripStartDateTime.value;
-    flightForm.arrival_at = tripStartDateTime.value;
-
-    originSearch.value = '';
-    destinationSearch.value = '';
-
-    originResults.value = [];
-    destinationResults.value = [];
-};
-
-const cancelFlightForm = () => {
-    showFlightForm.value = false;
-    editingFlightId.value = null;
-    resetFlightForm();
-};
-
-const editingFlightId = ref<number | null>(null);
-
-
-const formatDateTimeLocal = (
-    value: string | null,
-    timezone: string | null,
-): string => {
-    if (!value) {
-        return '';
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return '';
-    }
-
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone: timezone || 'UTC',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-    }).formatToParts(date);
-
-    const part = (type: string) =>
-        parts.find((item) => item.type === type)?.value ?? '';
-
-    return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
-};
-
-
-const startEditingFlight = (flight: Flight) => {
-    editingFlightId.value = flight.id;
-    showFlightForm.value = true;
-
-    flightForm.origin_airport_id = flight.origin.id;
-    flightForm.destination_airport_id = flight.destination.id;
-    flightForm.flight_number = flight.flight_number;
-    flightForm.departure_at = formatDateTimeLocal(
-        flight.departure,
-        flight.origin.timezone,
-    );
-    flightForm.arrival_at = formatDateTimeLocal(
-        flight.arrival,
-        flight.destination.timezone,
-    );
-    flightForm.airline = flight.airline ?? '';
-
-    originSearch.value = `${flight.origin.city} · ${flight.origin.name}`;
-    destinationSearch.value = `${flight.destination.city} · ${flight.destination.name}`;
-    originResults.value = [];
-    destinationResults.value = [];
-};
-
 const deleteFlight = (flight: Flight) => {
     const confirmed = window.confirm(
-        `Are you sure you want to delete flight "${flight.flight_number}"? This action cannot be undone.`,
+        `Delete the flight ${flight.origin.code ?? flight.origin.city} → ${flight.destination.code ?? flight.destination.city}${flight.flight_number ? ` (${flight.flight_number})` : ''}? This action cannot be undone.`,
     );
 
     if (!confirmed) {
@@ -546,28 +432,6 @@ const deleteFlight = (flight: Flight) => {
     router.delete(`/trips/${props.trip.id}/flights/${flight.id}`, {
         preserveScroll: true,
     });
-};
-
-const submitFlight = () => {
-    const options = {
-        preserveScroll: true,
-        onSuccess: () => {
-            showFlightForm.value = false;
-            editingFlightId.value = null;
-            resetFlightForm();
-        },
-    };
-
-    if (editingFlightId.value !== null) {
-        flightForm.put(
-            `/trips/${props.trip.id}/flights/${editingFlightId.value}`,
-            options,
-        );
-
-        return;
-    }
-
-    flightForm.post(`/trips/${props.trip.id}/flights`, options);
 };
 
 const flagEmoji = (isoCode: string) => {
@@ -581,14 +445,6 @@ const flagEmoji = (isoCode: string) => {
         )
         .join('');
 };
-
-const tripStartDateTime = computed(() => {
-    if (!props.trip.start_date) {
-        return '';
-    }
-
-    return `${props.trip.start_date}T00:00`;
-});
 
 /*
 |--------------------------------------------------------------------------
@@ -856,27 +712,20 @@ const cityCount = computed(() => {
     ).size;
 });
 
-const countryCount = computed(() => {
-    return destinationsByCountry.value.length;
-});
+// Estados soberanos del viaje; los territorios se cuentan aparte.
+const countryTotals = computed(() =>
+    countCountries(
+        props.visits
+            .filter((visit) => visit.city.country_status)
+            .map((visit) => ({ iso_code: visit.city.iso_code, country_status: visit.city.country_status! })),
+    ),
+);
 
 const flightCount = computed(() => props.flights.length);
 
-const tripDays = computed(() => {
-    if (!props.trip.start_date || !props.trip.end_date) {
-        return null;
-    }
-
-    const start = new Date(props.trip.start_date);
-    const end = new Date(props.trip.end_date);
-
-    const difference =
-        end.getTime() - start.getTime();
-
-    return Math.round(
-        difference / (1000 * 60 * 60 * 24),
-    ) + 1;
-});
+// Días de viaje (inicio y fin incluidos) y noches (días − 1).
+const tripDays = computed(() => calendarTripDays(props.trip.start_date, props.trip.end_date));
+const tripNights = computed(() => calendarTripNights(props.trip.start_date, props.trip.end_date));
 
 /*
 |--------------------------------------------------------------------------
@@ -904,30 +753,8 @@ const formatDateShort = (date: string | null) => {
     return new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',
         month: 'short',
+        timeZone: 'UTC',
     }).format(new Date(date));
-};
-
-const formatTime = (
-    date: string | null,
-    timezone: string | null,
-) => {
-    if (!date) {
-        return '—';
-    }
-
-    return new Intl.DateTimeFormat('en-GB', {
-        timeZone: timezone || 'UTC',
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-    }).format(new Date(date));
-};
-
-
-const formatAirport = (airport: AirportSearchResult) => {
-    const code = airport.iata_code || airport.icao_code || '';
-
-    return `${code} — ${airport.city ?? airport.name}`;
 };
 
 </script>
@@ -996,6 +823,70 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         {{ trip.name }}
                                     </h1>
 
+                                    <!-- Estado del viaje: solo los completados cuentan como visitados. -->
+                                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                                        <span
+                                            class="inline-flex rounded-full border px-3 py-1 text-[11px] font-medium"
+                                            :class="phaseBadgeClass"
+                                        >
+                                            {{ phaseLabel }}
+                                        </span>
+
+                                        <button
+                                            v-if="trip.can_complete"
+                                            type="button"
+                                            :disabled="isChangingStatus"
+                                            class="rounded-full bg-lime-300 px-3.5 py-1 text-[11px] font-semibold text-[#0d1119] transition hover:bg-lime-200 disabled:opacity-40"
+                                            @click="changeStatus('completed')"
+                                        >
+                                            Mark as completed
+                                        </button>
+
+                                        <button
+                                            v-if="trip.status === 'planned'"
+                                            type="button"
+                                            :disabled="isChangingStatus"
+                                            class="rounded-full border border-white/[0.10] px-3.5 py-1 text-[11px] font-medium text-white/55 transition hover:text-white disabled:opacity-40"
+                                            @click="changeStatus('cancelled')"
+                                        >
+                                            Cancel trip
+                                        </button>
+
+                                        <button
+                                            v-if="trip.status === 'cancelled'"
+                                            type="button"
+                                            :disabled="isChangingStatus"
+                                            class="rounded-full border border-white/[0.10] px-3.5 py-1 text-[11px] font-medium text-white/55 transition hover:text-white disabled:opacity-40"
+                                            @click="changeStatus('planned')"
+                                        >
+                                            Restore trip
+                                        </button>
+
+                                        <button
+                                            v-if="trip.status === 'completed'"
+                                            type="button"
+                                            :disabled="isChangingStatus"
+                                            class="rounded-full px-2 py-1 text-[11px] text-white/40 underline-offset-4 transition hover:text-white hover:underline disabled:opacity-40"
+                                            @click="changeStatus('planned')"
+                                        >
+                                            Mark as planned
+                                        </button>
+                                    </div>
+
+                                    <p
+                                        v-if="trip.phase === 'pending'"
+                                        class="mt-3 max-w-xl text-sm text-lime-200/80"
+                                    >
+                                        This trip has ended. Mark it as completed to count its places as visited.
+                                    </p>
+
+                                    <p
+                                        v-if="statusError"
+                                        class="mt-3 text-sm text-red-300"
+                                    >
+                                        {{ statusError }}
+                                    </p>
+
                                     <p
                                         v-if="trip.description"
                                         class="mt-4 max-w-2xl text-xs leading-5 text-white/40 sm:mt-5 sm:text-base sm:leading-6"
@@ -1041,7 +932,14 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            Days
+                                            {{ tripDays === 1 ? 'Day' : 'Days' }}
+                                        </div>
+
+                                        <div
+                                            v-if="tripNights"
+                                            class="mt-1 text-[11px] text-white/40"
+                                        >
+                                            {{ tripNights }} {{ tripNights === 1 ? 'night' : 'nights' }}
                                         </div>
 
                                     </div>
@@ -1067,13 +965,20 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ countryCount }}
+                                            {{ countryTotals.countries }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            Countries
+                                            {{ countryTotals.countries === 1 ? 'Country' : 'Countries' }}
+                                        </div>
+
+                                        <div
+                                            v-if="countryTotals.territories"
+                                            class="mt-1 text-[11px] text-white/40"
+                                        >
+                                            + {{ countryTotals.territories }} {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
                                         </div>
 
                                     </div>
@@ -1178,6 +1083,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                         <div class="h-full w-full min-h-0">
 
                             <TripVisitedMap
+                                :phase="trip.phase"
                                 :visits="visits"
                             />
 
@@ -1677,11 +1583,8 @@ const formatAirport = (airport: AirportSearchResult) => {
                                     v-if="!showFlightForm"
                                     type="button"
                                     class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-base text-white/50 transition hover:bg-white/[0.1] hover:text-white"
-                                    @click="
-                                        editingFlightId = null;
-                                        resetFlightForm();
-                                        showFlightForm = true;
-                                    "
+                                    aria-label="Add flight"
+                                    @click="openFlightForm()"
                                 >
                                     +
                                 </button>
@@ -1708,11 +1611,18 @@ const formatAirport = (airport: AirportSearchResult) => {
                                             <div>
 
                                                 <div class="text-sm font-semibold">
-                                                    {{ flight.flight_number }}
+                                                    {{ flight.flight_number || 'Flight' }}
+                                                    <span
+                                                        v-if="flight.status !== 'flown'"
+                                                        class="ml-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                                                        :class="flight.status === 'upcoming' ? 'border-lime-300/40 text-lime-300' : 'border-white/20 text-white/50'"
+                                                    >
+                                                        {{ { upcoming: 'Upcoming', pending: 'Unconfirmed', cancelled: 'Cancelled', flown: '' }[flight.status] }}
+                                                    </span>
                                                 </div>
 
                                                 <div class="mt-0.5 text-[10px] text-white/30">
-                                                    {{ flight.airline || 'Flight' }}
+                                                    {{ flight.airline || '—' }}
                                                 </div>
 
                                             </div>
@@ -1744,9 +1654,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                 </div>
 
                                                 <div class="mt-0.5 text-xs text-white/55">
-                                                    {{ formatDateShort(flight.departure) }}
-                                                    ·
-                                                    {{ formatTime(flight.departure, flight.origin.timezone) }}
+                                                    {{ flightDepartureLabel(flight, false) }}
                                                 </div>
 
                                             </div>
@@ -1762,9 +1670,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                                 </div>
 
                                                 <div class="mt-0.5 text-xs text-white/55">
-                                                    {{ formatDateShort(flight.arrival) }}
-                                                    ·
-                                                    {{ formatTime(flight.arrival, flight.destination.timezone) }}
+                                                    {{ flight.arrival ? flightTimeWithZone(flight.arrival, flight.destination.timezone) : '—' }}
                                                 </div>
 
                                             </div>
@@ -1777,7 +1683,7 @@ const formatAirport = (airport: AirportSearchResult) => {
                                         <button
                                             type="button"
                                             class="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] font-medium text-white/50 transition hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-white"
-                                            @click="startEditingFlight(flight)"
+                                            @click="openFlightForm(flight)"
                                         >
                                             Edit
                                         </button>
@@ -1814,219 +1720,24 @@ const formatAirport = (airport: AirportSearchResult) => {
 
 
                 <!-- =====================================================
-                     FLIGHT FORM
+                     FLIGHT FORM (componente compartido con Flight History)
                 ====================================================== -->
 
                 <section
                     v-if="showFlightForm"
                     class="vyamap-card-lg mb-7 p-6 sm:p-8"
                 >
+                    <h2 class="mb-6 text-xl font-semibold tracking-[-0.04em]">
+                        {{ editingFlight ? 'Edit flight' : 'Add flight' }}
+                    </h2>
 
-                    <div class="mb-6">
-
-                        <div class="vyamap-section-title">
-                            Transport
-                        </div>
-
-                        <h2 class="vyamap-section-heading">
-                            {{ editingFlightId !== null ? 'Edit flight' : 'Add flight' }}
-                        </h2>
-
-                    </div>
-
-                    <form
-                        class="space-y-4"
-                        @submit.prevent="submitFlight"
-                    >
-
-                        <div class="grid gap-4 md:grid-cols-2">
-
-                            <div class="relative">
-
-                                <label class="vyamap-label">
-                                    Origin airport
-                                </label>
-
-                                <input
-                                    v-model="originSearch"
-                                    type="text"
-                                    placeholder="Madrid, MAD..."
-                                    class="vyamap-input"
-                                    @input="searchAirports(originSearch, 'origin')"
-                                />
-
-                                <div
-                                    v-if="originResults.length"
-                                    class="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
-                                >
-
-                                    <button
-                                        v-for="airport in originResults"
-                                        :key="airport.id"
-                                        type="button"
-                                        class="block w-full px-4 py-3 text-left transition hover:bg-white/[0.06]"
-                                        @click="selectOrigin(airport)"
-                                    >
-
-                                        <div class="text-sm">
-                                            {{ airport.iata_code || airport.icao_code }}
-                                            ·
-                                            {{ airport.city }}
-                                        </div>
-
-                                        <div class="mt-1 text-xs text-white/30">
-                                            {{ airport.name }}
-                                        </div>
-
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                            <div class="relative">
-
-                                <label class="vyamap-label">
-                                    Destination airport
-                                </label>
-
-                                <input
-                                    v-model="destinationSearch"
-                                    type="text"
-                                    placeholder="Skopje, SKP..."
-                                    class="vyamap-input"
-                                    @input="searchAirports(destinationSearch, 'destination')"
-                                />
-
-                                <div
-                                    v-if="destinationResults.length"
-                                    class="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#11171d] shadow-2xl"
-                                >
-
-                                    <button
-                                        v-for="airport in destinationResults"
-                                        :key="airport.id"
-                                        type="button"
-                                        class="block w-full px-4 py-3 text-left transition hover:bg-white/[0.06]"
-                                        @click="selectDestination(airport)"
-                                    >
-
-                                        <div class="text-sm">
-                                            {{ airport.iata_code || airport.icao_code }}
-                                            ·
-                                            {{ airport.city }}
-                                        </div>
-
-                                        <div class="mt-1 text-xs text-white/30">
-                                            {{ airport.name }}
-                                        </div>
-
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div class="grid gap-4 md:grid-cols-2">
-
-                            <div>
-
-                                <label class="vyamap-label">
-                                    Flight number
-                                </label>
-
-                                <input
-                                    v-model="flightForm.flight_number"
-                                    type="text"
-                                    placeholder="Flight number"
-                                    class="vyamap-input"
-                                />
-
-                            </div>
-
-                            <div>
-
-                                <label class="vyamap-label">
-                                    Airline
-                                </label>
-
-                                <input
-                                    v-model="flightForm.airline"
-                                    type="text"
-                                    placeholder="Airline"
-                                    class="vyamap-input"
-                                />
-
-                            </div>
-
-                        </div>
-
-                        <div class="grid gap-4 md:grid-cols-2">
-
-                            <div>
-
-                                <label class="vyamap-label">
-                                    Departure
-                                </label>
-
-                                <input
-                                    v-model="flightForm.departure_at"
-                                    type="datetime-local"
-                                    :min="`${trip.start_date}T00:00`"
-                                    :max="`${trip.end_date}T23:59`"
-                                    class="vyamap-input"
-                                />
-
-                            </div>
-
-                            <div>
-
-                                <label class="vyamap-label">
-                                    Arrival
-                                </label>
-
-                                <input
-                                    v-model="flightForm.arrival_at"
-                                    type="datetime-local"
-                                    :min="flightForm.departure_at || `${trip.start_date}T00:00`"
-                                    :max="`${trip.end_date}T23:59`"
-                                    class="vyamap-input"
-                                />
-
-                            </div>
-
-                        </div>
-
-                        <div class="flex gap-2">
-
-                            <button
-                                type="submit"
-                                :disabled="flightForm.processing"
-                                class="vyamap-button"
-                            >
-                                {{
-                                    flightForm.processing
-                                        ? 'Saving...'
-                                        : editingFlightId !== null
-                                          ? 'Save changes'
-                                          : 'Add flight'
-                                }}
-                            </button>
-
-                            <button
-                                type="button"
-                                class="vyamap-button-secondary"
-                                @click="cancelFlightForm"
-                            >
-                                Cancel
-                            </button>
-
-                        </div>
-
-                    </form>
-
+                    <FlightForm
+                        :key="flightFormKey"
+                        :flight="editingFlight"
+                        :trip-id="trip.id"
+                        :default-date="trip.start_date"
+                        @close="closeFlightForm"
+                    />
                 </section>
 
 

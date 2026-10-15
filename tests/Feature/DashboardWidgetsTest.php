@@ -136,6 +136,7 @@ class DashboardWidgetsTest extends TestCase
                     ->where('start_date', '2025-04-01')
                     ->where('end_date', '2025-04-12')
                     ->where('cover', null)
+                    ->where('phase', 'completed')
                     // Sin repetir; el orden de las visitas no está definido en la consulta.
                     ->where('cities', fn ($cities) => collect($cities)->sort()->values()->all() === ['Madrid', 'Paris', 'Seville'])
                     ->where('countries', fn ($countries) => collect($countries)->sort()->values()->all() === ['France', 'Spain'])
@@ -275,9 +276,12 @@ class DashboardWidgetsTest extends TestCase
             ->get('/')
             ->assertInertia(fn ($page) => $page
                 ->where('recentTrips', fn ($recent) => collect($recent)->pluck('id')->all() === [$today->id, $ongoing->id, $finished->id])
-                // El resto del dashboard sigue contando los viajes futuros.
-                ->where('stats.trips', 5)
-                ->where('tripsByYear', [['year' => 2026, 'count' => 4], ['year' => 2027, 'count' => 1]])
+                // Bloque 2 (F0): las cifras solo cuentan viajes completados; los
+                // próximos se cuentan aparte. En curso y hoy siguen planificados.
+                ->where('stats.trips', 1)
+                ->where('stats.upcoming_trips', 2)
+                ->where('tripsByYear', [['year' => 2026, 'count' => 1]])
+                ->where('recentTrips', fn ($recent) => collect($recent)->pluck('phase')->all() === ['ongoing', 'ongoing', 'completed'])
                 // nextTrip no cambia: el viaje que empieza hoy aparece en ambos widgets.
                 ->where('nextTrip.id', $today->id)
             );
@@ -305,7 +309,9 @@ class DashboardWidgetsTest extends TestCase
                     $started['2026-03-01']->id,
                     $started['2026-01-20']->id,
                 ])
-                ->where('stats.trips', 8)
+                // Completados: los 4 que ya terminaron (el de hoy sigue en curso).
+                ->where('stats.trips', 4)
+                ->where('stats.upcoming_trips', 3)
             );
     }
 

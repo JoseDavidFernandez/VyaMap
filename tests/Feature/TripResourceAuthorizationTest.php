@@ -150,7 +150,8 @@ class TripResourceAuthorizationTest extends TestCase
         $this->actingAs($this->owner)
             ->postJson("/trips/{$this->trip->id}/flights", $this->invalidFlightPayload())
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['departure_at']);
+            // F1: la fecha local de salida es la que debe caer dentro del viaje.
+            ->assertJsonValidationErrors(['departure_date']);
     }
 
     public function test_owner_can_update_and_delete_their_flight(): void
@@ -162,8 +163,8 @@ class TripResourceAuthorizationTest extends TestCase
                 'origin_airport_id' => $this->origin->id,
                 'destination_airport_id' => $this->destination->id,
                 'flight_number' => 'VY2000',
-                'departure_at' => '2026-09-11T10:00',
-                'arrival_at' => '2026-09-11T11:10',
+                'departure_date' => '2026-09-11', 'departure_time' => '10:00',
+                'arrival_date' => '2026-09-11', 'arrival_time' => '11:10',
             ])
             ->assertRedirect("/trips/{$this->trip->id}");
 
@@ -213,8 +214,8 @@ class TripResourceAuthorizationTest extends TestCase
             'origin_airport_id' => $this->origin->id,
             'destination_airport_id' => $this->destination->id,
             'flight_number' => 'VY9999',
-            'departure_at' => '2020-01-01T08:00',
-            'arrival_at' => '2020-01-01T09:00',
+            'departure_date' => '2020-01-01', 'departure_time' => '08:00',
+            'arrival_date' => '2020-01-01', 'arrival_time' => '09:00',
         ];
     }
 

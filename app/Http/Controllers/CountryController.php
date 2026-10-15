@@ -6,6 +6,7 @@ use App\Models\Country;
 use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\SovereignCountries;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -15,29 +16,29 @@ class CountryController extends Controller
     {
         $user = $request->user();
 
+        // Países visitados: visitas de viajes completados. Los que solo están
+        // planificados van aparte (planned_countries) y no cuentan.
         $countries = Country::query()
-            ->whereHas('cities.visits', function ($query) use ($user) {
-                $query->whereHas('trip', function ($tripQuery) use ($user) {
-                    $tripQuery->where('user_id', $user->id);
-                });
-            })
+            ->whereHas('cities.visits', fn ($visits) => $visits->visitedBy($user->id))
             ->withCount([
-                'cities as visited_cities_count' => function ($query) use ($user) {
-                    $query->whereHas('visits', function ($visitQuery) use ($user) {
-                        $visitQuery->whereHas('trip', function ($tripQuery) use ($user) {
-                            $tripQuery->where('user_id', $user->id);
-                        });
-                    });
-                },
+                'cities as visited_cities_count' => fn ($cities) => $cities
+                    ->whereHas('visits', fn ($visits) => $visits->visitedBy($user->id)),
             ])
             ->orderBy('name')
             ->get();
+
+        $plannedCountries = Country::query()
+            ->whereHas('cities.visits', fn ($visits) => $visits->plannedBy($user->id))
+            ->whereNotIn('id', $countries->pluck('id'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'iso_code']);
 
         // Viajes distintos por país en una sola consulta (antes, una por país).
         $tripsPerCountry = DB::table('trips')
             ->join('visits', 'visits.trip_id', '=', 'trips.id')
             ->join('cities', 'cities.id', '=', 'visits.city_id')
             ->where('trips.user_id', $user->id)
+            ->where('trips.status', Trip::COMPLETED)
             ->groupBy('cities.country_id')
             ->selectRaw('cities.country_id, COUNT(DISTINCT trips.id) AS trips_count')
             ->pluck('trips_count', 'country_id');
@@ -46,12 +47,19 @@ class CountryController extends Controller
             'id' => $country->id,
             'name' => $country->name,
             'iso_code' => $country->iso_code,
+            'country_status' => SovereignCountries::classify($country->iso_code),
             'cities_count' => $country->visited_cities_count,
             'trips_count' => (int) ($tripsPerCountry[$country->id] ?? 0),
         ]);
 
         return Inertia::render('Countries/Index', [
             'countries' => $countries->values(),
+            'plannedCountries' => $plannedCountries->map(fn ($country) => [
+                'id' => $country->id,
+                'name' => $country->name,
+                'iso_code' => $country->iso_code,
+                'country_status' => SovereignCountries::classify($country->iso_code),
+            ])->values(),
         ]);
     }
 
@@ -59,24 +67,24 @@ class CountryController extends Controller
     {
         $user = $request->user();
 
+        // Ciudades con visitas realizadas o planificadas; visits_count solo cuenta
+        // las realizadas (viajes completados).
         $cities = $country->cities()
-            ->whereHas('visits', function ($query) use ($user) {
-                $query->whereHas('trip', function ($tripQuery) use ($user) {
-                    $tripQuery->where('user_id', $user->id);
-                });
-            })
+            ->where(fn ($query) => $query
+                ->whereHas('visits', fn ($visits) => $visits->visitedBy($user->id))
+                ->orWhereHas('visits', fn ($visits) => $visits->plannedBy($user->id)))
             ->withCount([
-                'visits as user_visits_count' => function ($query) use ($user) {
-                    $query->whereHas('trip', function ($tripQuery) use ($user) {
-                        $tripQuery->where('user_id', $user->id);
-                    });
-                },
+                'visits as user_visits_count' => fn ($visits) => $visits->visitedBy($user->id),
+                'visits as user_planned_count' => fn ($visits) => $visits->plannedBy($user->id),
             ])
             ->orderBy('name')
             ->get();
 
+        $today = Trip::today();
+
         $trips = Trip::query()
             ->where('user_id', $user->id)
+            ->notCancelled()
             ->whereHas('visits.city', function ($query) use ($country) {
                 $query->where('country_id', $country->id);
             })
@@ -90,7 +98,7 @@ class CountryController extends Controller
             ])
             ->orderByDesc('start_date')
             ->get()
-            ->map(function ($trip) use ($country) {
+            ->map(function ($trip) use ($country, $today) {
                 $cities = $trip->visits
                     ->filter(fn ($visit) => $visit->city?->country_id === $country->id)
                     ->map(fn ($visit) => $visit->city?->name)
@@ -100,6 +108,7 @@ class CountryController extends Controller
 
                 return [
                     'id' => $trip->id,
+                    'phase' => $trip->phase($today),
                     'name' => $trip->name,
                     'description' => $trip->description,
                     'start_date' => $trip->start_date?->format('Y-m-d'),
@@ -120,6 +129,7 @@ class CountryController extends Controller
                 'id' => $city->id,
                 'name' => $city->name,
                 'visits_count' => $city->user_visits_count,
+                'planned' => $city->user_planned_count > 0,
             ])->values(),
             'trips' => $trips,
         ]);

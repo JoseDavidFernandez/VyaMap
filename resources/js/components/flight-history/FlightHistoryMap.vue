@@ -1,26 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import L from 'leaflet';
-import { greatCircleRoute, isValidPoint, type Point } from '../../utils/greatCircle';
+import type { FlightRecord as Flight } from '../../types/flights';
+import { greatCircleRoute, toPoint, type Point } from '../../utils/greatCircle';
 
-interface AirportPoint {
-    code: string | null;
-    airport: string;
-    city: string;
-    latitude: number;
-    longitude: number;
-}
-
-interface Flight {
-    id: number;
-    flight_number: string;
-    airline: string | null;
-    departure: string | null;
-    arrival: string | null;
-    origin: AirportPoint;
-    destination: AirportPoint;
-}
-
+// Realizados en blanco, próximos en lima y pendientes de confirmar en gris.
 const props = defineProps<{
     flights: Flight[];
 }>();
@@ -45,38 +29,35 @@ const renderRoutes = () => {
     const bounds = L.latLngBounds([]);
 
     props.flights.forEach((flight) => {
-        const origin: Point = [
-            Number(flight.origin.latitude),
-            Number(flight.origin.longitude),
-        ];
-
-        const destination: Point = [
-            Number(flight.destination.latitude),
-            Number(flight.destination.longitude),
-        ];
+        const origin = toPoint(flight.origin.latitude, flight.origin.longitude);
+        const destination = toPoint(flight.destination.latitude, flight.destination.longitude);
 
         // Sin coordenadas válidas no se puede dibujar ni la ruta ni sus marcadores.
-        if (!isValidPoint(origin) || !isValidPoint(destination)) {
+        if (!origin || !destination) {
             return;
         }
 
         const route = greatCircleRoute(origin, destination);
+        const upcoming = flight.status === 'upcoming';
+        // Pendiente de confirmar: gris, nunca como un vuelo realizado.
+        const unconfirmed = flight.status === 'pending';
+        const stroke = upcoming ? '#BEF264' : unconfirmed ? 'rgba(255, 255, 255, 0.3)' : '#ffffff';
 
         route.flat().forEach((point) => bounds.extend(point));
 
         L.polyline(
             route,
             {
-                color: '#ffffff',
+                color: stroke,
                 weight: 1,
-                opacity: 0.35,
+                opacity: upcoming ? 0.7 : unconfirmed ? 0.25 : 0.35,
                 dashArray: '5 7',
             },
         ).addTo(layerGroup!);
 
         L.circleMarker(origin, {
             radius: 4,
-            color: '#ffffff',
+            color: stroke,
             weight: 1.5,
             fillColor: '#111827',
             fillOpacity: 1,
@@ -92,7 +73,7 @@ const renderRoutes = () => {
 
         L.circleMarker(destination, {
             radius: 4,
-            color: '#ffffff',
+            color: stroke,
             weight: 1.5,
             fillColor: '#111827',
             fillOpacity: 1,

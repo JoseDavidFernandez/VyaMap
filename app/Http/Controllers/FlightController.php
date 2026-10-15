@@ -2,81 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreFlightRequest;
-use App\Models\Airport;
+use App\Http\Requests\FlightRequest;
 use App\Models\Flight;
 use App\Models\Trip;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
+/**
+ * Vuelos desde la ficha de un viaje (/trips/{trip}/flights, el viaje lo fija
+ * la URL) y vuelos generales (/flights, viaje opcional). Ambas rutas usan la
+ * misma validación (FlightRequest) y el mismo guardado (save()).
+ */
 class FlightController extends Controller
 {
-    public function store(
-        StoreFlightRequest $request,
-        Trip $trip
-    ): RedirectResponse {
-        $this->authorize('update', $trip);
+    /*
+    |--------------------------------------------------------------------------
+    | Rutas del viaje
+    |--------------------------------------------------------------------------
+    */
 
-        $data = $request->validated();
-
-        $origin = Airport::findOrFail($data['origin_airport_id']);
-        $destination = Airport::findOrFail($data['destination_airport_id']);
-
-        Flight::create([
-            'user_id' => $request->user()->id,
-            'trip_id' => $trip->id,
-            'origin_airport_id' => $origin->id,
-            'destination_airport_id' => $destination->id,
-            'flight_number' => $data['flight_number'],
-            'departure_at' => $this->toUtc(
-                $data['departure_at'],
-                $origin
-            ),
-            'arrival_at' => $this->toUtc(
-                $data['arrival_at'],
-                $destination
-            ),
-            'airline' => $data['airline'] ?? null,
-        ]);
+    public function store(FlightRequest $request, Trip $trip): RedirectResponse
+    {
+        $this->save($request, new Flight(['user_id' => $request->user()->id]), $trip);
 
         return redirect()->route('trips.show', $trip);
     }
 
-    public function update(
-        StoreFlightRequest $request,
-        Trip $trip,
-        Flight $flight
-    ): RedirectResponse {
-        $this->authorize('update', $trip);
+    public function update(FlightRequest $request, Trip $trip, Flight $flight): RedirectResponse
+    {
         $this->ensureFlightBelongsToTrip($flight, $trip);
 
-        $data = $request->validated();
-
-        $origin = Airport::findOrFail($data['origin_airport_id']);
-        $destination = Airport::findOrFail($data['destination_airport_id']);
-
-        $flight->update([
-            'origin_airport_id' => $origin->id,
-            'destination_airport_id' => $destination->id,
-            'flight_number' => $data['flight_number'],
-            'departure_at' => $this->toUtc(
-                $data['departure_at'],
-                $origin
-            ),
-            'arrival_at' => $this->toUtc(
-                $data['arrival_at'],
-                $destination
-            ),
-            'airline' => $data['airline'] ?? null,
-        ]);
+        $this->save($request, $flight, $trip);
 
         return redirect()->route('trips.show', $trip);
     }
 
-    public function destroy(
-        Trip $trip,
-        Flight $flight
-    ): RedirectResponse {
+    public function destroy(Trip $trip, Flight $flight): RedirectResponse
+    {
         $this->authorize('update', $trip);
         $this->ensureFlightBelongsToTrip($flight, $trip);
 
@@ -85,21 +48,77 @@ class FlightController extends Controller
         return redirect()->route('trips.show', $trip);
     }
 
-    private function toUtc(
-        string $value,
-        Airport $airport
-    ): CarbonImmutable {
-        return CarbonImmutable::createFromFormat(
-            '!Y-m-d\TH:i',
-            $value,
-            $airport->timezone
-        )->utc();
+    /*
+    |--------------------------------------------------------------------------
+    | Rutas generales (Flight History)
+    |--------------------------------------------------------------------------
+    */
+
+    public function storeFlight(FlightRequest $request): RedirectResponse
+    {
+        $this->save($request, new Flight(['user_id' => $request->user()->id]), $request->trip());
+
+        return back();
     }
 
-    private function ensureFlightBelongsToTrip(
-        Flight $flight,
-        Trip $trip
-    ): void {
+    public function updateFlight(FlightRequest $request, Flight $flight): RedirectResponse
+    {
+        $this->save($request, $flight, $request->trip());
+
+        return back();
+    }
+
+    public function destroyFlight(Flight $flight): RedirectResponse
+    {
+        $this->authorize('delete', $flight);
+
+        $flight->delete();
+
+        return back();
+    }
+
+    /**
+     * Confirma (o deshace la confirmación de) que un vuelo se realizó. Solo
+     * para vuelos que ya salieron. No cambia el viaje ni las visitas.
+     */
+    public function confirm(Request $request, Flight $flight): RedirectResponse
+    {
+        $this->authorize('update', $flight);
+
+        $confirmed = $request->validate(['confirmed' => ['required', 'boolean']])['confirmed'];
+
+        $flight->loadMissing('originAirport');
+
+        if ($confirmed && ! $flight->hasDeparted()) {
+            throw ValidationException::withMessages([
+                'confirmed' => 'Only a flight that has already departed can be confirmed.',
+            ]);
+        }
+
+        $flight->update(['confirmed_at' => $confirmed ? now() : null]);
+
+        return back();
+    }
+
+    private function save(FlightRequest $request, Flight $flight, ?Trip $trip): void
+    {
+        $flight->fill($request->flightAttributes());
+        $flight->trip_id = $trip?->id;
+
+        // Un vuelo confirmado que pasa al futuro deja de estar confirmado (D7).
+        if ($flight->confirmed_at !== null) {
+            $flight->setRelation('originAirport', $flight->originAirport()->first());
+
+            if (! $flight->hasDeparted()) {
+                $flight->confirmed_at = null;
+            }
+        }
+
+        $flight->save();
+    }
+
+    private function ensureFlightBelongsToTrip(Flight $flight, Trip $trip): void
+    {
         abort_unless($flight->trip_id === $trip->id, 404);
     }
 }

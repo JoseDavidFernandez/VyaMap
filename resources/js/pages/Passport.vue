@@ -3,6 +3,8 @@ import { computed, ref } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import AppLayout from '../layouts/AppLayout.vue';
 import CountryMap from '../components/dashboard/CountryMap.vue';
+import { calendarYear } from '../utils/tripDates';
+import { countCountries, type CountryStatus } from '../utils/countryStatus';
 
 interface Visit {
     id: number;
@@ -11,6 +13,7 @@ interface Visit {
     country: string;
     iso_code: string;
     is_sovereign: boolean;
+    country_status: CountryStatus;
     visited_from: string | null;
     visited_until: string | null;
 }
@@ -28,15 +31,18 @@ interface AirportPoint {
     city: string;
     latitude: number;
     longitude: number;
+    timezone: string | null;
 }
 
 interface Flight {
     id: number;
-    flight_number: string;
+    departure_date: string;
+    flight_number: string | null;
     airline: string | null;
     departure: string | null;
     arrival: string | null;
-    distance_km: number;
+    // null si falta alguna coordenada (nunca se inventa una distancia).
+    distance_km: number | null;
     duration_minutes: number | null;
     origin: AirportPoint;
     destination: AirportPoint;
@@ -79,6 +85,7 @@ const props = defineProps<{
     visits: Visit[];
     trips: Trip[];
     flights: Flight[];
+    plannedCountries: { iso_code: string; name: string; ongoing: boolean }[];
 }>();
 
 const selectedPeriod = ref<number | 'all'>(
@@ -102,9 +109,7 @@ const periodVisits = computed(() => {
         }
 
         return (
-            new Date(
-                visit.visited_from,
-            ).getFullYear() ===
+            calendarYear(visit.visited_from) ===
             selectedPeriod.value
         );
     });
@@ -121,9 +126,7 @@ const periodTrips = computed(() => {
         }
 
         return (
-            new Date(
-                trip.start_date,
-            ).getFullYear() ===
+            calendarYear(trip.start_date) ===
             selectedPeriod.value
         );
     });
@@ -134,18 +137,8 @@ const periodFlights = computed(() => {
         return props.flights;
     }
 
-    return props.flights.filter((flight) => {
-        if (!flight.departure) {
-            return false;
-        }
-
-        return (
-            new Date(
-                flight.departure,
-            ).getFullYear() ===
-            selectedPeriod.value
-        );
-    });
+    // Año de la fecha local de salida (con o sin hora).
+    return props.flights.filter((flight) => calendarYear(flight.departure_date) === selectedPeriod.value);
 });
 
 /*
@@ -187,6 +180,11 @@ const visitedCountries = computed(() => {
 // contador "X / total" solo cuentan Estados soberanos.
 const visitedSovereignCount = computed(() =>
     visitedCountries.value.filter((country) => country.is_sovereign).length,
+);
+
+// Territorios visitados en el periodo: se muestran aparte, no suman a los 193.
+const visitedTerritoriesCount = computed(() =>
+    countCountries(periodVisits.value).territories,
 );
 
 const visitedCities = computed(() => {
@@ -274,7 +272,7 @@ const passportCountriesPercentage = computed(() => {
 });
 
 const passportTotalDistance = computed(() =>
-    periodFlights.value.reduce((total, flight) => total + flight.distance_km, 0),
+    periodFlights.value.reduce((total, flight) => total + (flight.distance_km ?? 0), 0),
 );
 
 const stampLabel = (stamp: PassportStamp) => {
@@ -290,6 +288,7 @@ const formatPassportDate = (date: string | null) => {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
+        timeZone: 'UTC',
     }).format(new Date(date)).toUpperCase();
 };
 
@@ -349,9 +348,7 @@ const tripsByYear = computed(() => {
             return;
         }
 
-        const year = new Date(
-            trip.start_date,
-        ).getFullYear();
+        const year = calendarYear(trip.start_date)!;
         groups.set(
             year,
             (groups.get(year) ?? 0) + 1,
@@ -420,6 +417,8 @@ const formatDate = (
             day: '2-digit',
             month: 'short',
             year: 'numeric',
+            // Fechas de calendario (medianoche UTC): en UTC el día no cambia.
+            timeZone: 'UTC',
         },
     ).format(new Date(date));
 
@@ -769,7 +768,7 @@ const formatDate = (
                         </div>
 
                         <div class="passport-map">
-                            <CountryMap :countries="visitedCountries" theme="dark" />
+                            <CountryMap :countries="visitedCountries" :planned="props.plannedCountries" theme="dark" />
                         </div>
                     </div>
                 </section>
@@ -794,6 +793,9 @@ const formatDate = (
                                 <div class="analytics-bar">
                                     <div :style="{ width: `${passportCountriesPercentage}%` }"></div>
                                 </div>
+                                <small v-if="visitedTerritoriesCount" class="analytics-note">
+                                    + {{ visitedTerritoriesCount }} {{ visitedTerritoriesCount === 1 ? 'territory' : 'territories' }}
+                                </small>
                             </div>
 
                             <div class="analytics-item">
@@ -1506,6 +1508,13 @@ const formatDate = (
     font-size: 23px;
     font-weight: 600;
     letter-spacing: -0.045em;
+}
+
+.analytics-note {
+    display: block;
+    margin-top: 6px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
 }
 
 .analytics-bar {

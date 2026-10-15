@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\FlightPresenter;
 use App\Support\SovereignCountries;
 use App\Models\Flight;
 use App\Models\Trip;
@@ -16,8 +17,11 @@ class PassportController extends Controller
     {
         $user = request()->user();
 
+        // Progreso geográfico: solo viajes completados, visitas de esos viajes
+        // y vuelos ya realizados. Lo planificado se muestra aparte en el mapa.
         $trips = Trip::query()
             ->where('user_id', $user->id)
+            ->completed()
             ->get([
                 'id',
                 'name',
@@ -26,78 +30,53 @@ class PassportController extends Controller
             ]);
 
         $visits = Visit::query()
-            ->whereHas('trip', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
+            ->visitedBy($user->id)
             ->with('city.country')
             ->orderByDesc('visited_from')
             ->get();
 
-        $flights = Flight::query()
-            ->where('user_id', $user->id)
-            ->with([
-                'originAirport.city',
-                'destinationAirport.city',
-            ])
-            ->orderByDesc('departure_at')
-            ->get();
+        // Solo vuelos realizados, con la misma definición que el resto (Flight::status()).
+        $flights = Flight::withStatuses(
+            Flight::query()
+                ->where('user_id', $user->id)
+                ->with([
+                    'trip',
+                    'originAirport.city',
+                    'destinationAirport.city',
+                ])
+                ->chronological('desc')
+                ->get()
+        )
+            ->filter(fn (Flight $flight) => $flight->flight_status === Flight::FLOWN)
+            ->values();
 
-        $flightData = $flights->map(function (Flight $flight) {
-            $distanceKm = $this->calculateDistance(
-                (float) $flight->originAirport->latitude,
-                (float) $flight->originAirport->longitude,
-                (float) $flight->destinationAirport->latitude,
-                (float) $flight->destinationAirport->longitude,
-            );
-
-            $durationMinutes = null;
-
-            if ($flight->departure_at && $flight->arrival_at) {
-                $durationMinutes = max(
-                    0,
-                    $flight->departure_at->diffInMinutes(
-                        $flight->arrival_at,
-                    ),
-                );
-            }
-
-            return [
-                'id' => $flight->id,
-                'flight_number' => $flight->flight_number,
-                'airline' => $flight->airline,
-                'departure' => $flight->departure_at?->toISOString(),
-                'arrival' => $flight->arrival_at?->toISOString(),
-                'distance_km' => round($distanceKm),
-                'duration_minutes' => $durationMinutes,
-
-                'origin' => [
-                    'code' => $flight->originAirport->iata_code
-                        ?: $flight->originAirport->icao_code,
-                    'airport' => $flight->originAirport->name,
-                    'city' => $flight->originAirport->city->name,
-                    'latitude' => (float) $flight->originAirport->latitude,
-                    'longitude' => (float) $flight->originAirport->longitude,
-                ],
-
-                'destination' => [
-                    'code' => $flight->destinationAirport->iata_code
-                        ?: $flight->destinationAirport->icao_code,
-                    'airport' => $flight->destinationAirport->name,
-                    'city' => $flight->destinationAirport->city->name,
-                    'latitude' => (float) $flight->destinationAirport->latitude,
-                    'longitude' => (float) $flight->destinationAirport->longitude,
-                ],
-            ];
-        })->values();
+        $flightData = $flights->map(fn (Flight $flight) => FlightPresenter::toArray($flight))->values();
 
         $years = collect()
             ->merge($trips->pluck('start_date'))
             ->merge($visits->pluck('visited_from'))
-            ->merge($flights->pluck('departure_at'))
+            // Un vuelo pertenece al año de su fecha local de salida.
+            ->merge($flights->map(fn (Flight $flight) => $flight->departure_date?->toDateString()))
             ->filter()
             ->map(fn ($date) => Carbon::parse($date)->year)
             ->unique()
             ->sortDesc()
+            ->values();
+
+        $today = Trip::today();
+
+        $plannedCountries = Visit::query()
+            ->plannedBy($user->id)
+            ->with(['city.country', 'trip'])
+            ->get()
+            ->filter(fn ($visit) => $visit->city?->country)
+            ->groupBy(fn ($visit) => $visit->city->country->iso_code)
+            ->map(fn ($countryVisits, $iso) => [
+                'iso_code' => $iso,
+                'name' => $countryVisits->first()->city->country->name,
+                'ongoing' => $countryVisits->contains(fn ($visit) => $visit->trip->phase($today) === 'ongoing'),
+            ])
+            ->sortBy('name')
             ->values();
 
         return Inertia::render('Passport', [
@@ -114,6 +93,7 @@ class PassportController extends Controller
                     'country' => $visit->city->country->name,
                     'iso_code' => $visit->city->country->iso_code,
                     'is_sovereign' => SovereignCountries::isSovereign($visit->city->country->iso_code),
+                    'country_status' => SovereignCountries::classify($visit->city->country->iso_code),
                     'visited_from' => $visit->visited_from,
                     'visited_until' => $visit->visited_until,
                 ];
@@ -127,34 +107,9 @@ class PassportController extends Controller
             ])->values(),
 
             'flights' => $flightData,
+
+            // Destinos planificados para el mapa (lima); no cuentan en el progreso.
+            'plannedCountries' => $plannedCountries,
         ]);
-    }
-
-    private function calculateDistance(
-        float $latitude1,
-        float $longitude1,
-        float $latitude2,
-        float $longitude2,
-    ): float {
-        $earthRadius = 6371;
-
-        $lat1 = deg2rad($latitude1);
-        $lat2 = deg2rad($latitude2);
-
-        $deltaLat = deg2rad($latitude2 - $latitude1);
-        $deltaLon = deg2rad($longitude2 - $longitude1);
-
-        $a =
-            sin($deltaLat / 2) ** 2
-            + cos($lat1)
-            * cos($lat2)
-            * sin($deltaLon / 2) ** 2;
-
-        $c = 2 * atan2(
-            sqrt($a),
-            sqrt(1 - $a),
-        );
-
-        return $earthRadius * $c;
     }
 }

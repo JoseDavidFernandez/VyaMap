@@ -82,6 +82,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/trips/{trip}', [TripController::class, 'update'])
     ->name('trips.update');
 
+    // Estado manual del viaje (planned, completed, cancelled).
+    Route::patch('/trips/{trip}/status', [TripController::class, 'updateStatus'])
+    ->name('trips.status');
+
     Route::delete('/trips/{trip}', [TripController::class, 'destroy'])
     ->name('trips.destroy');
 
@@ -112,6 +116,19 @@ Route::middleware('auth')->group(function () {
         Route::delete('/trips/{trip}/flights/{flight}', [FlightController::class, 'destroy'])
             ->name('trips.flights.destroy');
     });
+
+    // Vuelos generales (con o sin viaje), gestionados desde Flight History.
+    Route::post('/flights', [FlightController::class, 'storeFlight'])
+        ->name('flights.store');
+
+    Route::put('/flights/{flight}', [FlightController::class, 'updateFlight'])
+        ->name('flights.update');
+
+    Route::delete('/flights/{flight}', [FlightController::class, 'destroyFlight'])
+        ->name('flights.destroy');
+
+    Route::patch('/flights/{flight}/confirmation', [FlightController::class, 'confirm'])
+        ->name('flights.confirmation');
 
     Route::post('/trips/{trip}/google-maps', [GoogleMapListController::class, 'store'])
     ->name('trips.google-maps.store');

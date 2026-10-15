@@ -1,43 +1,30 @@
 <script setup lang="ts">
 
 import { computed, ref } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
 
 import AppLayout from '../layouts/AppLayout.vue';
 import FlightHistoryMap from '../components/flight-history/FlightHistoryMap.vue';
-
-
-interface AirportPoint {
-    code: string | null;
-    airport: string;
-    city: string;
-    latitude: number;
-    longitude: number;
-}
-
-interface Flight {
-    id: number;
-    flight_number: string;
-    airline: string | null;
-    departure: string | null;
-    arrival: string | null;
-    distance_km: number;
-    duration_minutes: number | null;
-    origin: AirportPoint;
-    destination: AirportPoint;
-}
+import FlightForm from '../components/flights/FlightForm.vue';
+import { calendarDate, flightDepartureLabel } from '../utils/flightTime';
+import { calendarYear } from '../utils/tripDates';
+import type { FlightRecord as Flight, FlightStatus, TripOption } from '../types/flights';
 
 interface VisitedAirport {
     code: string | null;
-    city: string;
+    city: string | null;
     airport: string;
     count: number;
 }
 
 const props = defineProps<{
     flights: Flight[];
+    trips: TripOption[];
 }>();
 
 const selectedPeriod = ref<number | 'all'>('all');
+const selectedStatus = ref<'all' | Exclude<FlightStatus, 'cancelled'>>('all');
+const selectedLink = ref<'all' | 'trip' | 'standalone'>('all');
 
 /*
 |--------------------------------------------------------------------------
@@ -45,34 +32,33 @@ const selectedPeriod = ref<number | 'all'>('all');
 |--------------------------------------------------------------------------
 */
 
-const years = computed(() => {
-    return Array.from(
-        new Set(
-            props.flights
-                .filter((flight) => flight.departure)
-                .map((flight) =>
-                    new Date(flight.departure!).getFullYear(),
-                ),
-        ),
-    ).sort((a, b) => b - a);
-});
+// Año de la fecha local de salida (siempre conocida, con o sin hora).
+const years = computed(() =>
+    Array.from(new Set(props.flights.map((flight) => calendarYear(flight.departure_date)!)))
+        .sort((a, b) => b - a),
+);
 
-const filteredFlights = computed(() => {
-    if (selectedPeriod.value === 'all') {
-        return props.flights;
-    }
+// Año y viaje: base de las cifras (que solo cuentan los realizados).
+const periodFlights = computed(() =>
+    props.flights.filter((flight) =>
+        (selectedPeriod.value === 'all' || calendarYear(flight.departure_date) === selectedPeriod.value)
+        && (selectedLink.value === 'all' || (selectedLink.value === 'trip') === Boolean(flight.trip))),
+);
 
-    return props.flights.filter((flight) => {
-        if (!flight.departure) {
-            return false;
-        }
+// Lista y mapa: además, el estado elegido.
+const filteredFlights = computed(() =>
+    periodFlights.value.filter((flight) => selectedStatus.value === 'all' || flight.status === selectedStatus.value),
+);
 
-        return (
-            new Date(flight.departure).getFullYear() ===
-            selectedPeriod.value
-        );
-    });
-});
+// Las cifras solo cuentan vuelos realizados.
+const flownFlights = computed(() =>
+    periodFlights.value.filter((flight) => flight.status === 'flown'),
+);
+
+const statusCounts = computed(() => ({
+    upcoming: periodFlights.value.filter((flight) => flight.status === 'upcoming').length,
+    pending: periodFlights.value.filter((flight) => flight.status === 'pending').length,
+}));
 
 /*
 |--------------------------------------------------------------------------
@@ -80,29 +66,7 @@ const filteredFlights = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const mapFlights = computed(() =>
-    filteredFlights.value.map((flight) => ({
-        id: flight.id,
-        flight_number: flight.flight_number,
-        airline: flight.airline,
-        departure: flight.departure,
-        arrival: flight.arrival,
-        origin: {
-            code: flight.origin.code,
-            airport: flight.origin.airport,
-            city: flight.origin.city,
-            latitude: flight.origin.latitude,
-            longitude: flight.origin.longitude,
-        },
-        destination: {
-            code: flight.destination.code,
-            airport: flight.destination.airport,
-            city: flight.destination.city,
-            latitude: flight.destination.latitude,
-            longitude: flight.destination.longitude,
-        },
-    })),
-);
+const mapFlights = computed(() => filteredFlights.value);
 
 
 /*
@@ -111,16 +75,8 @@ const mapFlights = computed(() =>
 |--------------------------------------------------------------------------
 */
 
-const lastFlight = computed(() => {
-    return [...filteredFlights.value]
-        .filter((flight) => flight.departure)
-        .sort((a, b) => {
-            return (
-                new Date(b.departure!).getTime() -
-                new Date(a.departure!).getTime()
-            );
-        })[0] ?? null;
-});
+// El servidor ya los envía del más reciente al más antiguo (fecha local, hora, id).
+const lastFlight = computed(() => flownFlights.value[0] ?? null);
 
 
 /*
@@ -129,25 +85,22 @@ const lastFlight = computed(() => {
 |--------------------------------------------------------------------------
 */
 
-const totalDistance = computed(() => {
-    return filteredFlights.value.reduce(
-        (total, flight) => total + (flight.distance_km || 0),
-        0,
-    );
-});
+// Distancia y duración solo de los vuelos que tienen el dato (nunca se estiman).
+const flightsWithDistance = computed(() => flownFlights.value.filter((flight) => flight.distance_km !== null));
+const flightsWithDuration = computed(() => flownFlights.value.filter((flight) => flight.duration_minutes !== null));
 
-const totalDuration = computed(() => {
-    return filteredFlights.value.reduce(
-        (total, flight) =>
-            total + (flight.duration_minutes || 0),
-        0,
-    );
-});
+const totalDistance = computed(() =>
+    flightsWithDistance.value.reduce((total, flight) => total + (flight.distance_km ?? 0), 0),
+);
+
+const totalDuration = computed(() =>
+    flightsWithDuration.value.reduce((total, flight) => total + (flight.duration_minutes ?? 0), 0),
+);
 
 const uniqueAirports = computed(() => {
     const airports = new Set<string>();
 
-    filteredFlights.value.forEach((flight) => {
+    flownFlights.value.forEach((flight) => {
         const origin =
             flight.origin.code ??
             `${flight.origin.city}-${flight.origin.airport}`;
@@ -166,35 +119,27 @@ const uniqueAirports = computed(() => {
 const uniqueCities = computed(() => {
     const cities = new Set<string>();
 
-    filteredFlights.value.forEach((flight) => {
-        cities.add(flight.origin.city);
-        cities.add(flight.destination.city);
+    flownFlights.value.forEach((flight) => {
+        [flight.origin.city, flight.destination.city].forEach((city) => city && cities.add(city));
     });
 
     return cities.size;
 });
 
-const averageDistance = computed(() => {
-    if (!filteredFlights.value.length) {
-        return 0;
-    }
+const averageDistance = computed(() =>
+    flightsWithDistance.value.length ? Math.round(totalDistance.value / flightsWithDistance.value.length) : 0,
+);
 
-    return Math.round(
-        totalDistance.value /
-            filteredFlights.value.length,
-    );
-});
+const averageDuration = computed(() =>
+    flightsWithDuration.value.length ? Math.round(totalDuration.value / flightsWithDuration.value.length) : 0,
+);
 
-const averageDuration = computed(() => {
-    if (!filteredFlights.value.length) {
-        return 0;
-    }
-
-    return Math.round(
-        totalDuration.value /
-            filteredFlights.value.length,
-    );
-});
+// "en 5 de 7 vuelos" cuando falta el dato en alguno.
+const durationCoverage = computed(() =>
+    flightsWithDuration.value.length < flownFlights.value.length
+        ? `${flightsWithDuration.value.length} of ${flownFlights.value.length} flights with times`
+        : '',
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -205,7 +150,7 @@ const averageDuration = computed(() => {
 const mostVisitedAirports = computed<VisitedAirport[]>(() => {
     const airports = new Map<string, VisitedAirport>();
 
-    filteredFlights.value.forEach((flight) => {
+    flownFlights.value.forEach((flight) => {
         const points = [
             flight.origin,
             flight.destination,
@@ -214,7 +159,7 @@ const mostVisitedAirports = computed<VisitedAirport[]>(() => {
         points.forEach((airport) => {
             const key =
                 airport.code ??
-                `${airport.city}-${airport.airport}`;
+                `${airport.city ?? ''}-${airport.airport}`;
 
             const existing = airports.get(key);
 
@@ -243,37 +188,55 @@ const mostVisitedAirports = computed<VisitedAirport[]>(() => {
 |--------------------------------------------------------------------------
 */
 
-const formatDate = (date: string | null) => {
-    if (!date) {
+/*
+|--------------------------------------------------------------------------
+| Management
+|--------------------------------------------------------------------------
+*/
+
+const showForm = ref(false);
+const editingFlight = ref<Flight | null>(null);
+const formKey = ref(0);
+
+const openForm = (flight: Flight | null = null) => {
+    editingFlight.value = flight;
+    formKey.value += 1;
+    showForm.value = true;
+};
+
+const closeForm = () => {
+    showForm.value = false;
+    editingFlight.value = null;
+};
+
+const routeLabel = (flight: Flight) =>
+    `${flight.origin.code ?? flight.origin.city ?? flight.origin.airport} → ${flight.destination.code ?? flight.destination.city ?? flight.destination.airport}`;
+
+const deleteFlight = (flight: Flight) => {
+    if (!window.confirm(`Delete the flight ${routeLabel(flight)} on ${calendarDate(flight.departure_date)}? This cannot be undone.`)) {
+        return;
+    }
+
+    router.delete(`/flights/${flight.id}`, { preserveScroll: true });
+};
+
+// Confirmar que un vuelo se realizó (o deshacerlo). No toca el viaje.
+const setConfirmed = (flight: Flight, confirmed: boolean) => {
+    router.patch(`/flights/${flight.id}/confirmation`, { confirmed }, { preserveScroll: true });
+};
+
+const statusBadge = (flight: Flight) => ({
+    upcoming: { label: 'Upcoming', class: 'border-lime-300/40 text-lime-300' },
+    pending: { label: 'Unconfirmed', class: 'border-white/20 text-white/50' },
+    flown: { label: 'Flown', class: 'border-cyan-300/30 text-cyan-200' },
+    cancelled: { label: 'Cancelled', class: 'border-white/15 text-white/40' },
+})[flight.status];
+
+const formatDistance = (distance: number | null) => {
+    if (distance === null) {
         return '—';
     }
 
-    return new Intl.DateTimeFormat(
-        'en-GB',
-        {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        },
-    ).format(new Date(date));
-};
-
-const formatTime = (date: string | null) => {
-    if (!date) {
-        return '—';
-    }
-
-    return new Intl.DateTimeFormat(
-        'en-GB',
-        {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-        },
-    ).format(new Date(date));
-};
-
-const formatDistance = (distance: number) => {
     if (distance < 1000) {
         return `${distance.toLocaleString('en-GB')} km`;
     }
@@ -317,7 +280,7 @@ const periodLabel = computed(() => {
 });
 
 const flightCountLabel = computed(() => {
-    return filteredFlights.value.length === 1
+    return flownFlights.value.length === 1
         ? 'flight'
         : 'flights';
 });
@@ -424,6 +387,77 @@ const formattedAverageDuration = computed(() => {
                 </section>
 
                 <!-- =====================================================
+                     MANAGEMENT: añadir vuelos y filtros por estado y viaje
+                ====================================================== -->
+
+                <section class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <button
+                        type="button"
+                        class="vyamap-button w-full sm:w-auto"
+                        @click="openForm()"
+                    >
+                        + Add flight
+                    </button>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            v-for="option in ([
+                                { value: 'all', label: 'All' },
+                                { value: 'flown', label: 'Flown' },
+                                { value: 'upcoming', label: `Upcoming${statusCounts.upcoming ? ` · ${statusCounts.upcoming}` : ''}` },
+                                { value: 'pending', label: `Unconfirmed${statusCounts.pending ? ` · ${statusCounts.pending}` : ''}` },
+                            ] as const)"
+                            :key="option.value"
+                            type="button"
+                            class="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+                            :class="selectedStatus === option.value
+                                ? 'border-white/20 bg-white/[0.08] text-white'
+                                : 'border-white/[0.06] text-white/45 hover:text-white/80'"
+                            :aria-pressed="selectedStatus === option.value"
+                            @click="selectedStatus = option.value"
+                        >
+                            {{ option.label }}
+                        </button>
+
+                        <span class="mx-1 hidden h-7 w-px bg-white/[0.08] sm:block" />
+
+                        <button
+                            v-for="option in ([
+                                { value: 'all', label: 'All flights' },
+                                { value: 'trip', label: 'In trips' },
+                                { value: 'standalone', label: 'Standalone' },
+                            ] as const)"
+                            :key="option.value"
+                            type="button"
+                            class="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+                            :class="selectedLink === option.value
+                                ? 'border-white/20 bg-white/[0.08] text-white'
+                                : 'border-white/[0.06] text-white/45 hover:text-white/80'"
+                            :aria-pressed="selectedLink === option.value"
+                            @click="selectedLink = option.value"
+                        >
+                            {{ option.label }}
+                        </button>
+                    </div>
+                </section>
+
+                <section
+                    v-if="showForm"
+                    class="vyamap-card-lg mb-7 p-6 sm:p-8"
+                >
+                    <h2 class="mb-6 text-xl font-semibold tracking-[-0.04em]">
+                        {{ editingFlight ? 'Edit flight' : 'Add flight' }}
+                    </h2>
+
+                    <FlightForm
+                        :key="formKey"
+                        :flight="editingFlight"
+                        :trips="trips"
+                        @close="closeForm"
+                    />
+                </section>
+
+                <!-- =====================================================
                      STATISTICS
                 ====================================================== -->
 
@@ -442,7 +476,7 @@ const formattedAverageDuration = computed(() => {
                             <p
                                 class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
                             >
-                                {{ filteredFlights.length }}
+                                {{ flownFlights.length }}
                             </p>
 
                             <p
@@ -494,7 +528,7 @@ const formattedAverageDuration = computed(() => {
                             <p
                                 class="mt-1 text-xs vyamap-text-subtle"
                             >
-                                total duration
+                                {{ durationCoverage || 'total duration' }}
                             </p>
 
                         </div>
@@ -667,7 +701,7 @@ const formattedAverageDuration = computed(() => {
                                 <div
                                     class="text-right text-xs vyamap-muted"
                                 >
-                                    {{ filteredFlights.length }}
+                                    {{ flownFlights.length }}
                                     {{ flightCountLabel }}
                                 </div>
 
@@ -806,7 +840,7 @@ const formattedAverageDuration = computed(() => {
 
                                     <span>
                                         {{
-                                            lastFlight.flight_number
+                                            lastFlight.flight_number || 'Flight'
                                         }}
                                     </span>
 
@@ -827,9 +861,7 @@ const formattedAverageDuration = computed(() => {
 
                                     <span>
                                         {{
-                                            formatDate(
-                                                lastFlight.departure,
-                                            )
+                                            flightDepartureLabel(lastFlight)
                                         }}
                                     </span>
 
@@ -977,7 +1009,7 @@ const formattedAverageDuration = computed(() => {
                             <div
                                 class="text-right text-xs vyamap-muted"
                             >
-                                {{ filteredFlights.length }}
+                                {{ flownFlights.length }}
                                 {{ flightCountLabel }}
                             </div>
 
@@ -1027,9 +1059,7 @@ const formattedAverageDuration = computed(() => {
                                     <div class="min-w-0">
 
                                         <div class="truncate text-sm font-semibold" >
-                                            {{
-                                                flight.flight_number
-                                            }}
+                                            {{ flight.flight_number || 'Flight' }}
                                         </div>
 
                                         <div
@@ -1090,9 +1120,7 @@ const formattedAverageDuration = computed(() => {
                                         class="text-xs vyamap-muted"
                                     >
                                         {{
-                                            formatDate(
-                                                flight.departure,
-                                            )
+                                            flightDepartureLabel(flight)
                                         }}
                                     </div>
 
@@ -1125,9 +1153,7 @@ const formattedAverageDuration = computed(() => {
                                                 <span
                                                     class="text-sm font-semibold"
                                                 >
-                                                    {{
-                                                        flight.flight_number
-                                                    }}
+                                                    {{ flight.flight_number || 'Flight' }}
                                                 </span>
 
                                                 <span
@@ -1186,9 +1212,7 @@ const formattedAverageDuration = computed(() => {
                                                 class="text-xs vyamap-muted"
                                             >
                                                 {{
-                                                    formatDate(
-                                                        flight.departure,
-                                                    )
+                                                    flightDepartureLabel(flight)
                                                 }}
                                             </div>
 
@@ -1216,6 +1240,64 @@ const formattedAverageDuration = computed(() => {
 
                                     </div>
 
+                                </div>
+
+                                <!-- Estado, viaje y acciones -->
+                                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                    <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                                        <span
+                                            class="rounded-full border px-2 py-0.5 font-medium"
+                                            :class="statusBadge(flight).class"
+                                        >
+                                            {{ statusBadge(flight).label }}
+                                        </span>
+
+                                        <Link
+                                            v-if="flight.trip"
+                                            :href="`/trips/${flight.trip.id}`"
+                                            class="text-white/55 underline-offset-4 hover:text-white hover:underline"
+                                        >
+                                            {{ flight.trip.name }}
+                                        </Link>
+
+                                        <span v-else class="text-white/40">Standalone</span>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-2">
+                                        <button
+                                            v-if="flight.status === 'pending'"
+                                            type="button"
+                                            class="rounded-full bg-cyan-300 px-3 py-1 text-[11px] font-semibold text-[#0d1119] transition hover:bg-cyan-200"
+                                            @click="setConfirmed(flight, true)"
+                                        >
+                                            Confirm flown
+                                        </button>
+
+                                        <button
+                                            v-if="flight.confirmed"
+                                            type="button"
+                                            class="rounded-full border border-white/[0.08] px-3 py-1 text-[11px] text-white/50 transition hover:text-white"
+                                            @click="setConfirmed(flight, false)"
+                                        >
+                                            Undo confirmation
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="rounded-full border border-white/[0.08] px-3 py-1 text-[11px] text-white/50 transition hover:text-white"
+                                            @click="openForm(flight)"
+                                        >
+                                            Edit
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="rounded-full border border-red-400/[0.15] px-3 py-1 text-[11px] text-red-200/60 transition hover:text-red-100"
+                                            @click="deleteFlight(flight)"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
 
                             </div>

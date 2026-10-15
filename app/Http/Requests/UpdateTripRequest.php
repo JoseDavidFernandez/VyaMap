@@ -32,6 +32,22 @@ class UpdateTripRequest extends FormRequest
     public function after(): array
     {
         return [
+            // Un viaje completado ya ocurrió: no puede empezar en el futuro.
+            function (Validator $validator): void {
+                $trip = $this->route('trip');
+
+                if (
+                    $trip instanceof Trip
+                    && $trip->status === Trip::COMPLETED
+                    && ! $validator->errors()->has('start_date')
+                    && $this->date('start_date')?->toDateString() > Trip::today()
+                ) {
+                    $validator->errors()->add(
+                        'start_date',
+                        'A completed trip cannot start in the future. Mark it as planned first.'
+                    );
+                }
+            },
             function (Validator $validator): void {
                 if ($validator->errors()->hasAny(['start_date', 'end_date'])) {
                     return;
@@ -49,19 +65,12 @@ class UpdateTripRequest extends FormRequest
                         ->orWhereDate('visited_until', '>', $end))
                     ->count();
 
+                // Misma regla que al crear un vuelo (D3): la fecha local de salida
+                // debe quedar dentro del viaje; la llegada no se limita.
                 $flightsOutside = $trip->flights()
-                    ->with(['originAirport:id,timezone', 'destinationAirport:id,timezone'])
-                    ->get()
-                    ->filter(function ($flight) use ($start, $end) {
-                        $departure = $flight->departure_at
-                            ->setTimezone($flight->originAirport->timezone ?? 'UTC')
-                            ->startOfDay();
-                        $arrival = $flight->arrival_at
-                            ->setTimezone($flight->destinationAirport->timezone ?? 'UTC')
-                            ->startOfDay();
-
-                        return $departure->lt($start) || $arrival->gt($end);
-                    })
+                    ->where(fn ($query) => $query
+                        ->where('departure_date', '<', $start->toDateString())
+                        ->orWhere('departure_date', '>', $end->toDateString()))
                     ->count();
 
                 if ($visitsOutside > 0) {

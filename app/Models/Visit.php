@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,25 @@ class Visit extends Model
         'visited_from' => 'date',
         'visited_until' => 'date',
     ];
+
+    /**
+     * Visitas que cuentan como lugar visitado: las de viajes completados del
+     * usuario. Una visita planificada (o de un viaje cancelado) no cuenta.
+     */
+    public function scopeVisitedBy(Builder $query, int $userId): Builder
+    {
+        return $query->whereHas('trip', fn ($trip) => $trip
+            ->where('user_id', $userId)
+            ->where('status', Trip::COMPLETED));
+    }
+
+    // Visitas de viajes planificados (próximos, en curso o pendientes de confirmar).
+    public function scopePlannedBy(Builder $query, int $userId): Builder
+    {
+        return $query->whereHas('trip', fn ($trip) => $trip
+            ->where('user_id', $userId)
+            ->where('status', Trip::PLANNED));
+    }
 
     public function user(): BelongsTo
     {

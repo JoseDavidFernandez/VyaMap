@@ -3,18 +3,25 @@
 import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import { countCountries, isTerritoryStatus, type CountryStatus } from '../../utils/countryStatus';
 
 interface Country {
     id: number;
     name: string;
     iso_code: string;
+    country_status: CountryStatus;
     cities_count: number;
     trips_count: number;
 }
 
 const props = defineProps<{
     countries: Country[];
+    // Países solo planificados: se listan aparte y no cuentan.
+    plannedCountries: { id: number; name: string; iso_code: string; country_status: CountryStatus }[];
 }>();
+
+// Estados soberanos y territorios por separado; la lista muestra ambos.
+const countryTotals = computed(() => countCountries(props.countries));
 
 const search = ref('');
 
@@ -99,12 +106,20 @@ const filteredCountries = computed(() => {
                                 <div
                                     class="shrink-0 text-[10px] uppercase tracking-[0.18em] text-white/25"
                                 >
-                                    {{ props.countries.length }}
+                                    {{ countryTotals.countries }}
                                     {{
-                                        props.countries.length === 1
+                                        countryTotals.countries === 1
                                             ? 'country'
                                             : 'countries'
                                     }}
+                                    <template v-if="countryTotals.territories">
+                                        · {{ countryTotals.territories }}
+                                        {{
+                                            countryTotals.territories === 1
+                                                ? 'territory'
+                                                : 'territories'
+                                        }}
+                                    </template>
                                 </div>
 
                             </div>
@@ -192,6 +207,12 @@ const filteredCountries = computed(() => {
                                         class="truncate text-lg font-medium tracking-[-0.02em] text-white"
                                     >
                                         {{ country.name }}
+                                        <span
+                                            v-if="isTerritoryStatus(country.country_status)"
+                                            class="ml-1.5 align-middle text-[11px] font-normal tracking-normal text-white/40"
+                                        >
+                                            Territory
+                                        </span>
                                     </div>
 
                                     <div
@@ -280,6 +301,32 @@ const filteredCountries = computed(() => {
 
                     </div>
 
+                </section>
+
+                <!-- PLANNED: destinos de viajes planificados, todavía no visitados -->
+                <section
+                    v-if="props.plannedCountries.length"
+                    class="mt-10"
+                >
+                    <div class="mb-4 flex items-center gap-3">
+                        <div class="text-[11px] uppercase tracking-[0.24em] text-lime-300/80">
+                            Planned
+                        </div>
+                        <div class="text-xs text-white/40">
+                            Not counted until the trip is completed
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <Link
+                            v-for="country in props.plannedCountries"
+                            :key="country.id"
+                            :href="`/countries/${country.id}`"
+                            class="rounded-full border border-lime-300/30 bg-lime-300/[0.05] px-4 py-2 text-sm text-lime-100 transition hover:bg-lime-300/10"
+                        >
+                            {{ country.name }}
+                        </Link>
+                    </div>
                 </section>
 
             </main>

@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTripRequest;
 use App\Http\Requests\UpdateTripRequest;
+use App\Http\Requests\UpdateTripStatusRequest;
+use App\Models\Flight;
 use App\Models\GoogleMapList;
 use App\Models\Trip;
 use App\Services\PhotoFileManager;
+use App\Support\FlightPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\SovereignCountries;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -56,16 +60,51 @@ class TripController extends Controller
         return redirect()->route('trips.show', $trip);
     }
 
+    /**
+     * Antes de borrar un viaje, sus vuelos pasan a ser independientes. Los que
+     * ya contaban como realizados (viaje no cancelado) quedan confirmados para
+     * no volver a "pendientes"; los de un viaje cancelado no se confirman.
+     */
+    private function keepFlightsAsStandalone(Trip $trip): void
+    {
+        if ($trip->status !== Trip::CANCELLED) {
+            $now = now();
+            $today = Trip::today();
+
+            $trip->flights()
+                ->with('originAirport')
+                ->whereNull('confirmed_at')
+                ->get()
+                ->each(fn (Flight $flight) => $flight->setRelation('trip', $trip))
+                ->filter(fn (Flight $flight) => $flight->status($now, $today) === Flight::FLOWN)
+                ->each(fn (Flight $flight) => $flight->update(['confirmed_at' => $now]));
+        }
+
+        $trip->flights()->update(['trip_id' => null]);
+    }
+
+    public function updateStatus(UpdateTripStatusRequest $request, Trip $trip)
+    {
+        $trip->update(['status' => $request->validated('status')]);
+
+        return back();
+    }
+
     public function destroy(Request $request, Trip $trip, PhotoFileManager $files)
     {
         $this->authorize('delete', $trip);
 
         $photoIds = $trip->photos()->pluck('id');
 
-        // Las fotos, visitas y vuelos se borran en cascada en la base de datos.
-        // Los archivos se eliminan después: si el almacenamiento falla, quedan
-        // huérfanos, pero ningún registro apunta a archivos inexistentes.
-        DB::transaction(fn () => $trip->delete());
+        // Las fotos y visitas se borran en cascada en la base de datos; los
+        // vuelos se conservan como independientes (D2). Los archivos se
+        // eliminan después: si el almacenamiento falla, quedan huérfanos, pero
+        // ningún registro apunta a archivos inexistentes.
+        DB::transaction(function () use ($trip) {
+            $this->keepFlightsAsStandalone($trip);
+
+            $trip->delete();
+        });
 
         foreach ($photoIds as $photoId) {
             $files->deleteFiles($photoId);
@@ -83,13 +122,16 @@ class TripController extends Controller
         $trip->load([
             'visits' => fn ($query) => $query->orderBy('visited_from')->orderBy('visited_until')->orderBy('id'),
             'visits.city.country',
-            'flights' => fn ($query) => $query->orderBy('departure_at')->orderBy('id'),
+            'flights' => fn ($query) => $query->chronological(),
             'flights.originAirport.city',
             'flights.destinationAirport.city',
             'journal',
             'photos' => fn ($query) => $query->where('processing_status', 'ready'),
             'googleMapLists',
         ]);
+
+        $today = Trip::today();
+        $now = now();
 
         return Inertia::render('Trips/Show', [
             'trip' => [
@@ -98,6 +140,11 @@ class TripController extends Controller
                 'description' => $trip->description,
                 'start_date' => $trip->start_date?->format('Y-m-d'),
                 'end_date' => $trip->end_date?->format('Y-m-d'),
+                'status' => $trip->status,
+                // upcoming, ongoing, pending, completed o cancelled.
+                'phase' => $trip->phase($today),
+                // Solo un viaje planificado que ya empezó (nunca uno cancelado).
+                'can_complete' => $trip->status === Trip::PLANNED && $trip->hasStarted($today),
             ],
 
             'visits' => $trip->visits->map(fn ($visit) => [
@@ -107,6 +154,7 @@ class TripController extends Controller
                     'name' => $visit->city->name,
                     'country' => $visit->city->country->name,
                     'iso_code' => $visit->city->country->iso_code,
+                    'country_status' => SovereignCountries::classify($visit->city->country->iso_code),
                     'latitude' => $visit->city->latitude,
                     'longitude' => $visit->city->longitude,
                 ],
@@ -115,29 +163,12 @@ class TripController extends Controller
                 'notes' => $visit->notes,
             ]),
 
-            'flights' => $trip->flights->map(fn ($flight) => [
-                'id' => $flight->id,
-                'flight_number' => $flight->flight_number,
-                'airline' => $flight->airline,
-                'departure' => $flight->departure_at?->toISOString(),
-                'arrival' => $flight->arrival_at?->toISOString(),
-                'origin' => [
-                    'id' => $flight->originAirport->id,
-                    'name' => $flight->originAirport->name,
-                    'city' => $flight->originAirport->city->name,
-                    'latitude' => (float) $flight->originAirport->latitude,
-                    'longitude' => (float) $flight->originAirport->longitude,
-                    'timezone' => $flight->originAirport->timezone,
-                ],
-                'destination' => [
-                    'id' => $flight->destinationAirport->id,
-                    'name' => $flight->destinationAirport->name,
-                    'city' => $flight->destinationAirport->city->name,
-                    'latitude' => (float) $flight->destinationAirport->latitude,
-                    'longitude' => (float) $flight->destinationAirport->longitude,
-                    'timezone' => $flight->destinationAirport->timezone,
-                ],
-            ]),
+            // Misma forma y mismo estado que en Flight History (FlightPresenter).
+            'flights' => Flight::withStatuses(
+                $trip->flights->each(fn (Flight $flight) => $flight->setRelation('trip', $trip)),
+                $now,
+                $today,
+            )->map(fn (Flight $flight) => FlightPresenter::toArray($flight))->values(),
 
             'photos' => $trip->photos->map(fn ($photo) => [
                 'id' => $photo->id,
@@ -213,10 +244,14 @@ class TripController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
+        $today = Trip::today();
+
         return Inertia::render('Trips/Index', [
-            'trips' => $trips->map(function ($trip) {
+            'trips' => $trips->map(function ($trip) use ($today) {
                 return [
                     'id' => $trip->id,
+                    'status' => $trip->status,
+                    'phase' => $trip->phase($today),
                     'name' => $trip->name,
                     'description' => $trip->description,
                     'start_date' => $trip->start_date?->format('Y-m-d'),
@@ -224,6 +259,12 @@ class TripController extends Controller
 
                     'cover' => $trip->photos->first()?->thumbnailUrl(),
 
+                    // Ciudades distintas por identidad (city_id), no por nombre.
+                    'city_ids' => $trip->visits
+                        ->pluck('city_id')
+                        ->unique()
+                        ->values()
+                        ->all(),
                     'cities' => $trip->visits
                         ->map(fn ($visit) => $visit->city?->name)
                         ->filter()
@@ -239,6 +280,7 @@ class TripController extends Controller
                         ->map(fn ($country) => [
                             'name' => $country->name,
                             'iso_code' => $country->iso_code,
+                            'country_status' => SovereignCountries::classify($country->iso_code),
                         ])
                         ->values()
                         ->all(),

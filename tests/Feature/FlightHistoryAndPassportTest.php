@@ -85,10 +85,10 @@ class FlightHistoryAndPassportTest extends TestCase
         $this->actingAs($this->user)
             ->get('/flight-history')
             ->assertInertia(fn ($page) => $page
-                ->where('flights', [$this->expectedFlight($flight->id, 'IB1', 'Iberia', '2026-03-10T08:00:00.000000Z', '2026-03-10T09:20:00.000000Z', 483, 80, [
-                    'code' => 'MAD', 'airport' => 'Adolfo Suárez Madrid-Barajas', 'city' => 'Madrid', 'latitude' => 40.4719, 'longitude' => -3.5626,
+                ->where('flights', [$this->expectedFlight($flight, 'IB1', 'Iberia', '2026-03-10T08:00:00.000000Z', '2026-03-10T09:20:00.000000Z', 483, 80, [
+                    'code' => 'MAD', 'airport' => 'Adolfo Suárez Madrid-Barajas', 'city' => 'Madrid', 'latitude' => 40.4719, 'longitude' => -3.5626, 'timezone' => 'Europe/Madrid',
                 ], [
-                    'code' => 'BCN', 'airport' => 'Barcelona-El Prat', 'city' => 'Barcelona', 'latitude' => 41.2971, 'longitude' => 2.0785,
+                    'code' => 'BCN', 'airport' => 'Barcelona-El Prat', 'city' => 'Barcelona', 'latitude' => 41.2971, 'longitude' => 2.0785, 'timezone' => 'Europe/Madrid',
                 ])])
             );
     }
@@ -164,10 +164,10 @@ class FlightHistoryAndPassportTest extends TestCase
                     ['id' => $spring->id, 'name' => 'Primavera', 'start_date' => '2026-03-01', 'end_date' => '2026-03-31'],
                 ])
                 ->has('flights', 1)
-                ->where('flights.0', $this->expectedFlight($flight->id, 'IB3', null, '2026-03-10T08:00:00.000000Z', '2026-03-10T09:20:00.000000Z', 1246, 80, [
-                    'code' => 'MAD', 'airport' => 'Adolfo Suárez Madrid-Barajas', 'city' => 'Madrid', 'latitude' => 40.4719, 'longitude' => -3.5626,
+                ->where('flights.0', $this->expectedFlight($flight, 'IB3', null, '2026-03-10T08:00:00.000000Z', '2026-03-10T09:20:00.000000Z', 1246, 80, [
+                    'code' => 'MAD', 'airport' => 'Adolfo Suárez Madrid-Barajas', 'city' => 'Madrid', 'latitude' => 40.4719, 'longitude' => -3.5626, 'timezone' => 'Europe/Madrid',
                 ], [
-                    'code' => 'LHR', 'airport' => 'Heathrow', 'city' => 'London', 'latitude' => 51.47, 'longitude' => -0.4543,
+                    'code' => 'LHR', 'airport' => 'Heathrow', 'city' => 'London', 'latitude' => 51.47, 'longitude' => -0.4543, 'timezone' => 'Europe/London',
                 ]))
             );
     }
@@ -206,18 +206,49 @@ class FlightHistoryAndPassportTest extends TestCase
             );
     }
 
-    private function expectedFlight(int $id, string $number, ?string $airline, string $departure, string $arrival, int $distance, int $duration, array $origin, array $destination): array
+    public function test_a_flight_belongs_to_the_year_of_its_local_departure(): void
     {
+        // 23:30 UTC del 31-12-2025 = 00:30 del 1-1-2026 en Madrid.
+        $trip = $this->trip($this->user, '2025-12-31', '2026-01-02');
+        $flight = $this->flight($trip, $this->mad, $this->lhr, '2025-12-31 23:30:00', '2026-01-01 01:00:00', 'IB9');
+
+        $this->actingAs($this->user)
+            ->get('/passport')
+            ->assertInertia(fn ($page) => $page
+                // 2025 por el inicio del viaje; 2026 por la salida local del vuelo.
+                ->where('years', [2026, 2025])
+                ->where('flights.0.origin.timezone', 'Europe/Madrid')
+                ->where('flights.0.departure', '2025-12-31T23:30:00.000000Z')
+            );
+
+        $this->actingAs($this->user)
+            ->get('/flight-history')
+            ->assertInertia(fn ($page) => $page
+                ->where('flights.0.id', $flight->id)
+                ->where('flights.0.origin.timezone', 'Europe/Madrid')
+                ->where('flights.0.destination.timezone', 'Europe/London')
+            );
+    }
+
+    // F1: además del estado, la fecha local de salida, la confirmación, el viaje y el id de cada aeropuerto.
+    private function expectedFlight(Flight $flight, string $number, ?string $airline, string $departure, string $arrival, int $distance, int $duration, array $origin, array $destination): array
+    {
+        $flight->load('trip');
+
         return [
-            'id' => $id,
+            'id' => $flight->id,
+            'status' => 'flown',
+            'confirmed' => false,
+            'departure_date' => $flight->departure_date->toDateString(),
             'flight_number' => $number,
             'airline' => $airline,
             'departure' => $departure,
             'arrival' => $arrival,
             'distance_km' => $distance,
             'duration_minutes' => $duration,
-            'origin' => $origin,
-            'destination' => $destination,
+            'trip' => ['id' => $flight->trip->id, 'name' => $flight->trip->name],
+            'origin' => ['id' => $flight->origin_airport_id] + $origin,
+            'destination' => ['id' => $flight->destination_airport_id] + $destination,
         ];
     }
 
@@ -230,6 +261,7 @@ class FlightHistoryAndPassportTest extends TestCase
             'country' => $country,
             'iso_code' => $iso,
             'is_sovereign' => true,
+            'country_status' => 'sovereign',
             'visited_from' => $from,
             'visited_until' => $until,
         ];

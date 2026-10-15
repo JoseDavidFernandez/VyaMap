@@ -3,19 +3,25 @@
 import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import { calendarYear, tripDays as calendarTripDays } from '../../utils/tripDates';
+import { countCountries, type CountryStatus } from '../../utils/countryStatus';
 
 interface Country {
     name: string;
     iso_code: string;
+    country_status: CountryStatus;
 }
 
 interface Trip {
     id: number;
+    status: 'planned' | 'completed' | 'cancelled';
+    phase: 'upcoming' | 'ongoing' | 'pending' | 'completed' | 'cancelled';
     name: string;
     description: string | null;
     start_date: string | null;
     end_date: string | null;
     cover: string | null;
+    city_ids: number[];
     cities: string[];
     countries: Country[];
 }
@@ -30,9 +36,7 @@ const years = computed(() =>
     [...new Set(
         props.trips
             .map((trip) =>
-                trip.start_date
-                    ? new Date(trip.start_date).getFullYear()
-                    : null,
+                calendarYear(trip.start_date),
             )
             .filter((year): year is number => year !== null),
     )].sort((a, b) => b - a),
@@ -49,39 +53,37 @@ const filteredTrips = computed(() => {
         }
 
         return (
-            new Date(trip.start_date).getFullYear() ===
+            calendarYear(trip.start_date) ===
             selectedYear.value
         );
     });
 });
 
+// Las cifras resumen solo cuentan viajes completados (historial real).
+const completedTrips = computed(() =>
+    filteredTrips.value.filter((trip) => trip.status === 'completed'),
+);
+
+const plannedCount = computed(() =>
+    filteredTrips.value.filter((trip) => trip.status === 'planned').length,
+);
+
+// Suma de los días de viaje (inicio y fin incluidos) de los viajes completados.
 const totalDays = computed(() =>
-    filteredTrips.value.reduce((total, trip) => {
-        if (!trip.start_date || !trip.end_date) {
-            return total;
-        }
-
-        const start = new Date(`${trip.start_date}T00:00:00`);
-        const end = new Date(`${trip.end_date}T00:00:00`);
-        const diff = end.getTime() - start.getTime();
-
-        return total + Math.floor(diff / 86400000) + 1;
-    }, 0),
-);
-
-const totalCountries = computed(() =>
-    new Set(
-        filteredTrips.value.flatMap((trip) =>
-            trip.countries.map((country) => country.iso_code),
-        ),
-    ).size,
-);
-
-const totalDestinations = computed(() =>
-    filteredTrips.value.reduce(
-        (total, trip) => total + trip.countries.length,
+    completedTrips.value.reduce(
+        (total, trip) => total + (calendarTripDays(trip.start_date, trip.end_date) ?? 0),
         0,
     ),
+);
+
+// Estados soberanos distintos; los territorios se cuentan aparte.
+const countryTotals = computed(() =>
+    countCountries(completedTrips.value.flatMap((trip) => trip.countries)),
+);
+
+// Ciudades distintas por identidad (city_id), no por nombre.
+const totalCities = computed(() =>
+    new Set(completedTrips.value.flatMap((trip) => trip.city_ids)).size,
 );
 
 const formatDate = (date: string | null) => {
@@ -109,25 +111,9 @@ const formatDateRange = (trip: Trip) => {
     return `${formatDate(trip.start_date)} — ${formatDate(trip.end_date)}`;
 };
 
-const tripYear = (trip: Trip) => {
-    if (!trip.start_date) {
-        return '';
-    }
+const tripYear = (trip: Trip) => calendarYear(trip.start_date) ?? '';
 
-    return new Date(`${trip.start_date}T00:00:00`).getFullYear();
-};
-
-const tripDays = (trip: Trip) => {
-    if (!trip.start_date || !trip.end_date) {
-        return null;
-    }
-
-    const start = new Date(`${trip.start_date}T00:00:00`);
-    const end = new Date(`${trip.end_date}T00:00:00`);
-    const diff = end.getTime() - start.getTime();
-
-    return Math.floor(diff / 86400000) + 1;
-};
+const tripDays = (trip: Trip) => calendarTripDays(trip.start_date, trip.end_date);
 
 const flagEmoji = (isoCode: string) => {
     return isoCode
@@ -215,13 +201,20 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ filteredTrips.length }}
+                                            {{ completedTrips.length }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            {{ filteredTrips.length === 1 ? 'Trip' : 'Trips' }}
+                                            {{ completedTrips.length === 1 ? 'Trip' : 'Trips' }}
+                                        </div>
+
+                                        <div
+                                            v-if="plannedCount"
+                                            class="mt-1 text-[11px] text-lime-300/80"
+                                        >
+                                            + {{ plannedCount }} planned
                                         </div>
 
                                     </div>
@@ -247,13 +240,20 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ totalCountries }}
+                                            {{ countryTotals.countries }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            {{ totalCountries === 1 ? 'Country' : 'Countries' }}
+                                            {{ countryTotals.countries === 1 ? 'Country' : 'Countries' }}
+                                        </div>
+
+                                        <div
+                                            v-if="countryTotals.territories"
+                                            class="mt-1 text-[11px] text-white/40"
+                                        >
+                                            + {{ countryTotals.territories }} {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
                                         </div>
 
                                     </div>
@@ -263,13 +263,13 @@ const getTripGradient = (index: number) => {
                                         <div
                                             class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
                                         >
-                                            {{ totalDestinations }}
+                                            {{ totalCities }}
                                         </div>
 
                                         <div
                                             class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
                                         >
-                                            Destinations
+                                            {{ totalCities === 1 ? 'City' : 'Cities' }}
                                         </div>
 
                                     </div>
@@ -402,6 +402,16 @@ const getTripGradient = (index: number) => {
                                         >
                                             {{ trip.name }}
                                         </h2>
+
+                                        <span
+                                            v-if="trip.phase !== 'completed'"
+                                            class="mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
+                                            :class="trip.phase === 'cancelled'
+                                                ? 'border-white/15 text-white/45 line-through'
+                                                : 'border-lime-300/40 text-lime-300'"
+                                        >
+                                            {{ { upcoming: 'Planned', ongoing: 'In progress', pending: 'Pending confirmation', cancelled: 'Cancelled' }[trip.phase] }}
+                                        </span>
 
                                     </div>
 
