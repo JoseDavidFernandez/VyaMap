@@ -8,6 +8,7 @@ use App\Models\Country;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\User;
+use App\Support\FlightPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -123,6 +124,63 @@ class FlightManagementTest extends TestCase
     }
 
     /**
+     * @return array<string, array{string, string, string, int}>
+     */
+    public static function roundTripTimes(): array
+    {
+        return [
+            'medianoche' => ['00:05', 'bcn', '01:20', 0],
+            'madrugada (05:30)' => ['05:30', 'bcn', '06:45', 0],
+            'mañana (07:30)' => ['07:30', 'bcn', '08:45', 0],
+            'mañana hacia otra zona' => ['07:30', 'jfk', '09:45', 0],
+            'mediodía (12:30)' => ['12:30', 'bcn', '13:45', 0],
+            'llega al día siguiente' => ['23:45', 'bcn', '00:50', 1],
+        ];
+    }
+
+    /**
+     * Crear y después editar sin tocar nada (con las horas tal como las muestra
+     * el formulario: hora local de cada aeropuerto y día de llegada) no cambia
+     * ningún instante ni la fecha local.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('roundTripTimes')]
+    public function test_saving_an_unchanged_flight_keeps_its_times(string $departureTime, string $destination, string $arrivalTime, int $arrivalOffset): void
+    {
+        $destination = $this->{$destination};
+        $payload = [
+            'origin_airport_id' => $this->mad->id,
+            'destination_airport_id' => $destination->id,
+            'departure_date' => '2026-03-10',
+            'departure_time' => $departureTime,
+            'arrival_date' => Carbon::parse('2026-03-10')->addDays($arrivalOffset)->toDateString(),
+            'arrival_time' => $arrivalTime,
+            'trip_id' => null,
+        ];
+
+        $this->actingAs($this->user)->post('/flights', $payload)->assertSessionHasNoErrors();
+
+        $flight = Flight::withStatuses(Flight::with(['trip', 'originAirport', 'destinationAirport'])->get())->sole();
+        $before = [$flight->departure_at->toIso8601String(), $flight->arrival_at->toIso8601String()];
+
+        $shown = FlightPresenter::toArray($flight);
+        $localArrival = Carbon::parse($shown['arrival'])->setTimezone($destination->timezone);
+        $edited = array_merge($payload, [
+            'departure_time' => Carbon::parse($shown['departure'])->setTimezone($this->mad->timezone)->format('H:i'),
+            'arrival_time' => $localArrival->format('H:i'),
+            'arrival_date' => $localArrival->toDateString(),
+        ]);
+
+        $this->assertSame($departureTime, $edited['departure_time']);
+        $this->assertSame($payload['arrival_date'], $edited['arrival_date']);
+
+        $this->actingAs($this->user)->put("/flights/{$flight->id}", $edited)->assertSessionHasNoErrors();
+
+        $flight->refresh();
+        $this->assertSame($before, [$flight->departure_at->toIso8601String(), $flight->arrival_at->toIso8601String()]);
+        $this->assertSame('2026-03-10', $flight->departure_date->toDateString());
+    }
+
+    /**
      * @return array<string, array{array<string, mixed>, string}>
      */
     public static function invalidFlights(): array
@@ -137,6 +195,11 @@ class FlightManagementTest extends TestCase
             'llega antes de salir' => [['departure_time' => '10:00', 'arrival_time' => '09:00'], 'arrival_time'],
             'llegada a más de dos días' => [['departure_time' => '10:00', 'arrival_date' => '2026-03-14', 'arrival_time' => '10:00'], 'arrival_date'],
             'número demasiado largo' => [['flight_number' => str_repeat('X', 21)], 'flight_number'],
+            'hora de salida incompleta' => [['departure_time' => '07:3'], 'departure_time'],
+            'hora de salida sin cero inicial' => [['departure_time' => '7:30'], 'departure_time'],
+            'hora de salida 24:00' => [['departure_time' => '24:00'], 'departure_time'],
+            'minutos de salida inválidos' => [['departure_time' => '12:60'], 'departure_time'],
+            'hora de llegada incompleta' => [['departure_time' => '10:00', 'arrival_time' => '11:'], 'arrival_time'],
         ];
     }
 

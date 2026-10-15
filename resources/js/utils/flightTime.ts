@@ -94,3 +94,32 @@ export const flightDepartureLabel = (
 
     return flight.departure ? `${date} · ${flightTimeWithZone(flight.departure, flight.origin.timezone)}` : date;
 };
+
+/*
+ * Hora escrita a mano en formato de 24 horas → "HH:MM".
+ * Acepta "7:30", "07:30", "07.30" y "0730" (con espacios alrededor).
+ * Devuelve '' si está vacía y null si está incompleta o no es una hora válida
+ * ("7:3", "24:00", "12:60", "730"...).
+ */
+export const normalizeTimeInput = (text: string | null | undefined): string | null => {
+    const value = (text ?? '').trim();
+
+    if (value === '') {
+        return '';
+    }
+
+    const match = /^(?:(\d{1,2})[:.](\d{2})|(\d{2})(\d{2}))$/.exec(value);
+
+    if (!match) {
+        return null;
+    }
+
+    const hours = Number(match[1] ?? match[3]);
+    const minutes = Number(match[2] ?? match[4]);
+
+    if (hours > 23 || minutes > 59) {
+        return null;
+    }
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};

@@ -18,6 +18,7 @@
     "include": [
         "resources/js/**/*.ts",
         "resources/js/**/*.d.ts",
-        "resources/js/**/*.vue"
+        "resources/js/**/*.vue",
+        "tests/js/**/*.ts"
     ]
 }

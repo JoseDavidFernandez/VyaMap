@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AirportSelect from './AirportSelect.vue';
-import { flightTime } from '../../utils/flightTime';
+import { flightTime, normalizeTimeInput } from '../../utils/flightTime';
 import type { FlightAirport, FlightRecord, TripOption } from '../../types/flights';
 
 /*
@@ -79,15 +79,57 @@ const swapAirports = () => {
     destinationSelect.value?.sync(destinationDisplay.value);
 };
 
-// La hora de llegada solo tiene sentido con hora de salida (D4).
-const clearArrivalIfNeeded = () => {
-    if (!form.departure_time) {
-        form.arrival_time = '';
-        form.arrival_offset = 0;
+/*
+ * Horas de salida y llegada: campos de texto en formato de 24 horas (HH:MM).
+ *
+ * No se usa <input type="time">: cada navegador lo implementa a su manera
+ * (segmentos, eventos que no siempre llegan, value vacío con la hora visible
+ * y validity.badInput cambiante en Safari), y el formulario no puede saber de
+ * forma fiable qué hora ve el usuario. Un campo de texto vale siempre lo que
+ * se ha escrito y emite "input" en cada pulsación en todos los navegadores,
+ * así que v-model nunca deshace lo que se está tecleando.
+ *
+ * - Mientras se escribe no se valida; al salir del campo la hora se normaliza
+ *   ("7:30" o "0730" → "07:30") o se avisa si está incompleta o no es válida.
+ * - Vacía es válida (las horas son opcionales).
+ * - Una hora inválida bloquea el guardado; al servidor solo llega HH:MM.
+ * - Cambiar o borrar la salida nunca modifica la llegada ni su día.
+ */
+type TimeField = 'departure_time' | 'arrival_time';
+
+const invalidTimes = reactive<Record<TimeField, boolean>>({ departure_time: false, arrival_time: false });
+
+const invalidTimeMessage = 'Use the 24-hour format HH:MM, for example 07:30, or leave it empty.';
+
+// Al salir del campo: normaliza o marca el error.
+const checkTime = (field: TimeField) => {
+    const normalized = normalizeTimeInput(form[field]);
+
+    invalidTimes[field] = normalized === null;
+
+    if (normalized !== null && normalized !== form[field]) {
+        form[field] = normalized;
     }
 };
 
+// Al escribir solo se retira el aviso, nunca se muestra (no se interrumpe a mitad de hora).
+const clearTimeError = (field: TimeField) => {
+    if (invalidTimes[field] && normalizeTimeInput(form[field]) !== null) {
+        invalidTimes[field] = false;
+    }
+};
+
+// La llegada sin salida no se descarta: el servidor la rechaza (D4) y aquí se avisa antes.
+const arrivalNeedsDeparture = computed(() => Boolean(form.arrival_time.trim()) && !form.departure_time.trim());
+
 const submit = (action: NextAction) => {
+    checkTime('departure_time');
+    checkTime('arrival_time');
+
+    if (invalidTimes.departure_time || invalidTimes.arrival_time) {
+        return;
+    }
+
     nextAction.value = action;
     notice.value = '';
 
@@ -101,9 +143,10 @@ const submit = (action: NextAction) => {
             origin_airport_id: data.origin_airport_id,
             destination_airport_id: data.destination_airport_id,
             departure_date: data.departure_date,
+            // Ya normalizadas por checkTime() al guardar.
             departure_time: data.departure_time || null,
-            arrival_time: data.departure_time && data.arrival_time ? data.arrival_time : null,
-            arrival_date: data.departure_time && data.arrival_time && data.departure_date
+            arrival_time: data.arrival_time || null,
+            arrival_date: data.arrival_time && data.departure_date
                 ? addDays(data.departure_date, Number(data.arrival_offset))
                 : null,
             flight_number: data.flight_number || null,
@@ -130,7 +173,7 @@ const afterSave = () => {
         originDisplay: originDisplay.value,
         destinationDisplay: destinationDisplay.value,
         date: form.departure_date,
-        arrivalDate: form.departure_time && form.arrival_time ? addDays(form.departure_date, Number(form.arrival_offset)) : null,
+        arrivalDate: form.arrival_time ? addDays(form.departure_date, Number(form.arrival_offset)) : null,
         trip: form.trip_id,
     };
 
@@ -167,7 +210,7 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
 </script>
 
 <template>
-    <form class="space-y-5" @submit.prevent="submit('close')">
+    <form class="space-y-5" novalidate @submit.prevent="submit('close')">
         <p v-if="notice" class="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] px-4 py-2 text-sm text-cyan-100">
             {{ notice }}
         </p>
@@ -212,25 +255,45 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
 
             <div>
                 <label for="flight-departure-time" class="vyamap-label">Departure time <span class="text-white/35">(optional)</span></label>
-                <input id="flight-departure-time" v-model="form.departure_time" type="time" class="vyamap-input" @change="clearArrivalIfNeeded" />
-                <p v-if="form.errors.departure_time" class="vyamap-error">{{ form.errors.departure_time }}</p>
+                <input
+                    id="flight-departure-time"
+                    v-model="form.departure_time"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    maxlength="5"
+                    placeholder="HH:MM"
+                    class="vyamap-input tabular-nums"
+                    :aria-invalid="invalidTimes.departure_time"
+                    @input="clearTimeError('departure_time')"
+                    @blur="checkTime('departure_time')"
+                />
+                <p class="mt-1 text-[11px] text-white/40">24-hour local time at the origin airport.</p>
+                <p v-if="invalidTimes.departure_time" class="vyamap-error">{{ invalidTimeMessage }}</p>
+                <p v-else-if="form.errors.departure_time" class="vyamap-error">{{ form.errors.departure_time }}</p>
             </div>
 
-            <div>
+            <div class="@container">
                 <label for="flight-arrival-time" class="vyamap-label">Arrival time <span class="text-white/35">(optional)</span></label>
-                <div class="flex gap-2">
+                <!-- Hora y día juntos solo si la columna tiene sitio para ambos; si no, uno bajo el otro. -->
+                <div class="grid gap-2 @2xs:grid-cols-[minmax(0,1fr)_7rem]">
                     <input
                         id="flight-arrival-time"
                         v-model="form.arrival_time"
-                        type="time"
-                        class="vyamap-input"
-                        :disabled="!form.departure_time"
-                        :title="form.departure_time ? '' : 'Add the departure time first'"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="5"
+                        placeholder="HH:MM"
+                        class="vyamap-input tabular-nums"
+                        :aria-invalid="invalidTimes.arrival_time"
+                        @input="clearTimeError('arrival_time')"
+                        @blur="checkTime('arrival_time')"
                     />
                     <select
+                        id="flight-arrival-day"
                         v-model="form.arrival_offset"
-                        class="vyamap-input w-28"
-                        :disabled="!form.arrival_time"
+                        class="vyamap-input"
                         aria-label="Arrival day"
                     >
                         <option :value="-1">−1 day</option>
@@ -239,7 +302,10 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
                         <option :value="2">+2 days</option>
                     </select>
                 </div>
-                <p v-if="form.errors.arrival_time" class="vyamap-error">{{ form.errors.arrival_time }}</p>
+                <p class="mt-1 text-[11px] text-white/40">24-hour local time at the destination airport.</p>
+                <p v-if="invalidTimes.arrival_time" class="vyamap-error">{{ invalidTimeMessage }}</p>
+                <p v-else-if="form.errors.arrival_time" class="vyamap-error">{{ form.errors.arrival_time }}</p>
+                <p v-else-if="arrivalNeedsDeparture" class="mt-1 text-[11px] text-amber-200/80">Add the departure time too: an arrival time needs one.</p>
                 <p v-if="arrivalDateError" class="vyamap-error">{{ arrivalDateError }}</p>
             </div>
         </div>

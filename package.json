@@ -3,17 +3,21 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "test:js": "vitest run"
     },
     "devDependencies": {
         "@types/leaflet": "^1.9.22",
         "@types/node": "^22.20.3",
         "@types/three": "^0.186.0",
         "@vitejs/plugin-vue": "^6.0.9",
+        "@vue/test-utils": "2.5.1",
         "axios": "^1.6.4",
+        "happy-dom": "20.14.5",
         "laravel-vite-plugin": "^1.0.0",
         "typescript": "^5.9.3",
         "vite": "^5.0.0",
+        "vitest": "3.2.7",
         "vue-tsc": "^3.3.11"
     },
     "dependencies": {
