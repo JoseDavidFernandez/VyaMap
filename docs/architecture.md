@@ -69,7 +69,7 @@ Toda operación recibida desde Vue debe volver a validarse y autorizarse en back
 - Vite
 - Leaflet (mapas) y three-globe (globo del perfil)
 
-`shadcn/ui` figura en las decisiones de la sección 21, pero todavía no está instalado.
+`shadcn/ui` figuraba en el diseño inicial (sección 21), pero no se ha instalado: los componentes son propios, con Tailwind.
 
 ## Desarrollo
 
@@ -264,6 +264,7 @@ Journal
 JournalDay
 JournalEntry
 Photo
+Album
 ```
 
 Relaciones principales:
@@ -277,6 +278,7 @@ User 1:N Trip
 User 1:N Visit
 User 1:N Flight
 User 1:N Photo
+User 1:N Album
 
 Trip 1:N Visit
 Trip 1:N Flight (opcional: un vuelo puede no pertenecer a ningún viaje)
@@ -297,6 +299,7 @@ JournalEntry 1:N Photo
 
 Visit 1:N Photo
 Place 1:N Photo
+Album N:M Photo (album_photo)
 ```
 
 Las relaciones y reglas de base de datos detalladas se encuentran en la documentación correspondiente del modelo de datos.
@@ -400,10 +403,6 @@ Un Journal no crea automáticamente Visits, Photos, Places ni Albums.
 
 ## Photos
 
-No existe una entidad Album.
-
-Un álbum será una vista de frontend construida a partir de las relaciones de Photo.
-
 Una Photo puede estar asociada opcionalmente a:
 
 - Trip
@@ -411,7 +410,15 @@ Una Photo puede estar asociada opcionalmente a:
 - Place
 - JournalEntry
 
-Esto permite reutilizar una fotografía en diferentes contextos sin introducir una entidad Album innecesaria.
+Esto permite reutilizar una fotografía en diferentes contextos.
+
+### Albums
+
+`Album` es una entidad persistente (tabla `albums`): una colección de fotos creada por el usuario, con nombre, descripción opcional y una foto de portada opcional (`cover_photo_id`). Pertenece a un User y se relaciona con Photo mediante la tabla pivote `album_photo` (N:M), de modo que una foto puede estar en varios álbumes.
+
+- Borrar un álbum no borra sus fotos: solo se eliminan las filas de `album_photo`.
+- Borrar una foto la quita de los álbumes y deja sin portada al álbum que la usaba (`cover_photo_id` a `NULL`).
+- `AlbumController` gestiona crear, editar y borrar álbumes, y añadir o quitar fotos (rutas `/albums`). Los álbumes se muestran en la página de fotos.
 
 ### Archivos y ciclo de vida
 
@@ -945,7 +952,7 @@ La arquitectura actual no obliga a implementar esta fase.
 | Frontend | Vue 3 |
 | Lenguaje frontend | TypeScript |
 | Comunicación principal | Inertia |
-| UI | Tailwind CSS + shadcn/ui |
+| UI | Tailwind CSS (shadcn/ui figuraba en el diseño inicial, pero no se ha instalado) |
 | API REST | Solo cuando exista una necesidad concreta |
 | Autorización | Middleware + Policies/ownership |
 | Validación | Form Requests |
