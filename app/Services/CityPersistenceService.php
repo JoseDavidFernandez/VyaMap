@@ -7,6 +7,7 @@ use App\Models\CityAlias;
 use App\Models\Country;
 use App\Support\CityAliasNormalizer;
 use App\Support\CityAliasPolicy;
+use App\Support\CityName;
 use App\Support\GeoDistance;
 use Illuminate\Support\Facades\DB;
 
@@ -82,9 +83,18 @@ class CityPersistenceService
             ->first();
 
         if ($byExternalId !== null) {
-            return $byExternalId->merged_into_id !== null
-                ? City::query()->find($byExternalId->merged_into_id) ?? $byExternalId
-                : $byExternalId;
+            if ($byExternalId->merged_into_id !== null) {
+                return City::query()->find($byExternalId->merged_into_id) ?? $byExternalId;
+            }
+
+            // Una ciudad guardada con un nombre inválido (p. ej. "yes", antes de
+            // validar los nombres de Geoapify) recibe el nombre verificado si
+            // este es válido. Un nombre válido nunca se sobrescribe.
+            if (! CityName::isValid($byExternalId->name) && CityName::isValid($data['name'] ?? null)) {
+                $byExternalId->update(['name' => trim($data['name'])]);
+            }
+
+            return $byExternalId;
         }
 
         $normalizedName = CityAliasNormalizer::normalize($data['name']);

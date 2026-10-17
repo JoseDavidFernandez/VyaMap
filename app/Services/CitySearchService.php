@@ -6,6 +6,7 @@ use App\Exceptions\GeoapifyUnavailableException;
 use App\Models\City;
 use App\Models\CityAlias;
 use App\Support\CityAliasNormalizer;
+use App\Support\CityName;
 use App\Support\GeoDistance;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -22,12 +23,6 @@ class CitySearchService
     private const GEOAPIFY_CACHE_SECONDS = 600;
 
     private const MAX_RESULTS = 10;
-
-    /**
-     * Valores de etiquetas de OSM que a veces llegan en el campo del nombre
-     * (p. ej. city = "yes" para la Ciudad del Vaticano) y nunca son un nombre.
-     */
-    private const INVALID_NAMES = ['yes', 'no', 'true', 'false'];
 
     public function search(string $query, bool $includeExternal = false): array
     {
@@ -172,26 +167,6 @@ class CitySearchService
         ) <= (float) config('cities.same_city_max_distance_km', 25);
     }
 
-    /**
-     * @param  list<mixed>  $candidates
-     */
-    private function firstValidName(array $candidates): ?string
-    {
-        foreach ($candidates as $candidate) {
-            $name = is_string($candidate) ? trim($candidate) : '';
-
-            if (
-                $name !== ''
-                && preg_match('/\p{L}/u', $name) === 1
-                && ! in_array(mb_strtolower($name), self::INVALID_NAMES, true)
-            ) {
-                return $name;
-            }
-        }
-
-        return null;
-    }
-
     private function escapeLike(string $value): string
     {
         return addcslashes($value, '\\%_');
@@ -304,7 +279,7 @@ class CitySearchService
             ->map(function (array $result) use ($normalizedQuery) {
                 // Primer nombre válido: city y, si no lo es, name. Sin ninguno,
                 // el resultado se descarta más abajo (nunca se ofrece ni se guarda).
-                $name = $this->firstValidName([$result['city'] ?? null, $result['name'] ?? null]);
+                $name = CityName::firstValid([$result['city'] ?? null, $result['name'] ?? null]);
 
                 return [
                     'source' => 'geoapify',
