@@ -34,6 +34,12 @@ SESSION_DRIVER=cookie CACHE_STORE=array php artisan serve --env=testing --port=8
 
 Abre `http://127.0.0.1:8010` e inicia sesión con el usuario de pruebas. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
 
+**Buscador del itinerario y Geoapify:** el catálogo importado solo trae ciudades con aeropuerto. Para encontrar cualquier otra localidad (Ksamil, Bled, Sinaia…), `.env.testing` necesita `GEOAPIFY_API_KEY`: Laravel carga ese archivo en lugar de `.env` y no hereda su clave. Sin ella, el buscador solo devuelve ciudades del catálogo local y no avisa de ningún error. Comprobación (sin mostrar la clave):
+
+```bash
+php artisan tinker --env=testing --execute='echo blank(config("services.geoapify.key")) ? "geoapify: no configurada" : "geoapify: configurada";'
+```
+
 **Atención:** `php artisan test` vacía `vyamap_testing` (`RefreshDatabase`). Después de ejecutar la suite hay que repetir los pasos 2 y 3.
 
 ### Modo B: la aplicación normal (`vyamap`)
@@ -70,6 +76,10 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 | C4 | ⚠️ Territorio | Una ciudad de Gibraltar | ✅ Cuenta como «+1 territory», no entre los 193 países. |
 | C5 | ⚠️ Primera visita | Visitar España en 2024 y otra vez en 2026 | ✅ Passport, «Countries discovered by year»: España solo en 2024. Al filtrar 2026, España cuenta entre los países de ese año, pero no como nuevo. |
 | C6 | ⚠️ Vuelo sin visita | Solo un vuelo a Marrakech, sin visitas | ✅ Marruecos **no** cuenta como visitado. |
+| C7 | Localidad que no está en el catálogo (necesita Geoapify) | Bled, Ksamil, Como, Sinaia | ✅ Aparece en el buscador; al añadirla se crea la ciudad con su país y coordenadas, y la visita. |
+| C8 | ⚠️ Nombre que devuelve Geoapify | Ciudad del Vaticano | ✅ Aparece y se guarda como **«Vatican City»**. Geoapify manda `city = "yes"` y el buscador usa el siguiente nombre válido; un resultado sin ningún nombre válido no se ofrece. Una ciudad guardada antes de la corrección con un nombre así no se arregla volviéndola a añadir (se reutiliza por su identificador): hay que renombrarla. |
+| C9 | ⚠️ Homónimos | Buscar «Peleș» o «Bran» | ⚠️ Puede haber localidades con el mismo nombre en otra región. Antes de añadir, comprueba el país, la región y, si aparecen, las coordenadas del resultado. |
+| C10 | Lugar de interés (fuera de V1) | Castillo de Peleș, Castillo de Bran | ✅ No se busca como visita: añade su localidad (Sinaia, Bran) y menciona el castillo en las notas de la visita. |
 
 ## P1 — Vuelos
 

@@ -20,6 +20,7 @@ Leyenda: **Completado** (implementado y con pruebas) · **En curso** (implementa
 | F5 | P2 | Sugerencias | Pendiente |
 | F6 | P3 | Estacionalidad, repeticiones, CSV, «repetir ruta» y sugerencia de aerolínea | Pendiente |
 | Bloque B | — | Catálogo de aerolíneas | Aplazado |
+| — | — | Lugares de interés en el itinerario | Fuera de V1 (posible estudio en V2) |
 
 ## Completado
 
@@ -153,3 +154,7 @@ Idea general aprobada:
 - nunca se deduce la compañía del prefijo del número de vuelo.
 
 Se retomará cuando se decida; no hay nada implementado.
+
+### Lugares de interés en el itinerario
+
+Decisión de V1: una visita representa una ciudad o localidad, nunca un castillo, monumento o museo (ver «Alcance en V1» en [`architecture.md`](architecture.md)). No hay nada implementado ni planificado; incorporar lugares de interés al itinerario podrá estudiarse en V2, junto a la entidad `Place` prevista para esa fase.
