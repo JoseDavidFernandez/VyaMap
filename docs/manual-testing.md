@@ -8,39 +8,30 @@ Lista práctica para comprobar VyaMap en el navegador antes de introducir viajes
 
 Las pruebas crean, editan y borran datos a través de la aplicación, así que **escriben en la base de datos a la que apunte el servidor**. Elige uno de estos dos modos.
 
-### Modo A, recomendado para estas pruebas: `vyamap_testing`, sin tocar `vyamap`
+### Modo A, recomendado para estas pruebas: `vyamap_manual`
 
-El servidor carga `.env.testing` (base `vyamap_testing`) y guarda la sesión en una cookie, sin dejar archivos en `storage/framework/sessions`.
+Las pruebas manuales usan su propia base, **`vyamap_manual`**, con su propio usuario de MySQL y el archivo **`.env.manual`** (ignorado por Git). Se creó como copia de `vyamap_testing`, así que ya tiene el catálogo y los datos de prueba introducidos.
+
+**`vyamap_testing` queda reservada para los tests automatizados.** `php artisan test` la vacía y la recrea (`RefreshDatabase`), así que no sirve para conservar datos manuales. Los tests no pueden usar `vyamap_manual`: `TestDatabaseGuard` solo acepta `.env.testing` y `vyamap_testing`.
 
 ```bash
-# 1. Comprobar a qué base apunta el entorno de testing (debe decir vyamap_testing)
-php artisan tinker --env=testing --execute='echo DB::connection()->getDatabaseName();'
+# 1. Comprobar a qué base apunta el entorno manual (debe decir vyamap_manual)
+php artisan tinker --env=manual --execute='echo DB::connection()->getDatabaseName();'
 
-# 2. Catálogo, en este orden (lee los CSV locales de storage/app/data; solo escribe en vyamap_testing)
-php artisan countries:import --apply --env=testing
-php artisan cities:import --env=testing
-php artisan app:import-airports --env=testing
-php artisan airports:map-cities --apply --env=testing
-php artisan airports:enrich-coordinates --apply --env=testing
-php artisan airports:import-timezones --apply --env=testing
-
-# 3. Usuario de pruebas (pide la contraseña)
-php artisan users:create "Demo" demo@example.test --env=testing
-
-# 4. Servidores (en dos terminales)
+# 2. Servidores (en dos terminales)
 npm run dev
-SESSION_DRIVER=cookie CACHE_STORE=array php artisan serve --env=testing --port=8010
+SESSION_DRIVER=cookie CACHE_STORE=array php artisan serve --env=manual --port=8010
 ```
 
-Abre `http://127.0.0.1:8010` e inicia sesión con el usuario de pruebas. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
+Abre `http://127.0.0.1:8010` e inicia sesión con tu usuario de pruebas. La sesión se guarda en una cookie, sin dejar archivos en `storage/framework/sessions`. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
 
-**Buscador del itinerario y Geoapify:** el catálogo importado solo trae ciudades con aeropuerto. Para encontrar cualquier otra localidad (Ksamil, Bled, Sinaia…), `.env.testing` necesita `GEOAPIFY_API_KEY`: Laravel carga ese archivo en lugar de `.env` y no hereda su clave. Sin ella, el buscador solo devuelve ciudades del catálogo local y no avisa de ningún error. Comprobación (sin mostrar la clave):
+**`APP_ENV` dentro de `.env.manual` debe ser `manual`:** el servidor que lanza `artisan serve` no recibe `--env` y elige su archivo de entorno por `APP_ENV`. **No exportes `APP_ENV=manual` en la terminal:** se aplicaría a cualquier otro comando que ejecutes en ella.
+
+**Buscador del itinerario y Geoapify:** el catálogo solo trae ciudades con aeropuerto (más las añadidas después). Para encontrar cualquier otra localidad (Ksamil, Bled, Sinaia…), `.env.manual` necesita `GEOAPIFY_API_KEY`: Laravel carga ese archivo en lugar de `.env` y no hereda su clave. Sin ella, el buscador solo devuelve ciudades del catálogo local y no avisa de ningún error. Comprobación (sin mostrar la clave):
 
 ```bash
-php artisan tinker --env=testing --execute='echo blank(config("services.geoapify.key")) ? "geoapify: no configurada" : "geoapify: configurada";'
+php artisan tinker --env=manual --execute='echo blank(config("services.geoapify.key")) ? "geoapify: no configurada" : "geoapify: configurada";'
 ```
-
-**Atención:** `php artisan test` vacía `vyamap_testing` (`RefreshDatabase`). Después de ejecutar la suite hay que repetir los pasos 2 y 3.
 
 ### Modo B: la aplicación normal (`vyamap`)
 

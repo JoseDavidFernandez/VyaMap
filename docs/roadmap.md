@@ -15,7 +15,7 @@ Leyenda: **Completado** (implementado y con pruebas) · **En curso** (implementa
 | F1 | P1 | Vuelos independientes y gestión de vuelos | Completado |
 | F2 | P1 | Formulario simplificado y vuelos sin horas | Cerrado: cubierto por F1, salvo «repetir ruta» (pasa a F6) |
 | — | — | Corrección del formulario de horas | Completado |
-| F3 | P1 | Estadísticas | Completado (15-10-2026, pendiente de commit) |
+| F3 | P1 | Estadísticas | Completado (15-10-2026; commits `1f8b079` y `237a3a4`) |
 | F4 | P2 | Reorganización de páginas | En curso: estadísticas conectadas; falta la reorganización |
 | F5 | P2 | Sugerencias | Pendiente |
 | F6 | P3 | Estacionalidad, repeticiones, CSV, «repetir ruta» y sugerencia de aerolínea | Pendiente |
