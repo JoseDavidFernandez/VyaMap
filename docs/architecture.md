@@ -612,7 +612,7 @@ Render every time
 - Un alias solo se aprende a partir de una búsqueda que Geoapify ha asociado realmente a esa ciudad.
 - Las llamadas tienen timeout (3 s de conexión, 5 s en total). Si Geoapify falla o no hay clave, la búsqueda devuelve solo resultados locales y el alta de ciudades responde 503. Nunca se registra la URL, porque contiene la clave.
 - Nombre de la ciudad: se toma el campo `city` del resultado y, si no es un nombre válido, `name`. No son válidos los valores vacíos, los que no tienen ninguna letra y las etiquetas de OSM `yes`, `no`, `true` y `false` (Geoapify devuelve `city = "yes"` para la Ciudad del Vaticano). Si ningún candidato es válido, el resultado se descarta: no se ofrece ni se puede guardar.
-- La clave se lee de `GEOAPIFY_API_KEY` (`config('services.geoapify.key')`) en el archivo de entorno que se esté usando: `.env` o, con `--env=testing`, `.env.testing`. Sin ella solo se encuentran las ciudades del catálogo local (las que tienen aeropuerto, más las añadidas antes). Los tests no la necesitan: `Tests\TestCase` fija una clave ficticia y bloquea las peticiones reales.
+- La clave se lee de `GEOAPIFY_API_KEY` (`config('services.geoapify.key')`) en el archivo de entorno que se esté usando: `.env`, `.env.manual` (`--env=manual`) o `.env.testing` (`--env=testing`). Sin ella solo se encuentran las ciudades del catálogo local (las que tienen aeropuerto, más las añadidas antes). Los tests no la necesitan: `Tests\TestCase` fija una clave ficticia y bloquea las peticiones reales.
 - Límites: 60 búsquedas de ciudades o aeropuertos por minuto y 20 altas de ciudades por minuto por usuario; la búsqueda de aeropuertos devuelve como máximo 20 resultados.
 - Duplicados: al crear una ciudad desde Geoapify se reutiliza una ciudad no fusionada del mismo país, con el mismo nombre normalizado y a menos de `config('cities.same_city_max_distance_km')` (25 km). Si esa ciudad no tiene identidad externa, se le asigna. El par `(external_provider, external_id)` es único.
 - Fusión de duplicados existentes: `php artisan cities:reconcile {duplicada} --into={canónica}`. Por defecto solo simula; `--execute` aplica en una transacción y pide confirmación. Comprueba país, nombre o alias, distancia y conflictos de visitas, y solo asigna el identificador externo si Geoapify lo confirma (o se omite con `--without-external-id`). La ciudad duplicada no se borra: queda con `merged_into_id` y desaparece de búsquedas y selecciones. Cada fusión queda en `city_reconciliations` y se revierte con `--revert={id} --execute`.
@@ -841,6 +841,7 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - Crear una entrada en el diario de otro usuario devuelve 403; un día inexistente, 422.
 - Quitar de un álbum una foto que no está en él devuelve 404.
 - Longitudes máximas: descripción del viaje y notas de la visita, 5000 caracteres (caben en `TEXT` incluso con caracteres de 4 bytes); contenido del diario, 50 000.
+- Leaflet interpreta como HTML el texto de `bindTooltip`/`bindPopup`: todo dato que llegue del servidor (ciudades, códigos, números de vuelo) pasa por `escapeHtml` (`resources/js/utils/escapeHtml.ts`) antes de llegar a un tooltip. En el resto de la interfaz no se usa `v-html`.
 - No hay API: se eliminó `GET /api/user`, que devolvía el modelo de usuario completo. `User` oculta `password`, `remember_token` y las columnas `two_factor_*` al serializarse.
 
 ### Herramientas de desarrollo
@@ -856,7 +857,8 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - `REGISTRATION_ENABLED` sin definir (o `false`): las cuentas se crean con `php artisan users:create`.
 - `INERTIA_DEVTOOLS_ENABLED` sin definir o `false`.
 - Un worker de cola supervisado (Supervisor, systemd o el gestor del hosting) con `php artisan queue:work --queue=default --sleep=2` (los reintentos los fija `ProcessPhoto`), reiniciado con `php artisan queue:restart` en cada despliegue. Con unos 220 MB por foto de 50 MP, conviene un solo proceso por cada 512 MB libres.
-- `TrustProxies` configurado si hay balanceador o proxy inverso; si no, las IP de los límites de frecuencia serían las del proxy.
+- `TRUSTED_PROXIES` (ver `config/trustedproxy.php`) si hay balanceador o proxy inverso: `*` o las IP del proxy. Si no, Laravel generaría URLs `http://` detrás de un proxy HTTPS y los límites de frecuencia verían la IP del proxy. Laravel Cloud, Forge y Vapor se detectan automáticamente.
+- Despliegue paso a paso, catálogo inicial y datos de demostración: [`deployment.md`](deployment.md).
 - `LOG_LEVEL=warning` o superior; los logs no incluyen claves ni coordenadas.
 - Fotos: las nuevas se guardan en el disco privado `photos` (`storage/app/private`), que debe estar fuera del document root y persistir entre despliegues. Las anteriores se migran con `php artisan photos:move-to-private` (ver «Migración de las fotos anteriores»).
 

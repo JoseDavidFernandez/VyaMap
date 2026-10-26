@@ -2,6 +2,7 @@
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
+import { escapeHtml } from '../../utils/escapeHtml';
 
 interface City {
     id: number;
@@ -40,15 +41,6 @@ const mapElement = ref<HTMLElement | null>(null);
 
 let map: L.Map | null = null;
 let markerLayer: L.LayerGroup | null = null;
-
-const escapeHtml = (value: string | null | undefined) => {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-};
 
 const formatVisitDate = (date: string | null) => {
     if (!date) {

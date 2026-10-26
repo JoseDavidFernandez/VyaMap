@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import L from 'leaflet';
 import { greatCircleRoute, toPoint, type Point } from '../../utils/greatCircle';
+import { escapeHtml } from '../../utils/escapeHtml';
 
 interface MapFlight {
     id: number;
@@ -53,7 +54,7 @@ const airportMarker = (point: Point, city: string, upcoming = false) =>
         weight: 1.5,
         fillColor: '#111827',
         fillOpacity: 1,
-    }).bindTooltip(city, {
+    }).bindTooltip(escapeHtml(city), {
         direction: 'top',
         offset: [0, -4],
     });
@@ -111,7 +112,7 @@ onMounted(() => {
         })
             .addTo(map!)
             .bindTooltip(
-                `${flight.flight_number ? `${flight.flight_number} · ` : ''}${flight.origin.city} → ${flight.destination.city}${upcoming ? ' · upcoming' : ''}`,
+                `${flight.flight_number ? `${escapeHtml(flight.flight_number)} · ` : ''}${escapeHtml(flight.origin.city)} → ${escapeHtml(flight.destination.city)}${upcoming ? ' · upcoming' : ''}`,
                 { sticky: true },
             );
 

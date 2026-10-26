@@ -3,6 +3,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
 import type { FlightRecord as Flight } from '../../types/flights';
+import { escapeHtml } from '../../utils/escapeHtml';
 
 const props = defineProps<{
     flights: Flight[];
@@ -123,15 +124,6 @@ const renderMap = async () => {
     }
 
     setTimeout(() => map?.invalidateSize(), 0);
-};
-
-const escapeHtml = (value: string | null | undefined) => {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
 };
 
 onMounted(async () => {

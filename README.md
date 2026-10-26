@@ -57,7 +57,13 @@ php artisan migrate
 
 ### Catálogo de países, ciudades y aeropuertos
 
-Los archivos de datos se leen de `storage/app/data/` y **no están en el repositorio**: hay que añadirlos antes de importar. Comandos disponibles y archivo que lee cada uno:
+Los datos están en el repositorio, en [`database/data/catalog/`](database/data/catalog/README.md) (con su origen y licencia). Los comandos los leen de `storage/app/data/`, así que primero se copian allí:
+
+```bash
+mkdir -p storage/app/data && cp database/data/catalog/*.csv storage/app/data/
+```
+
+Comandos y archivo que lee cada uno:
 
 | Comando | Archivo |
 |---|---|
@@ -78,9 +84,19 @@ npm run dev                                             # Vite en desarrollo
 composer run queue                                      # worker de la cola (procesado de fotos)
 ```
 
-La aplicación se sirve con el servidor web local o con `php artisan serve`. Sin un worker de cola en marcha, las fotos subidas se quedan pendientes de procesar.
+La aplicación se sirve con el servidor web local o con `php artisan serve`. Con `QUEUE_CONNECTION=sync` (el valor de `.env.example`) las fotos se procesan al subirlas; con `database` hace falta el worker de cola, y sin él se quedan pendientes.
 
-Para producción: `npm run build` y la lista de comprobación de la sección de seguridad de [`docs/architecture.md`](docs/architecture.md).
+### Datos de demostración
+
+```bash
+php artisan demo:reset correo@example.com
+```
+
+Sustituye los viajes, visitas y vuelos de **esa** cuenta por datos ficticios: viajes de varios años, un viaje planificado y vuelos con y sin horas. Se niega si la cuenta tiene fotos o si falta el catálogo, y pide confirmación. Úsalo solo con una cuenta de demostración.
+
+### Producción
+
+Ver [`docs/deployment.md`](docs/deployment.md): despliegue en un VPS Linux con Nginx, PHP-FPM, MySQL y HTTPS, registro limitado, copias de seguridad y comprobaciones.
 
 ## Pruebas
 
@@ -99,6 +115,7 @@ npx vue-tsc --noEmit    # comprobación de tipos
 - [`docs/VyaMap_Map_System.md`](docs/VyaMap_Map_System.md) y [`docs/VyaMap_ADR-001_Separate_Map_Contexts.md`](docs/VyaMap_ADR-001_Separate_Map_Contexts.md): sistema de mapas.
 - [`docs/roadmap.md`](docs/roadmap.md): plan de desarrollo.
 - [`docs/manual-testing.md`](docs/manual-testing.md): pruebas manuales por prioridad.
+- [`docs/deployment.md`](docs/deployment.md): despliegue en un VPS.
 
 ## Estado del proyecto
 

@@ -3,6 +3,7 @@ import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import L from 'leaflet';
 import type { FlightRecord as Flight } from '../../types/flights';
 import { greatCircleRoute, toPoint, type Point } from '../../utils/greatCircle';
+import { escapeHtml } from '../../utils/escapeHtml';
 
 // Realizados en blanco, próximos en lima y pendientes de confirmar en gris.
 const props = defineProps<{
@@ -63,7 +64,7 @@ const renderRoutes = () => {
             fillOpacity: 1,
         })
             .bindTooltip(
-                `${flight.origin.city} · ${flight.origin.code ?? ''}`,
+                `${escapeHtml(flight.origin.city)} · ${escapeHtml(flight.origin.code)}`,
                 {
                     direction: 'top',
                     offset: [0, -4],
@@ -79,7 +80,7 @@ const renderRoutes = () => {
             fillOpacity: 1,
         })
             .bindTooltip(
-                `${flight.destination.city} · ${flight.destination.code ?? ''}`,
+                `${escapeHtml(flight.destination.city)} · ${escapeHtml(flight.destination.code)}`,
                 {
                     direction: 'top',
                     offset: [0, -4],

@@ -20,7 +20,7 @@ php artisan tinker --env=manual --execute='echo DB::connection()->getDatabaseNam
 
 # 2. Servidores (en dos terminales)
 npm run dev
-SESSION_DRIVER=cookie CACHE_STORE=array php artisan serve --env=manual --port=8010
+SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
 ```
 
 Abre `http://127.0.0.1:8010` e inicia sesión con tu usuario de pruebas. La sesión se guarda en una cookie, sin dejar archivos en `storage/framework/sessions`. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
