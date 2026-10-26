@@ -4,7 +4,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import TripVisitedMap from '../../components/trips/TripVisitedMap.vue';
 import TripFlightMap from '../../components/trips/TripFlightMap.vue';
 
-import { Link, router, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { tripDays as calendarTripDays, tripNights as calendarTripNights } from '../../utils/tripDates';
 import { flightDepartureLabel, flightTimeWithZone } from '../../utils/flightTime';
@@ -452,6 +452,7 @@ const flagEmoji = (isoCode: string) => {
 |--------------------------------------------------------------------------
 */
 
+const uploadsEnabled = usePage().props.features.uploads;
 const photoInput = ref<HTMLInputElement | null>(null);
 
 const isPhotosHovered = ref(false);
@@ -1111,6 +1112,7 @@ const formatDateShort = (date: string | null) => {
                                     </div>
 
                                     <button
+                                        v-if="uploadsEnabled"
                                         type="button"
                                         class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl transition hover:bg-white/[0.12] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                                         :disabled="isUploadingPhotos"
@@ -1167,6 +1169,7 @@ const formatDateShort = (date: string | null) => {
 
                                 <!-- Mismos formatos que valida el servidor (HEIC no es compatible). -->
                                 <input
+                                    v-if="uploadsEnabled"
                                     ref="photoInput"
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp"
@@ -1238,6 +1241,7 @@ const formatDateShort = (date: string | null) => {
                                     </p>
 
                                     <button
+                                        v-if="uploadsEnabled"
                                         type="button"
                                         class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl transition hover:bg-white/[0.12] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                                         :disabled="isUploadingPhotos"

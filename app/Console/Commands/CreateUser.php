@@ -31,7 +31,7 @@ class CreateUser extends Command
                 'email' => $this->argument('email'),
                 'password' => $password,
                 'password_confirmation' => $confirmation,
-            ]);
+            ], enforceLimit: false);
         } catch (ValidationException $exception) {
             foreach ($exception->errors() as $messages) {
                 foreach ($messages as $message) {

@@ -5,6 +5,8 @@ namespace App\Actions\Fortify;
 use App\Models\User;
 use App\Rules\ImageWithinPixelLimit;
 use App\Services\AvatarImageService;
+use App\Support\Registration;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -19,10 +21,11 @@ class CreateNewUser implements CreatesNewUsers
      * Validate and create a newly registered user.
      *
      * @param array<string, mixed> $input
+     * @param bool $enforceLimit false solo para users:create (alta manual)
      *
      * @throws ValidationException
      */
-    public function create(array $input): User
+    public function create(array $input, bool $enforceLimit = true): User
     {
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
@@ -34,27 +37,39 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
-            'avatar' => [
+            // Con las subidas desactivadas se rechaza también en el servidor.
+            'avatar' => config('uploads.enabled') ? [
                 'nullable',
                 'image',
                 'mimes:jpeg,jpg,png,webp',
                 'max:5120',
                 new ImageWithinPixelLimit(ImageWithinPixelLimit::AVATAR_MAX_PIXELS),
-            ],
+            ] : ['prohibited'],
         ])->validate();
 
-        $avatar = null;
+        return DB::transaction(function () use ($input, $enforceLimit) {
+            // El middleware ya cierra el registro al llegar al máximo; aquí se
+            // vuelve a contar con bloqueo para que dos altas simultáneas no lo
+            // superen.
+            if ($enforceLimit && Registration::isFull(User::query()->lockForUpdate()->count())) {
+                throw ValidationException::withMessages([
+                    'email' => 'No se admiten más registros por ahora.',
+                ]);
+            }
 
-        if (isset($input['avatar'])) {
-            // Recodificado sin EXIF: nunca se publica el archivo original.
-            $avatar = app(AvatarImageService::class)->store($input['avatar']);
-        }
+            $avatar = null;
 
-        return User::create([
-            'name' => $input['name'],
-            'email' => $input['email'],
-            'password' => Hash::make($input['password']),
-            'avatar' => $avatar,
-        ]);
+            if (isset($input['avatar'])) {
+                // Recodificado sin EXIF: nunca se publica el archivo original.
+                $avatar = app(AvatarImageService::class)->store($input['avatar']);
+            }
+
+            return User::create([
+                'name' => $input['name'],
+                'email' => $input['email'],
+                'password' => Hash::make($input['password']),
+                'avatar' => $avatar,
+            ]);
+        });
     }
 }

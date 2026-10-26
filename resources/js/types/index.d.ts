@@ -12,8 +12,14 @@ interface AuthProps {
     user: AuthUser | null;
 }
 
+interface FeatureFlags {
+    // Solo oculta los campos de archivo: el servidor aplica la restricción.
+    uploads: boolean;
+}
+
 declare module '@inertiajs/core' {
     interface PageProps extends InertiaPageProps {
         auth: AuthProps;
+        features: FeatureFlags;
     }
 }

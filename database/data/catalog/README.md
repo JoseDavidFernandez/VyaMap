@@ -20,8 +20,10 @@ El orden importa: cada ciudad pertenece a un país, y los tres últimos comandos
 |---|---|---|
 | `countries.csv` | Países y continentes | [OurAirports](https://ourairports.com/data/) (dominio público) |
 | `countries_overrides.csv` | Dos territorios que faltan en `countries.csv` (AX, SJ) | Preparado para VyaMap |
-| `vyamap_airport_city_mapping.csv` | Aeropuertos y la ciudad a la que pertenecen | Preparado para VyaMap |
+| `vyamap_airport_city_mapping.csv` | Aeropuertos y la ciudad a la que pertenecen | Preparado para VyaMap. **Procedencia sin verificar** (ver abajo) |
 | `airports.csv` | Coordenadas de los aeropuertos | [OurAirports](https://ourairports.com/data/) (dominio público), reducido a los 3244 códigos IATA del mapeo; las filas no se modifican |
-| `airport_timezones.csv` | Zona horaria IANA de cada aeropuerto | Preparado para VyaMap |
+| `airport_timezones.csv` | Zona horaria IANA de cada aeropuerto | Preparado para VyaMap (`timezone_status=calculated`). **Procedencia sin verificar** (ver abajo) |
 
 No contienen datos personales.
+
+**Pendiente antes de declarar una licencia para el repositorio:** no está documentado de qué fuentes ni con qué herramientas se generaron `vyamap_airport_city_mapping.csv` (ciudad y coordenadas de cada aeropuerto) y `airport_timezones.csv` (zona calculada a partir de coordenadas). Si alguna fuente fuera, por ejemplo, OpenFlights o timezone-boundary-builder (ODbL) o GeoNames (CC BY 4.0), esos datos llevarían sus propias condiciones (atribución y, en ODbL, compartir igual) y no podrían quedar bajo la licencia del código. Hasta confirmarlo, o regenerarlos desde fuentes con licencia conocida, se tratan como datos de procedencia desconocida.

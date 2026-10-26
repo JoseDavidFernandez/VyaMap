@@ -121,8 +121,16 @@ return [
     | disponible en local salvo que REGISTRATION_ENABLED lo active. Fuera de
     | él, las cuentas se crean con `php artisan users:create`.
     |
+    | REGISTRATION_MAX_USERS limita el número total de cuentas: al alcanzarlo,
+    | el registro se cierra solo (ver App\Support\Registration). Sin definir
+    | o vacío, no hay límite. users:create no está sujeto al límite.
+    |
     */
 
     'registration_enabled' => (bool) env('REGISTRATION_ENABLED', env('APP_ENV', 'production') === 'local'),
+
+    'registration_max_users' => is_numeric(env('REGISTRATION_MAX_USERS'))
+        ? max(0, (int) env('REGISTRATION_MAX_USERS'))
+        : null,
 
 ];

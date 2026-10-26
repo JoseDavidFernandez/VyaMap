@@ -45,6 +45,11 @@ class HandleInertiaRequests extends Middleware
                     ? $request->user()->only(['id', 'name', 'email', 'avatar'])
                     : null,
             ],
+
+            // Solo para ocultar los campos: el servidor aplica la restricción.
+            'features' => [
+                'uploads' => (bool) config('uploads.enabled'),
+            ],
         ];
     }
 }

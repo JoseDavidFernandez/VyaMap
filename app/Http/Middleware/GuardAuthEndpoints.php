@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Registration;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -14,7 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
  * de registro; actúa según el nombre de la ruta para que funcione también
  * con las rutas cacheadas.
  *
- * - Registro: 404 si está desactivado (auth.registration_enabled).
+ * - Registro: 404 si está desactivado o se ha alcanzado el máximo de cuentas
+ *   (App\Support\Registration).
  * - Registro, enlace de recuperación y restablecimiento: limitadores
  *   definidos en AppServiceProvider.
  */
@@ -34,7 +36,7 @@ class GuardAuthEndpoints
     {
         $name = $request->route()?->getName();
 
-        if (in_array($name, ['register', 'register.store'], true) && ! config('auth.registration_enabled')) {
+        if (in_array($name, ['register', 'register.store'], true) && ! Registration::isOpen()) {
             abort(404);
         }
 

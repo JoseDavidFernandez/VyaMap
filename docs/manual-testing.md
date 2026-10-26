@@ -111,6 +111,23 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 | B2 | Borrar un viaje cancelado con vuelos | Los vuelos quedan independientes **sin** confirmar. |
 | B3 | Borrar un vuelo | Desaparece de la lista, del mapa y de las cifras. |
 
+## P2 — Registro limitado y subidas desactivadas
+
+Sin tocar `.env.manual`: las variables puestas delante del comando tienen prioridad sobre el archivo. `REGISTRATION_MAX_USERS` debe ser el número de cuentas actual más una (`php artisan users:list --env=manual` lo indica en la última línea); por ejemplo, con 1 cuenta:
+
+```bash
+REGISTRATION_ENABLED=true REGISTRATION_MAX_USERS=2 UPLOADS_ENABLED=false \
+  SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
+```
+
+| # | Pasos | Resultado esperado |
+|---|---|---|
+| R1 | Abrir `/login` sin sesión | Aparece el enlace de registro; el formulario no tiene campo de foto. |
+| R2 | Registrar una cuenta nueva | Se crea y entra en Home vacía: sin viajes, vuelos, fotos ni cifras de otras cuentas. |
+| R3 | Cerrar sesión y volver a `/login` | Ya no aparece el enlace (se ha alcanzado el máximo); `/register` da 404. |
+| R4 | Con la cuenta nueva: editar perfil y abrir un viaje propio | Sin «Change photo» ni botón «+» de fotos; cambiar el nombre funciona. |
+| R5 | Abrir la URL de un viaje de otra cuenta (`/trips/<id>`) | 403. |
+
 ## P3 — Fotos y álbumes
 
 | # | Pasos | Resultado esperado |

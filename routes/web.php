@@ -18,6 +18,7 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
 use App\Http\Middleware\GuardAuthEndpoints;
 use App\Models\Photo;
+use App\Support\Registration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -39,10 +40,10 @@ Route::middleware('guest')->group(function () {
     // LOGIN
     Route::get('/login', fn () => Inertia::render('Auth/Login', [
         'status' => session('status'),
-        'canRegister' => (bool) config('auth.registration_enabled'),
+        'canRegister' => Registration::isOpen(),
     ]))->name('login');
 
-    // REGISTER (desactivado fuera de local: ver auth.registration_enabled)
+    // REGISTER (desactivado fuera de local o con el máximo de cuentas: ver App\Support\Registration)
     Route::get('/register', fn () => Inertia::render('Auth/Register'))
         ->middleware(GuardAuthEndpoints::class)
         ->name('register');

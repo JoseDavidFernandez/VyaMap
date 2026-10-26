@@ -817,6 +817,8 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 ### Cuentas y contraseñas
 
 - El registro público solo está activo en `local` (`auth.registration_enabled`, configurable con `REGISTRATION_ENABLED`). Con el registro desactivado, `/register` devuelve 404 y la pantalla de login oculta el enlace; las cuentas se crean con `php artisan users:create "Nombre" correo@example.com`, que pide la contraseña de forma oculta y aplica las mismas reglas que el formulario.
+- `REGISTRATION_MAX_USERS` (`auth.registration_max_users`) limita el total de cuentas: al alcanzarlo, `App\Support\Registration::isOpen()` cierra el registro igual que si estuviera desactivado. `CreateNewUser` vuelve a contar dentro de una transacción con bloqueo, para que dos altas simultáneas no superen el máximo. `users:create` no está sujeto al límite. `php artisan users:list` muestra las cuentas (solo lectura, sin credenciales) y el estado del registro.
+- `UPLOADS_ENABLED` (`uploads.enabled`; por defecto desactivado en producción): con `false`, `POST /photos` devuelve 403 (`StorePhotoRequest::authorize`) y el avatar se rechaza con `prohibited` en el registro y en el perfil. La prop compartida `features.uploads` solo oculta los campos en la interfaz; la restricción la aplica el servidor.
 - Contraseñas (`Password::defaults()` en `AppServiceProvider`): mínimo 10 caracteres y no filtradas según Have I Been Pwned. Solo se envían los 5 primeros caracteres del hash SHA-1; si el servicio no responde, la contraseña no se bloquea. En los tests el verificador se sustituye por uno local (`Tests\TestCase`).
 - Límites de frecuencia (`App\Http\Middleware\GuardAuthEndpoints`, aplicado a las rutas de Fortify):
 
@@ -854,7 +856,8 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - `APP_ENV=production`, `APP_DEBUG=false` y `APP_KEY` propia.
 - `composer install --no-dev --optimize-autoloader`, `php artisan config:cache` y `php artisan route:cache`.
 - HTTPS con `SESSION_SECURE_COOKIE=true`; `APP_URL` con `https://`.
-- `REGISTRATION_ENABLED` sin definir (o `false`): las cuentas se crean con `php artisan users:create`.
+- `REGISTRATION_ENABLED` sin definir (o `false`): las cuentas se crean con `php artisan users:create`. Si se abre el registro: `REGISTRATION_MAX_USERS` y, sin correo configurado, nada de verificación ni recuperación de contraseña (ver `deployment.md`).
+- `UPLOADS_ENABLED` sin definir o `false` mientras no se quieran admitir fotos ni avatares.
 - `INERTIA_DEVTOOLS_ENABLED` sin definir o `false`.
 - Un worker de cola supervisado (Supervisor, systemd o el gestor del hosting) con `php artisan queue:work --queue=default --sleep=2` (los reintentos los fija `ProcessPhoto`), reiniciado con `php artisan queue:restart` en cada despliegue. Con unos 220 MB por foto de 50 MP, conviene un solo proceso por cada 512 MB libres.
 - `TRUSTED_PROXIES` (ver `config/trustedproxy.php`) si hay balanceador o proxy inverso: `*` o las IP del proxy. Si no, Laravel generaría URLs `http://` detrás de un proxy HTTPS y los límites de frecuencia verían la IP del proxy. Laravel Cloud, Forge y Vapor se detectan automáticamente.

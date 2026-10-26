@@ -67,13 +67,14 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'avatar' => [
+            // Con las subidas desactivadas se rechaza también en el servidor.
+            'avatar' => config('uploads.enabled') ? [
                 'nullable',
                 'image',
                 'mimes:jpeg,jpg,png,webp',
                 'max:5120',
                 new ImageWithinPixelLimit(ImageWithinPixelLimit::AVATAR_MAX_PIXELS),
-            ],
+            ] : ['prohibited'],
         ]);
 
         $previousAvatar = $user->avatar;

@@ -17,7 +17,8 @@ class StorePhotoRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        // UPLOADS_ENABLED=false: 403 antes de validar o guardar nada.
+        return (bool) config('uploads.enabled');
     }
 
     /**

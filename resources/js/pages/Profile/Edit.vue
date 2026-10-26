@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '../../layouts/AppLayout.vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 interface User {
@@ -12,6 +12,8 @@ interface User {
 const props = defineProps<{
     user: User;
 }>();
+
+const uploadsEnabled = usePage().props.features.uploads;
 
 const form = useForm({
     name: props.user.name,
@@ -103,26 +105,28 @@ const submit = () => {
                             </div>
                         </div>
 
-                        <label
-                            for="profile-avatar"
-                            class="mt-4 cursor-pointer text-sm font-medium transition hover:opacity-70"
-                        >
-                            Change photo
-                        </label>
+                        <template v-if="uploadsEnabled">
+                            <label
+                                for="profile-avatar"
+                                class="mt-4 cursor-pointer text-sm font-medium transition hover:opacity-70"
+                            >
+                                Change photo
+                            </label>
 
-                        <input
-                            id="profile-avatar"
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            @change="handleAvatarChange"
-                            class="sr-only"
-                        />
+                            <input
+                                id="profile-avatar"
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                @change="handleAvatarChange"
+                                class="sr-only"
+                            />
 
-                        <p
-                            class="mt-2 text-xs text-[var(--vyamap-text-muted)]"
-                        >
-                            JPG, PNG or WebP, maximum 5 MB.
-                        </p>
+                            <p
+                                class="mt-2 text-xs text-[var(--vyamap-text-muted)]"
+                            >
+                                JPG, PNG or WebP, maximum 5 MB.
+                            </p>
+                        </template>
 
                         <p
                             v-if="form.errors.avatar"

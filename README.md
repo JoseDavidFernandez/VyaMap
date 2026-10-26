@@ -20,7 +20,7 @@ Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones
 - **Países**: listado y detalle, distinguiendo Estados soberanos (porcentaje sobre los 193 miembros de la ONU) y territorios.
 - **Dashboard y Passport**: resúmenes, mapas, viajes recientes, viajes por año y vuelos.
 - **Fotos privadas**: subida con procesamiento en cola (variantes y fecha y ubicación EXIF), servidas solo a su propietario; álbumes y listas de Google Maps asociadas a viajes.
-- **Cuentas**: autenticación con Laravel Fortify, límites de frecuencia en el acceso y registro público solo en entorno local (en el resto, las cuentas se crean con `php artisan users:create`).
+- **Cuentas**: autenticación con Laravel Fortify, límites de frecuencia en el acceso y registro público solo en entorno local salvo que se active, con un máximo de cuentas configurable (en el resto, las cuentas se crean con `php artisan users:create`; `php artisan users:list` las lista). La subida de fotos y avatares se puede desactivar (`UPLOADS_ENABLED`).
 
 ## Stack
 

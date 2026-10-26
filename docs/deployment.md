@@ -4,7 +4,7 @@ Guía para publicar VyaMap en un VPS Linux autoadministrado (sin Plesk ni cPanel
 
 **No describe un despliegue ya hecho:** todavía no hay VPS. Está escrita para **Ubuntu Server 24.04 LTS**; con otra distribución cambian los nombres de los paquetes y algunas rutas.
 
-Lo marcado como **«pendiente (bloque 3)»** depende de cambios en la aplicación que aún no existen.
+**El registro público no se abre hasta tener correo** (recuperación de contraseña y verificación del correo, sección 7.3): mientras tanto, `REGISTRATION_ENABLED=false` y las cuentas se crean con `users:create`.
 
 ## 1. Qué necesita la aplicación
 
@@ -19,7 +19,7 @@ Lo marcado como **«pendiente (bloque 3)»** depende de cambios en la aplicació
 | HTTPS | Lo termina Nginx en el propio VPS, con Let's Encrypt. Como no hay otro proxy delante, **`TRUSTED_PROXIES` no se define**. Solo haría falta con un proxy o CDN delante (por ejemplo, Cloudflare en modo proxy), y entonces con sus rangos de IP, nunca `*`. |
 | Cola | `QUEUE_CONNECTION=sync`: no hace falta worker. Si se activan las fotos, se procesan durante la subida. |
 | Tareas programadas | La aplicación no necesita cron. El servidor sí, para las copias de seguridad (sección 9). |
-| Servicios externos | Teselas de OpenStreetMap (sin clave). Geoapify para buscar ciudades fuera del catálogo (opcional, `GEOAPIFY_API_KEY`). Have I Been Pwned al crear contraseñas (si no responde, no bloquea). Correo para recuperar contraseñas: con `MAIL_MAILER=log` no se envía nada (ver 7.3). |
+| Servicios externos | Teselas de OpenStreetMap (sin clave). Geoapify para buscar ciudades fuera del catálogo (opcional, `GEOAPIFY_API_KEY`). Have I Been Pwned al crear contraseñas (si no responde, no bloquea). Correo transaccional para recuperar contraseñas y verificar correos: con `MAIL_MAILER=log` no se envía nada (ver 7.3). |
 
 ## 2. Arquitectura
 
@@ -237,9 +237,9 @@ QUEUE_CONNECTION=sync
 FILESYSTEM_DISK=local
 MAIL_MAILER=log
 
-REGISTRATION_ENABLED=true
-# REGISTRATION_MAX_USERS=20      pendiente (bloque 3)
-# UPLOADS_ENABLED=false          pendiente (bloque 3)
+REGISTRATION_ENABLED=false      # true solo cuando el correo funcione (7.3)
+REGISTRATION_MAX_USERS=100
+UPLOADS_ENABLED=false
 # GEOAPIFY_API_KEY=              opcional, clave nueva
 ```
 
@@ -368,15 +368,48 @@ Sin `includeSubDomains`, porque afectaría a todos los subdominios de `josedavid
 |---|---|
 | Abrir el registro | `REGISTRATION_ENABLED=true` en `shared/.env` y después `sudo -u vyamap php artisan config:cache` |
 | Cerrar el registro | `REGISTRATION_ENABLED=false` y `config:cache`. `/register` devuelve 404 y el enlace desaparece del login. Las cuentas ya creadas siguen funcionando. |
-| Limitar el número de cuentas | `REGISTRATION_MAX_USERS`, **pendiente (bloque 3)**. Al llegar al límite, el registro se cierra solo. |
-| Desactivar subidas (fotos y avatares) | `UPLOADS_ENABLED=false`, **pendiente (bloque 3)** |
+| Limitar el número de cuentas | `REGISTRATION_MAX_USERS=100` (se cambia en `shared/.env` y `config:cache`). Al llegar al límite, el registro se cierra solo, igual que con `REGISTRATION_ENABLED=false`; las altas simultáneas se vuelven a contar con bloqueo. `users:create` no está sujeto al límite. |
+| Desactivar subidas (fotos y avatares) | `UPLOADS_ENABLED=false`, que también es el valor por defecto en producción. El servidor rechaza `POST /photos` (403) y el avatar en el registro y en el perfil; la interfaz oculta los campos. |
+| Revisar las altas | `sudo -u vyamap php artisan users:list` (o `--limit=200`): id, nombre, correo, fecha de alta y número de viajes, vuelos y fotos. Solo lectura, sin credenciales. Muestra también cuántas cuentas hay y si el registro está abierto. |
 | Frecuencia | Ya limitada en la aplicación: 5 registros por minuto y 20 por hora por IP |
 | Crear una cuenta a mano | `sudo -u vyamap php artisan users:create "Nombre" correo@example.com` (pide la contraseña) |
 | Rellenar una cuenta con datos de ejemplo | `sudo -u vyamap php artisan demo:reset correo@example.com`. Solo sustituye los viajes, visitas y vuelos de esa cuenta; se niega si tiene fotos. |
 
-### 7.3 Recuperación de contraseña
+### 7.3 Correo: requisito para abrir el registro
 
-Con `MAIL_MAILER=log` no se envía ningún correo: el enlace se escribe en `storage/logs`. Hasta que haya un servicio de correo (SMTP), quien olvide su contraseña no puede recuperarla sola.
+Con `MAIL_MAILER=log` no se envía ningún correo: el enlace de recuperación se escribe en `storage/logs`. Antes de abrir el registro hacen falta:
+
+1. **Un proveedor de correo transaccional** con el dominio verificado (registros SPF, DKIM y DMARC en el DNS de `josedavidfernandezcomino.com`) y un remitente como `no-reply@josedavidfernandezcomino.com`.
+2. **La verificación del correo en la aplicación** (todavía no existe): `Features::emailVerification()` en Fortify, `MustVerifyEmail` en `User`, el middleware `verified` en las rutas privadas y la página que pide confirmar el correo. `users:create` marcaría sus cuentas como verificadas.
+
+Opciones con plan gratuito, comprobadas en octubre de 2026 (los límites cambian: revísalos al crear la cuenta):
+
+| Proveedor | Gratis | Primer plan de pago | Notas |
+|---|---|---|---|
+| **Brevo** | 300 correos al día | Desde unos 9 $/mes | Empresa europea (Francia); SMTP y API. Según reseñas, el plan gratuito añade su marca; hay que comprobar si también en los transaccionales. |
+| **Resend** | 3000 al mes, máximo 100 al día, 3 dominios | Pro, 20 $/mes (50 000 correos) | SMTP y API; empresa de EE. UU. |
+| **MailerSend** | 500 al mes, 1 dominio | Hobby, 7 $/mes (5000 correos) | SMTP y API |
+| **Postmark** | 100 al mes | Basic, 15 $/mes (10 000 correos) | Muy buena entregabilidad; el plan gratuito solo sirve para pruebas |
+| **Amazon SES** | Sin cuota gratuita fija (créditos de cuenta nueva) | 0,10 $ por 1000 | Lo más barato a volumen, pero empieza en modo *sandbox* y hay que pedir la salida |
+
+Para una demo de portfolio con 100 cuentas como máximo, **Brevo** (europeo, 300 al día) o **Resend** (3000 al mes) bastan con el plan gratuito. Con cualquiera de ellos, la configuración es solo de `.env` (sin dependencias nuevas, con el mailer `smtp` de Laravel):
+
+```
+MAIL_MAILER=smtp
+MAIL_HOST=<servidor SMTP del proveedor>
+MAIL_PORT=587
+MAIL_USERNAME=<usuario SMTP>
+MAIL_PASSWORD=<clave SMTP>
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=no-reply@josedavidfernandezcomino.com
+MAIL_FROM_NAME=VyaMap
+```
+
+**Qué se puede probar ya en local, sin cuenta en ningún proveedor:**
+
+- **`MAIL_MAILER=log`** (sin instalar nada): en `/forgot-password`, el correo con el enlace de recuperación aparece en `storage/logs/laravel.log`; abrir ese enlace completa el cambio de contraseña. Sirve igual para la verificación del correo cuando exista.
+- **Mailpit** (un buzón falso local, `brew install mailpit`, luego `mailpit`): con `MAIL_MAILER=smtp`, `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` y sin usuario ni cifrado, los correos se ven en `http://127.0.0.1:8025` con su HTML. No sale nada a Internet.
+- Los tests ya cubren el flujo sin enviar nada (`tests/Feature/PasswordResetTest.php`, con `Notification::fake()`).
 
 ## 8. Actualizaciones y vuelta atrás
 
@@ -450,9 +483,9 @@ mysql -e 'SELECT COUNT(*) FROM vyamap_restore_test.users; DROP DATABASE vyamap_r
 2. Las cookies de sesión llevan `Secure` y `HttpOnly`.
 3. Con un error forzado no se ven trazas ni datos de configuración (`APP_DEBUG=false`).
 4. Devuelven 404: `/_ignition/health-check`, `/_inertia/devtools/entries`, `/.env`, `/storage/logs/laravel.log` e `/index.php/../.env`.
-5. Registro: se puede crear una cuenta. Al poner `REGISTRATION_ENABLED=false`, `/register` devuelve 404. Con el límite implementado, al alcanzarlo el registro se cierra.
+5. Registro: con `REGISTRATION_ENABLED=false`, `/register` devuelve 404. Cuando se abra (con correo): se puede crear una cuenta, y con `REGISTRATION_MAX_USERS` igual al número de cuentas el registro se cierra (`users:list` lo indica).
 6. Aislamiento: con dos cuentas, la segunda no ve los viajes, vuelos ni estadísticas de la primera, y las URL de los recursos de la primera le devuelven 403 o 404.
-7. Subidas desactivadas (cuando exista `UPLOADS_ENABLED`): no aparecen los botones y `POST /photos` se rechaza.
+7. Subidas desactivadas: no aparecen los botones de fotos ni de avatar, y `POST /photos` devuelve 403.
 8. Con datos de `demo:reset`: Home, Trips, Passport y Flight History muestran viajes y estadísticas, y los mapas cargan.
 9. `ss -ltnp` solo muestra 22, 80 y 443 hacia fuera; MySQL, en `127.0.0.1`.
 10. La copia de la noche aparece en `/var/backups/vyamap` y se restaura (sección 9).

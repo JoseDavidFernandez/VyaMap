@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { useForm, Link } from '@inertiajs/vue3';
+import { useForm, Link, usePage } from '@inertiajs/vue3';
+
+const uploadsEnabled = usePage().props.features.uploads;
 
 const form = useForm({
     name: '',
@@ -160,7 +162,7 @@ const submit = () => {
                         </div>
 
                         <!-- AVATAR -->
-                        <div>
+                        <div v-if="uploadsEnabled">
                             <label
                                 for="avatar"
                                 class="vyamap-label"

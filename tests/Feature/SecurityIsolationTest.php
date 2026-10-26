@@ -53,6 +53,7 @@ class SecurityIsolationTest extends TestCase
         $trip = Trip::create(['user_id' => $this->victim->id, 'name' => 'Victim secret trip', 'start_date' => '2026-01-01', 'end_date' => '2026-01-10']);
         $visit = Visit::create(['user_id' => $this->victim->id, 'trip_id' => $trip->id, 'city_id' => $city->id, 'visited_from' => '2026-01-01', 'visited_until' => '2026-01-02', 'notes' => 'Victim notes']);
         $flight = Flight::create(['user_id' => $this->victim->id, 'trip_id' => $trip->id, 'origin_airport_id' => $origin->id, 'destination_airport_id' => $destination->id, 'flight_number' => 'VY1', 'departure_at' => '2026-01-01 08:00', 'arrival_at' => '2026-01-01 10:00']);
+        $standaloneFlight = Flight::create(['user_id' => $this->victim->id, 'trip_id' => null, 'origin_airport_id' => $destination->id, 'destination_airport_id' => $origin->id, 'flight_number' => 'VY2', 'departure_date' => '2026-02-01']);
         $photo = Photo::create(['user_id' => $this->victim->id, 'trip_id' => $trip->id, 'path' => 'photos/1/p.webp', 'original_filename' => 'p.jpg', 'processing_status' => 'ready']);
         $album = Album::create(['user_id' => $this->victim->id, 'name' => 'Victim album', 'cover_photo_id' => $photo->id]);
         $album->photos()->attach($photo->id);
@@ -64,7 +65,7 @@ class SecurityIsolationTest extends TestCase
         $ownAlbum = Album::create(['user_id' => $this->intruder->id, 'name' => 'Own album']);
 
         $this->ids = [
-            'trip' => $trip->id, 'visit' => $visit->id, 'flight' => $flight->id, 'photo' => $photo->id,
+            'trip' => $trip->id, 'visit' => $visit->id, 'flight' => $flight->id, 'standaloneFlight' => $standaloneFlight->id, 'photo' => $photo->id,
             'album' => $album->id, 'list' => $list->id, 'day' => $day->id, 'city' => $city->id,
             'country' => $country->id, 'origin' => $origin->id, 'destination' => $destination->id,
             'ownTrip' => $ownTrip->id, 'ownAlbum' => $ownAlbum->id,
@@ -88,6 +89,12 @@ class SecurityIsolationTest extends TestCase
             'crear vuelo' => ['POST', '/trips/{trip}/flights', 403],
             'actualizar vuelo ajeno desde viaje propio' => ['PUT', '/trips/{ownTrip}/flights/{flight}', 404],
             'borrar vuelo ajeno desde viaje propio' => ['DELETE', '/trips/{ownTrip}/flights/{flight}', 404],
+            'actualizar vuelo independiente ajeno' => ['PUT', '/flights/{standaloneFlight}', 403],
+            'borrar vuelo independiente ajeno' => ['DELETE', '/flights/{standaloneFlight}', 403],
+            'confirmar vuelo independiente ajeno' => ['PATCH', '/flights/{standaloneFlight}/confirmation', 403],
+            'actualizar vuelo de viaje ajeno sin pasar por el viaje' => ['PUT', '/flights/{flight}', 403],
+            'borrar vuelo de viaje ajeno sin pasar por el viaje' => ['DELETE', '/flights/{flight}', 403],
+            'confirmar vuelo de viaje ajeno' => ['PATCH', '/flights/{flight}/confirmation', 403],
             'crear lista de Google Maps' => ['POST', '/trips/{trip}/google-maps', 403],
             'vincular lista ajena a viaje propio' => ['POST', '/trips/{ownTrip}/google-maps/{list}', 403],
             'desvincular lista de viaje ajeno' => ['DELETE', '/trips/{trip}/google-maps/{list}', 403],
@@ -119,6 +126,44 @@ class SecurityIsolationTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseMissing('album_photo', ['album_id' => $this->ids['ownAlbum']]);
+    }
+
+    /**
+     * Una cuenta recién creada (registro público) no ve nada de las demás,
+     * ni siquiera en las páginas que agregan datos.
+     *
+     * @return array<string, array{string, ?string}>
+     */
+    public static function pagesOfANewAccount(): array
+    {
+        return [
+            'dashboard' => ['/', 'recentPhotos'],
+            'viajes' => ['/trips', null],
+            'fotos' => ['/photos', 'photos'],
+            'países' => ['/countries', null],
+            'país' => ['/countries/{country}', 'trips'],
+            'pasaporte' => ['/passport', 'visits'],
+            'vuelos' => ['/flight-history', 'flights'],
+            'perfil' => ['/profile', null],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('pagesOfANewAccount')]
+    public function test_a_new_account_sees_nothing_of_other_accounts(string $uri, ?string $emptyProp): void
+    {
+        Trip::whereKey($this->ids['trip'])->update(['status' => Trip::COMPLETED]);
+        Flight::whereKey($this->ids['standaloneFlight'])->update(['confirmed_at' => now()]);
+        $newcomer = User::factory()->create();
+
+        $response = $this->actingAs($newcomer)->get($this->uri($uri))->assertOk();
+
+        foreach (['Victim', 'VY1', 'VY2', 'p.jpg', $this->victim->email] as $private) {
+            $this->assertStringNotContainsString($private, $response->getContent());
+        }
+
+        if ($emptyProp !== null) {
+            $response->assertInertia(fn ($page) => $page->has($emptyProp, 0));
+        }
     }
 
     public function test_country_page_only_shows_the_users_own_trips_and_cities(): void
