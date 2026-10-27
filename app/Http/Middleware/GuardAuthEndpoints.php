@@ -17,8 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * - Registro: 404 si está desactivado o se ha alcanzado el máximo de cuentas
  *   (App\Support\Registration).
- * - Registro, enlace de recuperación y restablecimiento: limitadores
- *   definidos en AppServiceProvider.
+ * - Registro, enlace de recuperación, restablecimiento y reenvío del enlace
+ *   de verificación: limitadores definidos en AppServiceProvider.
  */
 class GuardAuthEndpoints
 {
@@ -26,6 +26,7 @@ class GuardAuthEndpoints
         'register.store' => 'register',
         'password.email' => 'password-email',
         'password.update' => 'password-reset',
+        'verification.send' => 'verification-email',
     ];
 
     public function __construct(private ThrottleRequests $throttle)

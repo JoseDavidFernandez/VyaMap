@@ -133,4 +133,20 @@ return [
         ? max(0, (int) env('REGISTRATION_MAX_USERS'))
         : null,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Verificación del correo
+    |--------------------------------------------------------------------------
+    |
+    | Con EMAIL_VERIFICATION activa, una cuenta sin el correo verificado solo
+    | puede ver la página que lo pide (/email/verify), reenviar el enlace y
+    | cerrar sesión (App\Http\Middleware\EnsureEmailIsVerified). Al
+    | registrarse se envía el enlace; users:create y users:verify marcan la
+    | cuenta como verificada. Por defecto, activa salvo en local, donde las
+    | cuentas de desarrollo existentes no tienen el correo verificado.
+    |
+    */
+
+    'email_verification' => (bool) env('EMAIL_VERIFICATION', env('APP_ENV', 'production') !== 'local'),
+
 ];

@@ -26,4 +26,9 @@ El orden importa: cada ciudad pertenece a un país, y los tres últimos comandos
 
 No contienen datos personales.
 
-**Pendiente antes de declarar una licencia para el repositorio:** no está documentado de qué fuentes ni con qué herramientas se generaron `vyamap_airport_city_mapping.csv` (ciudad y coordenadas de cada aeropuerto) y `airport_timezones.csv` (zona calculada a partir de coordenadas). Si alguna fuente fuera, por ejemplo, OpenFlights o timezone-boundary-builder (ODbL) o GeoNames (CC BY 4.0), esos datos llevarían sus propias condiciones (atribución y, en ODbL, compartir igual) y no podrían quedar bajo la licencia del código. Hasta confirmarlo, o regenerarlos desde fuentes con licencia conocida, se tratan como datos de procedencia desconocida.
+**Procedencia de los dos archivos «Preparado para VyaMap» (revisión del 26-10-2026).** No hay ningún script, documento ni commit que explique cómo se generaron, así que su origen **no está acreditado**. Comparados con OurAirports (dominio público):
+
+- Coinciden con OurAirports el nombre del aeropuerto (3244 de 3244), el ICAO (3239), el país (3238) y, en `airport_timezones.csv`, las coordenadas del aeropuerto (3244).
+- **Sin fuente identificada:** la ciudad asignada a cada aeropuerto (en 822 no coincide con el `municipality` de OurAirports: es la ciudad a la que sirve, como NRT → Tokyo o BVA → Paris), las coordenadas de esas ciudades y el cálculo de las zonas horarias (`timezone_status=calculated`).
+
+Se probó a regenerarlos desde OurAirports y GeoNames (CC BY 4.0): las zonas horarias coinciden en 3215 de 3244 aeropuertos, pero la ciudad pasa a ser la del emplazamiento (Narita, Beauvais, Sepang…) y la búsqueda de aeropuertos por ciudad empeora. **No se han sustituido.** Hasta resolverlo (confirmar cómo se prepararon o regenerarlos con una fuente de «ciudad servida» con licencia conocida, por ejemplo Wikidata, CC0), no se puede declarar una licencia que los cubra.

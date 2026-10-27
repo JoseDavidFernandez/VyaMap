@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,7 +14,7 @@ use App\Models\Trip;
 use App\Models\Visit;
 use App\Models\Album;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -51,6 +51,17 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Sin auth.email_verification no se envía el enlace al registrarse ni al
+     * pedir que se reenvíe.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if (config('auth.email_verification')) {
+            parent::sendEmailVerificationNotification();
+        }
+    }
 
     public function trips(): HasMany
     {

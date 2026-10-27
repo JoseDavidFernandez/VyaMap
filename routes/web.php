@@ -60,12 +60,28 @@ Route::middleware('guest')->group(function () {
 });
 
 
+// VERIFICACIÓN DEL CORREO: el enlace y el reenvío los registra Fortify
+// (verification.verify y verification.send).
+Route::get('/email/verify', function (Request $request) {
+    if (! config('auth.email_verification') || $request->user()->hasVerifiedEmail()) {
+        return redirect()->route('home');
+    }
+
+    return Inertia::render('Auth/VerifyEmail', [
+        'email' => $request->user()->email,
+        'status' => session('status'),
+    ]);
+})->middleware('auth')->name('verification.notice');
+
+
+// Todas las páginas privadas exigen el correo verificado (si
+// auth.email_verification está activa: ver EnsureEmailIsVerified).
 Route::get('/', DashboardController::class)
-    ->middleware('auth')
+    ->middleware(['auth', 'verified'])
     ->name('home');
 
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     
 //TRIPS
     Route::post('/trips', [TripController::class, 'store'])

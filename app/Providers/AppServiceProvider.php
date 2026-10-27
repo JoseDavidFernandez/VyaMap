@@ -58,5 +58,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('password-reset', fn (Request $request) => [
             Limit::perMinute(5)->by($request->ip()),
         ]);
+
+        // Reenvío del enlace de verificación: por cuenta (evita inundar un
+        // buzón) y por IP.
+        RateLimiter::for('verification-email', fn (Request $request) => [
+            Limit::perMinutes(15, 3)->by('user|' . ($request->user()?->id ?? $request->ip())),
+            Limit::perMinute(6)->by('ip|' . $request->ip()),
+        ]);
     }
 }

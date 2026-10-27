@@ -240,6 +240,7 @@ MAIL_MAILER=log
 REGISTRATION_ENABLED=false      # true solo cuando el correo funcione (7.3)
 REGISTRATION_MAX_USERS=100
 UPLOADS_ENABLED=false
+EMAIL_VERIFICATION=true         # es el valor por defecto fuera de local
 # GEOAPIFY_API_KEY=              opcional, clave nueva
 ```
 
@@ -377,39 +378,52 @@ Sin `includeSubDomains`, porque afectaría a todos los subdominios de `josedavid
 
 ### 7.3 Correo: requisito para abrir el registro
 
-Con `MAIL_MAILER=log` no se envía ningún correo: el enlace de recuperación se escribe en `storage/logs`. Antes de abrir el registro hacen falta:
+**Lo que ya hace la aplicación** (`EMAIL_VERIFICATION`, activa por defecto fuera de `local`):
 
-1. **Un proveedor de correo transaccional** con el dominio verificado (registros SPF, DKIM y DMARC en el DNS de `josedavidfernandezcomino.com`) y un remitente como `no-reply@josedavidfernandezcomino.com`.
-2. **La verificación del correo en la aplicación** (todavía no existe): `Features::emailVerification()` en Fortify, `MustVerifyEmail` en `User`, el middleware `verified` en las rutas privadas y la página que pide confirmar el correo. `users:create` marcaría sus cuentas como verificadas.
+- Al registrarse se envía un enlace de verificación firmado, válido 60 minutos. Hasta abrirlo, la cuenta solo ve `/email/verify`, desde donde puede reenviar el enlace o cerrar sesión. Las demás páginas redirigen ahí, y las peticiones JSON reciben 403.
+- Reenvío limitado a 3 cada 15 minutos por cuenta y a 6 por minuto por IP.
+- Recuperación de contraseña con la misma respuesta exista o no la cuenta, limitada a 5 peticiones por minuto por IP y 3 cada 15 minutos por dirección.
+- `users:create` crea cuentas ya verificadas. `users:verify <correo>` verifica una cuenta concreta (pide confirmación).
 
-Opciones con plan gratuito, comprobadas en octubre de 2026 (los límites cambian: revísalos al crear la cuenta):
+**Lo que falta para abrir el registro:** un proveedor de correo transaccional con el dominio verificado (registros SPF, DKIM y DMARC en el DNS de `josedavidfernandezcomino.com`) y un remitente como `no-reply@josedavidfernandezcomino.com`. Mientras no esté, `REGISTRATION_ENABLED=false`.
+
+Opciones con plan gratuito (octubre de 2026; los límites cambian, revísalos al crear la cuenta):
 
 | Proveedor | Gratis | Primer plan de pago | Notas |
 |---|---|---|---|
-| **Brevo** | 300 correos al día | Desde unos 9 $/mes | Empresa europea (Francia); SMTP y API. Según reseñas, el plan gratuito añade su marca; hay que comprobar si también en los transaccionales. |
-| **Resend** | 3000 al mes, máximo 100 al día, 3 dominios | Pro, 20 $/mes (50 000 correos) | SMTP y API; empresa de EE. UU. |
-| **MailerSend** | 500 al mes, 1 dominio | Hobby, 7 $/mes (5000 correos) | SMTP y API |
-| **Postmark** | 100 al mes | Basic, 15 $/mes (10 000 correos) | Muy buena entregabilidad; el plan gratuito solo sirve para pruebas |
-| **Amazon SES** | Sin cuota gratuita fija (créditos de cuenta nueva) | 0,10 $ por 1000 | Lo más barato a volumen, pero empieza en modo *sandbox* y hay que pedir la salida |
+| **Brevo** (preferido) | 300 correos al día | Desde unos 9 $/mes | Empresa europea (Francia); SMTP y API. Según reseñas, el plan gratuito añade su marca: hay que comprobar si también en los transaccionales. |
+| Resend | 3000 al mes, máximo 100 al día, 3 dominios | Pro, 20 $/mes (50 000 correos) | SMTP y API; empresa de EE. UU. |
+| MailerSend | 500 al mes, 1 dominio | Hobby, 7 $/mes (5000 correos) | SMTP y API |
+| Postmark | 100 al mes | Basic, 15 $/mes (10 000 correos) | Muy buena entregabilidad; el plan gratuito solo sirve para pruebas |
+| Amazon SES | Sin cuota gratuita fija (créditos de cuenta nueva) | 0,10 $ por 1000 | Empieza en modo *sandbox* |
 
-Para una demo de portfolio con 100 cuentas como máximo, **Brevo** (europeo, 300 al día) o **Resend** (3000 al mes) bastan con el plan gratuito. Con cualquiera de ellos, la configuración es solo de `.env` (sin dependencias nuevas, con el mailer `smtp` de Laravel):
+La aplicación no depende de ninguno: se configura solo con el mailer `smtp` de Laravel, sin dependencias nuevas. Para Brevo (valores de su documentación; compruébalos en el panel, «SMTP & API»):
 
 ```
 MAIL_MAILER=smtp
-MAIL_HOST=<servidor SMTP del proveedor>
-MAIL_PORT=587
-MAIL_USERNAME=<usuario SMTP>
-MAIL_PASSWORD=<clave SMTP>
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587                         # si el VPS bloquea el 587: 2525
+MAIL_USERNAME=<login SMTP de Brevo>   # el login SMTP, no el correo de la cuenta ni una clave de API
+MAIL_PASSWORD=<clave SMTP de Brevo>   # una «SMTP key», no una «API key»
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=no-reply@josedavidfernandezcomino.com
 MAIL_FROM_NAME=VyaMap
 ```
 
-**Qué se puede probar ya en local, sin cuenta en ningún proveedor:**
+Después: `sudo -u vyamap php artisan config:cache`, una prueba con una cuenta propia (registro, enlace, recuperación) y, solo entonces, `REGISTRATION_ENABLED=true`.
 
-- **`MAIL_MAILER=log`** (sin instalar nada): en `/forgot-password`, el correo con el enlace de recuperación aparece en `storage/logs/laravel.log`; abrir ese enlace completa el cambio de contraseña. Sirve igual para la verificación del correo cuando exista.
-- **Mailpit** (un buzón falso local, `brew install mailpit`, luego `mailpit`): con `MAIL_MAILER=smtp`, `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` y sin usuario ni cifrado, los correos se ven en `http://127.0.0.1:8025` con su HTML. No sale nada a Internet.
-- Los tests ya cubren el flujo sin enviar nada (`tests/Feature/PasswordResetTest.php`, con `Notification::fake()`).
+**Probar en local sin enviar correos:**
+
+- **`MAIL_MAILER=log`** (sin instalar nada): los correos se escriben en `storage/logs/laravel.log`, con su destinatario y su HTML. Los enlaces se encuentran con:
+
+  ```bash
+  grep -oE 'http[^"<> ]*/email/verify/[^"<> ]*' storage/logs/laravel.log | tail -1 | sed 's/&amp;/\&/g'
+  grep -oE 'http[^"<> ]*/reset-password/[^"<> ]*' storage/logs/laravel.log | tail -1 | sed 's/&amp;/\&/g'
+  ```
+
+  El enlace de verificación hay que abrirlo con la sesión de esa cuenta iniciada. `tests/Feature/MailLogLinksTest.php` comprueba que los dos enlaces aparecen así en el log y funcionan.
+- **Mailpit** (opcional; un buzón falso local, `brew install mailpit` y luego `mailpit`): con `MAIL_MAILER=smtp`, `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` y sin usuario ni cifrado, los correos se ven en `http://127.0.0.1:8025`. No sale nada a Internet.
+- Los tests cubren el flujo completo sin enviar nada: `EmailVerificationTest`, `PasswordResetTest` y `AuthSecurityTest`.
 
 ## 8. Actualizaciones y vuelta atrás
 
@@ -483,7 +497,7 @@ mysql -e 'SELECT COUNT(*) FROM vyamap_restore_test.users; DROP DATABASE vyamap_r
 2. Las cookies de sesión llevan `Secure` y `HttpOnly`.
 3. Con un error forzado no se ven trazas ni datos de configuración (`APP_DEBUG=false`).
 4. Devuelven 404: `/_ignition/health-check`, `/_inertia/devtools/entries`, `/.env`, `/storage/logs/laravel.log` e `/index.php/../.env`.
-5. Registro: con `REGISTRATION_ENABLED=false`, `/register` devuelve 404. Cuando se abra (con correo): se puede crear una cuenta, y con `REGISTRATION_MAX_USERS` igual al número de cuentas el registro se cierra (`users:list` lo indica).
+5. Registro: con `REGISTRATION_ENABLED=false`, `/register` devuelve 404. Las cuentas creadas con `users:create` entran sin pasar por `/email/verify`. Cuando se abra (con correo): se puede crear una cuenta, y con `REGISTRATION_MAX_USERS` igual al número de cuentas el registro se cierra (`users:list` lo indica).
 6. Aislamiento: con dos cuentas, la segunda no ve los viajes, vuelos ni estadísticas de la primera, y las URL de los recursos de la primera le devuelven 403 o 404.
 7. Subidas desactivadas: no aparecen los botones de fotos ni de avatar, y `POST /photos` devuelve 403.
 8. Con datos de `demo:reset`: Home, Trips, Passport y Flight History muestran viajes y estadísticas, y los mapas cargan.

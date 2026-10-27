@@ -90,7 +90,7 @@ class GeoapifyCityNameTest extends TestCase
             ->andReturn((new City(['name' => 'Vatican City', 'country_id' => 1]))->forceFill(['id' => 1]));
         $this->app->instance(CityPersistenceService::class, $persistence);
 
-        $this->actingAs((new User(['name' => 'Tester', 'email' => 'tester@example.test']))->forceFill(['id' => 1]))
+        $this->actingAs((new User(['name' => 'Tester', 'email' => 'tester@example.test']))->forceFill(['id' => 1, 'email_verified_at' => now()]))
             ->postJson('/cities', ['external_provider' => 'geoapify', 'external_id' => 'vatican', 'search_query' => 'Ciudad del Vaticano'])
             ->assertCreated()
             ->assertJsonPath('city.name', 'Vatican City');

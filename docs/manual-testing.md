@@ -20,10 +20,12 @@ php artisan tinker --env=manual --execute='echo DB::connection()->getDatabaseNam
 
 # 2. Servidores (en dos terminales)
 npm run dev
-SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
+EMAIL_VERIFICATION=false SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
 ```
 
 Abre `http://127.0.0.1:8010` e inicia sesión con tu usuario de pruebas. La sesión se guarda en una cookie, sin dejar archivos en `storage/framework/sessions`. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
+
+**Verificación del correo:** fuera de `local` es obligatoria por defecto (`EMAIL_VERIFICATION`), y las cuentas de `vyamap_manual` se crearon antes de que existiera, sin el correo verificado: al entrar, la aplicación las mandaría a `/email/verify`. Por eso el comando del servidor lleva `EMAIL_VERIFICATION=false` (no cambia ningún dato); quítalo solo para probar la verificación (casos R). La otra opción es verificar esa cuenta con `php artisan users:verify <correo> --env=manual`, que escribe en `vyamap_manual` (solo `email_verified_at` de esa cuenta).
 
 **`APP_ENV` dentro de `.env.manual` debe ser `manual`:** el servidor que lanza `artisan serve` no recibe `--env` y elige su archivo de entorno por `APP_ENV`. **No exportes `APP_ENV=manual` en la terminal:** se aplicaría a cualquier otro comando que ejecutes en ella.
 
@@ -116,14 +118,23 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 Sin tocar `.env.manual`: las variables puestas delante del comando tienen prioridad sobre el archivo. `REGISTRATION_MAX_USERS` debe ser el número de cuentas actual más una (`php artisan users:list --env=manual` lo indica en la última línea); por ejemplo, con 1 cuenta:
 
 ```bash
-REGISTRATION_ENABLED=true REGISTRATION_MAX_USERS=2 UPLOADS_ENABLED=false \
+REGISTRATION_ENABLED=true REGISTRATION_MAX_USERS=2 UPLOADS_ENABLED=false MAIL_MAILER=log \
   SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
+```
+
+Con `MAIL_MAILER=log` no se envía ningún correo: el enlace se copia del log (ver [`deployment.md`](deployment.md), sección 7.3):
+
+```bash
+grep -oE 'http[^"<> ]*/email/verify/[^"<> ]*' storage/logs/laravel.log | tail -1 | sed 's/&amp;/\&/g'
 ```
 
 | # | Pasos | Resultado esperado |
 |---|---|---|
 | R1 | Abrir `/login` sin sesión | Aparece el enlace de registro; el formulario no tiene campo de foto. |
-| R2 | Registrar una cuenta nueva | Se crea y entra en Home vacía: sin viajes, vuelos, fotos ni cifras de otras cuentas. |
+| R2 | Registrar una cuenta nueva | Se crea y muestra «Verify your email»; Home, Trips y el resto redirigen ahí. |
+| R2b | «Resend verification link» cuatro veces seguidas | Las tres primeras muestran «A new verification link has been sent»; la cuarta, error 429. |
+| R2c | Abrir el último enlace del log (con la sesión de esa cuenta) | Entra en Home vacía: sin viajes, vuelos, fotos ni cifras de otras cuentas. |
+| R2d | En `/forgot-password`, pedir el enlace para la cuenta nueva y para un correo inexistente | El mismo mensaje en los dos casos; solo hay enlace en el log para la cuenta existente. |
 | R3 | Cerrar sesión y volver a `/login` | Ya no aparece el enlace (se ha alcanzado el máximo); `/register` da 404. |
 | R4 | Con la cuenta nueva: editar perfil y abrir un viaje propio | Sin «Change photo» ni botón «+» de fotos; cambiar el nombre funciona. |
 | R5 | Abrir la URL de un viaje de otra cuenta (`/trips/<id>`) | 403. |

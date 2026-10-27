@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
  *   php artisan users:create "Nombre" correo@example.com
  *
  * La contraseña se pide de forma oculta y pasa por las mismas reglas que
- * el formulario de registro (CreateNewUser).
+ * el formulario de registro (CreateNewUser). El correo queda verificado.
  */
 class CreateUser extends Command
 {
@@ -41,6 +41,9 @@ class CreateUser extends Command
 
             return self::FAILURE;
         }
+
+        // La crea el administrador: el correo se da por verificado.
+        $user->markEmailAsVerified();
 
         $this->info("Cuenta creada (id {$user->id}).");
 

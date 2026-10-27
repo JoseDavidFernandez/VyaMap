@@ -118,12 +118,12 @@ class RegistrationLimitTest extends TestCase
         config(['auth.registration_max_users' => 100]);
         $ana = User::factory()->create(['name' => 'Ana', 'email' => 'ana@example.test']);
         Trip::create(['user_id' => $ana->id, 'name' => 'Private trip name', 'start_date' => '2026-01-01', 'end_date' => '2026-01-02']);
-        User::factory()->create(['name' => 'Luis', 'email' => 'luis@example.test']);
+        $luis = User::factory()->unverified()->create(['name' => 'Luis', 'email' => 'luis@example.test']);
 
         $this->artisan('users:list')
-            ->expectsTable(['ID', 'Nombre', 'Correo', 'Alta', 'Viajes', 'Vuelos', 'Fotos'], [
-                [User::where('email', 'luis@example.test')->value('id'), 'Luis', 'luis@example.test', User::where('email', 'luis@example.test')->first()->created_at->format('Y-m-d H:i'), 0, 0, 0],
-                [$ana->id, 'Ana', 'ana@example.test', $ana->created_at->format('Y-m-d H:i'), 1, 0, 0],
+            ->expectsTable(['ID', 'Nombre', 'Correo', 'Verificado', 'Alta', 'Viajes', 'Vuelos', 'Fotos'], [
+                [$luis->id, 'Luis', 'luis@example.test', 'no', $luis->created_at->format('Y-m-d H:i'), 0, 0, 0],
+                [$ana->id, 'Ana', 'ana@example.test', 'sí', $ana->created_at->format('Y-m-d H:i'), 1, 0, 0],
             ])
             ->expectsOutput('Cuentas: 2 de un máximo de 100 (se muestran 2). Registro: abierto.')
             ->doesntExpectOutputToContain('Private trip name')

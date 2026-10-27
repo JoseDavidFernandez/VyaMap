@@ -12,9 +12,9 @@ use Illuminate\Console\Command;
  *   php artisan users:list
  *   php artisan users:list --limit=20
  *
- * Solo lectura: muestra id, nombre, correo, fecha de alta y cuántos viajes,
- * vuelos y fotos tiene cada cuenta. Nunca contraseñas, tokens ni datos de
- * los viajes.
+ * Solo lectura: muestra id, nombre, correo, si está verificado, fecha de alta
+ * y cuántos viajes, vuelos y fotos tiene cada cuenta. Nunca contraseñas,
+ * tokens ni datos de los viajes.
  */
 class ListUsers extends Command
 {
@@ -32,14 +32,15 @@ class ListUsers extends Command
             ->withCount(['trips', 'flights', 'photos'])
             ->latest('id')
             ->limit($limit)
-            ->get(['id', 'name', 'email', 'created_at']);
+            ->get(['id', 'name', 'email', 'email_verified_at', 'created_at']);
 
         $this->table(
-            ['ID', 'Nombre', 'Correo', 'Alta', 'Viajes', 'Vuelos', 'Fotos'],
+            ['ID', 'Nombre', 'Correo', 'Verificado', 'Alta', 'Viajes', 'Vuelos', 'Fotos'],
             $users->map(fn (User $user) => [
                 $user->id,
                 $user->name,
                 $user->email,
+                $user->hasVerifiedEmail() ? 'sí' : 'no',
                 $user->created_at?->format('Y-m-d H:i'),
                 $user->trips_count,
                 $user->flights_count,
