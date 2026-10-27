@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '../../layouts/AppLayout.vue';
+import Icon from '../../components/ui/Icon.vue';
+import EmptyState from '../../components/ui/EmptyState.vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 
 interface Photo {
     id: number;
@@ -499,953 +501,420 @@ const formatDate = (date: string | null | undefined) => {
 
 <template>
     <AppLayout title="Photos">
-        <div class="vyamap-page">
-            <main
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
-            >
-                <!-- HEADER -->
-                <section class="mb-8">
-                    <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
-                    >
-                        <div
-                            class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
-                        ></div>
-
-                        <div
-                            class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"
-                        ></div>
-
-                        <div class="relative z-10">
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Memories
-                            </div>
-
-                            <div
-                                class="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
-                            >
-                                <div>
-                                    <h1
-                                        class="text-3xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
-                                    >
-                                        Your travel
-                                        <br class="hidden sm:block" />
-                                        memories.
-                                    </h1>
-
-                                    <p
-                                        class="mt-4 max-w-xl text-sm leading-6 text-white/40 sm:mt-5 sm:text-base"
-                                    >
-                                        Every place you've visited, captured
-                                        in one place.
-                                    </p>
-                                </div>
-
-                                <div
-                                    class="shrink-0 text-[10px] uppercase tracking-[0.18em] text-white/25"
-                                >
-                                    {{ photos.length }}
-                                    {{
-                                        photos.length === 1 ? 'photo' : 'photos'
-                                    }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- TOOLBAR -->
-                <section class="mb-6">
-                    <div
-                        class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-                    >
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Gallery
-                            </div>
-
-                            <div
-                                class="h-3 w-px bg-white/[0.08]"
-                            ></div>
-
-                            <div class="text-xs text-white/30">
-                                {{ filteredPhotos.length }}
-                            </div>
-                        </div>
-
-                        <div
-                            class="flex flex-col gap-2 sm:flex-row sm:items-center"
-                        >
-                            <!-- SEARCH -->
-                            <div class="relative sm:w-[250px]">
-                                <input
-                                    v-model="search"
-                                    type="search"
-                                    placeholder="Search photos..."
-                                    class="w-full rounded-full border border-white/[0.08] bg-white/[0.035] px-4 py-2.5 pr-10 text-xs text-white outline-none transition placeholder:text-white/20 focus:border-white/[0.16] focus:bg-white/[0.05]"
-                                />
-
-                                <div
-                                    class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/25"
-                                >
-                                    ⌕
-                                </div>
-                            </div>
-
-                            <!-- FILTERS -->
-                            <button
-                                type="button"
-                                class="rounded-full border border-white/[0.08] bg-white/[0.035] px-4 py-2.5 text-[11px] text-white/45 transition hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-white/70"
-                                :class="{
-                                    'border-white/[0.16] bg-white/[0.07] text-white':
-                                        showFilters,
-                                }"
-                                @click="toggleFilters"
-                            >
-                                Filters
-                                <span
-                                    v-if="hasActiveFilters"
-                                    class="ml-1 text-cyan-300"
-                                >
-                                    ·
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- FILTER PANEL -->
-                    <div
-                        v-if="showFilters"
-                        class="mt-4 rounded-[22px] border border-white/[0.08] bg-white/[0.025] p-5"
-                    >
-                        <div
-                            class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                        >
-                            <!-- TRIP -->
-                            <label class="block">
-                                <span
-                                    class="text-[9px] uppercase tracking-[0.20em] text-white/25"
-                                >
-                                    Trip
-                                </span>
-
-                                <select
-                                    v-model="activeTripId"
-                                    class="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#151923] px-3 py-2.5 text-xs text-white/60 outline-none transition focus:border-white/[0.16]"
-                                >
-                                    <option :value="null">
-                                        All trips
-                                    </option>
-
-                                    <option
-                                        v-for="trip in trips"
-                                        :key="trip.id"
-                                        :value="trip.id"
-                                    >
-                                        {{ trip.name }}
-                                    </option>
-                                </select>
-                            </label>
-
-                            <!-- FROM -->
-                            <label class="block">
-                                <span
-                                    class="text-[9px] uppercase tracking-[0.20em] text-white/25"
-                                >
-                                    From
-                                </span>
-
-                                <input
-                                    v-model="dateFrom"
-                                    type="date"
-                                    class="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#151923] px-3 py-2.5 text-xs text-white/60 outline-none transition focus:border-white/[0.16]"
-                                />
-                            </label>
-
-                            <!-- TO -->
-                            <label class="block">
-                                <span
-                                    class="text-[9px] uppercase tracking-[0.20em] text-white/25"
-                                >
-                                    To
-                                </span>
-
-                                <input
-                                    v-model="dateTo"
-                                    type="date"
-                                    class="mt-2 w-full rounded-xl border border-white/[0.08] bg-[#151923] px-3 py-2.5 text-xs text-white/60 outline-none transition focus:border-white/[0.16]"
-                                />
-                            </label>
-                        </div>
-
-                        <div
-                            class="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4"
-                        >
-                            <div class="text-[10px] text-white/20">
-                                {{ filteredPhotos.length }} photos match your
-                                filters
-                            </div>
-
-                            <button
-                                type="button"
-                                class="text-[10px] text-white/30 transition hover:text-white/60"
-                                @click="resetFilters"
-                            >
-                                Reset filters
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- MAIN CONTENT -->
-                <div class="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-7">
-                    <!-- MOBILE ALBUM FILTER -->
-                    <div class="mb-5 lg:hidden">
-                        <label
-                            for="mobile-album"
-                            class="mb-2 block text-[9px] uppercase tracking-[0.22em] text-white/25"
-                        >
-                            Album
-                        </label>
-
-                        <select
-                            id="mobile-album"
-                            :value="activeAlbumId ?? ''"
-                            class="w-full appearance-none rounded-[16px] border border-white/[0.08] bg-[#151923] px-4 py-3 text-xs text-white/60 outline-none transition focus:border-white/[0.16]"
-                            @change="handleMobileAlbumChange"
-                        >
-                            <option value="">
-                                All photos · {{ photos.length }}
-                            </option>
-
-                            <option
-                                v-for="album in albums"
-                                :key="album.id"
-                                :value="album.id"
-                            >
-                                {{ album.name }} · {{ album.photos_count ?? 0 }}
-                                {{ (album.photos_count ?? 0) === 1 ? 'photo' : 'photos' }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <!-- ALBUMS SIDEBAR -->
-                    <aside class="mb-6 hidden lg:mb-0 lg:block">
-                        <div
-                            class="lg:sticky lg:top-6"
-                        >
-                            <div
-                                class="mb-3 flex items-center justify-between"
-                            >
-                                <div
-                                    class="text-[9px] uppercase tracking-[0.22em] text-white/25"
-                                >
-                                    Albums
-                                </div>
-
-                                <button
-                                    type="button"
-                                    class="text-[10px] text-white/25 transition hover:text-white/70"
-                                    @click="openCreateAlbum"
-                                >
-                                    +
-                                </button>
-                            </div>
-
-                            <div
-                                class="flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-2 lg:overflow-visible"
-                            >
-                                <!-- ALL PHOTOS -->
-                                <button
-                                    type="button"
-                                    class="group flex min-w-[170px] shrink-0 items-center gap-3 rounded-[16px] border p-2 text-left transition lg:w-full"
-                                    :class="
-                                        activeAlbumId === null
-                                            ? 'border-white/[0.12] bg-white/[0.07]'
-                                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.10] hover:bg-white/[0.045]'
-                                    "
-                                    @click="selectAlbum(null)"
-                                >
-                                    <div
-                                        class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[11px] border border-white/[0.07] bg-white/[0.04]"
-                                    >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            class="h-5 w-5 text-white/30"
-                                        >
-                                            <path
-                                                d="M4 5.5A1.5 1.5 0 0 1 5.5 4h5A1.5 1.5 0 0 1 12 5.5v5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 4 10.5v-5ZM12 5.5A1.5 1.5 0 0 1 13.5 4h5A1.5 1.5 0 0 1 20 5.5v5a1.5 1.5 0 0 1-1.5 1.5h-5a1.5 1.5 0 0 1-1.5-1.5v-5ZM4 13.5A1.5 1.5 0 0 1 5.5 12h5a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 4 18.5v-5ZM12 13.5a1.5 1.5 0 0 1 1.5-1.5h5a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-5a1.5 1.5 0 0 1-1.5-1.5v-5Z"
-                                                stroke="currentColor"
-                                                stroke-width="1.4"
-                                            />
-                                        </svg>
-                                    </div>
-
-                                    <div class="min-w-0">
-                                        <div
-                                            class="truncate text-[11px]"
-                                            :class="
-                                                activeAlbumId === null
-                                                    ? 'text-white'
-                                                    : 'text-white/50 group-hover:text-white/70'
-                                            "
-                                        >
-                                            All photos
-                                        </div>
-
-                                        <div
-                                            class="mt-0.5 text-[9px] text-white/20"
-                                        >
-                                            {{ photos.length }} photos
-                                        </div>
-                                    </div>
-                                </button>
-
-                                <!-- ALBUMS -->
-                                <div
-                                    v-for="album in albums"
-                                    :key="album.id"
-                                    class="relative"
-                                    @dragenter.prevent="enterAlbumDrag(album.id)"
-                                    @dragover.prevent="
-                                        dragOverAlbumId = album.id
-                                    "
-                                    @dragleave="leaveAlbumDrag(album.id)"
-                                    @drop="dropOnAlbum($event, album.id)"
-                                >
-                                    <button
-                                        type="button"
-                                        class="group flex min-w-[170px] shrink-0 items-center gap-3 rounded-[16px] border p-2 text-left transition lg:w-full"
-                                        :class="
-                                            dragOverAlbumId === album.id
-                                                ? 'scale-[1.02] border-cyan-300/40 bg-cyan-300/[0.10] shadow-[0_0_30px_rgba(103,232,249,0.08)]'
-                                                : activeAlbumId === album.id
-                                                  ? 'border-white/[0.12] bg-white/[0.07]'
-                                                  : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.10] hover:bg-white/[0.045]'
-                                        "
-                                        @click="selectAlbum(album.id)"
-                                    >
-                                        <div
-                                            class="relative h-11 w-11 shrink-0 overflow-hidden rounded-[11px] border border-white/[0.07] bg-white/[0.04]"
-                                        >
-                                            <img
-                                                v-if="albumCoverUrl(album)"
-                                                :src="albumCoverUrl(album)!"
-                                                alt=""
-                                                class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                            />
-
-                                            <div
-                                                v-else
-                                                class="flex h-full w-full items-center justify-center text-white/20"
-                                            >
-                                                <svg
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    class="h-5 w-5"
-                                                >
-                                                    <path
-                                                        d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4l2 2h6.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z"
-                                                        stroke="currentColor"
-                                                        stroke-width="1.4"
-                                                    />
-                                                </svg>
-                                            </div>
-                                        </div>
-
-                                        <div class="min-w-0 flex-1">
-                                            <div
-                                                class="truncate text-[11px]"
-                                                :class="
-                                                    activeAlbumId === album.id
-                                                        ? 'text-white'
-                                                        : 'text-white/50 group-hover:text-white/70'
-                                                "
-                                            >
-                                                {{ album.name }}
-                                            </div>
-
-                                            <div
-                                                class="mt-0.5 text-[9px] text-white/20"
-                                            >
-                                                {{
-                                                    album.photos_count ?? 0
-                                                }}
-                                                {{
-                                                    (album.photos_count ?? 0) ===
-                                                    1
-                                                        ? 'photo'
-                                                        : 'photos'
-                                                }}
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            v-if="dragOverAlbumId === album.id"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-medium text-cyan-200"
-                                        >
-                                            Drop
-                                        </div>
-                                    </button>
-                                </div>
-
-                                <!-- NEW ALBUM -->
-                                <button
-                                    type="button"
-                                    class="flex min-w-[170px] shrink-0 items-center gap-3 rounded-[16px] border border-dashed border-white/[0.07] p-2 text-left transition hover:border-white/[0.13] hover:bg-white/[0.025] lg:w-full"
-                                    @click="openCreateAlbum"
-                                >
-                                    <div
-                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-white/[0.07] bg-white/[0.02] text-lg text-white/25"
-                                    >
-                                        +
-                                    </div>
-
-                                    <div>
-                                        <div
-                                            class="text-[11px] text-white/35"
-                                        >
-                                            New album
-                                        </div>
-
-                                        <div
-                                            class="mt-0.5 text-[9px] text-white/15"
-                                        >
-                                            Create a collection
-                                        </div>
-                                    </div>
-                                </button>
-                            </div>
-
-                            <div
-                                v-if="albums.length && !isDragging"
-                                class="mt-4 hidden text-[9px] leading-4 text-white/15 lg:block"
-                            >
-                                Drag photos onto an album to add them.
-                            </div>
-
-                            <div
-                                v-if="isDragging"
-                                class="mt-4 hidden rounded-[14px] border border-cyan-300/[0.12] bg-cyan-300/[0.04] px-3 py-2.5 text-[9px] leading-4 text-cyan-100/50 lg:block"
-                            >
-                                Drop the photo here to add it to an album.
-                            </div>
-                        </div>
-                    </aside>
-
-                    <!-- GALLERY AREA -->
-                    <section class="min-w-0">
-                        <!-- ACTIVE ALBUM HEADER -->
-                        <div
-                            class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                            <div>
-                                <div
-                                    class="text-[9px] uppercase tracking-[0.20em] text-white/20"
-                                >
-                                    {{
-                                        activeAlbum
-                                            ? activeAlbum.name
-                                            : 'All photos'
-                                    }}
-                                </div>
-
-                                <div
-                                    v-if="activeAlbum"
-                                    class="mt-1 text-[10px] text-white/20"
-                                >
-                                    {{
-                                        activeAlbum.photos_count ?? 0
-                                    }}
-                                    {{
-                                        (activeAlbum.photos_count ?? 0) === 1
-                                            ? 'photo'
-                                            : 'photos'
-                                    }}
-                                </div>
-                            </div>
-
-                            <div
-                                v-if="filteredPhotos.length"
-                                class="flex items-center gap-3"
-                            >
-                                <div class="text-[10px] text-white/20">
-                                    {{ filteredPhotos.length }}
-                                </div>
-
-                                <button
-                                    type="button"
-                                    class="text-[10px] text-white/25 transition hover:text-white/60"
-                                    @click="selectAll"
-                                >
-                                    {{
-                                        selectedPhotos.length ===
-                                        filteredPhotos.length
-                                            ? 'Clear selection'
-                                            : 'Select all'
-                                    }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- SELECTION BAR -->
-                        <div
-                            v-if="selectedPhotos.length"
-                            class="mb-5 flex flex-col gap-3 rounded-[20px] border border-white/[0.08] bg-white/[0.035] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                            <div
-                                class="flex items-center gap-3 text-[11px] text-white/50"
-                            >
-                                <button
-                                    type="button"
-                                    class="text-white/70 transition hover:text-white"
-                                    @click="clearSelection"
-                                >
-                                    ×
-                                </button>
-
-                                <span>
-                                    {{ selectedPhotos.length }}
-                                    {{
-                                        selectedPhotos.length === 1
-                                            ? 'photo selected'
-                                            : 'photos selected'
-                                    }}
-                                </span>
-                            </div>
-
-                            <div class="flex flex-wrap items-center gap-2">
-                                <!-- Add to album -->
-                                <div
-                                    v-if="albums.length"
-                                    class="flex items-center gap-2"
-                                >
-                                    <span
-                                        class="hidden text-[9px] uppercase tracking-[0.16em] text-white/20 sm:inline"
-                                    >
-                                        Add to
-                                    </span>
-
-                                    <button
-                                        v-for="album in albums"
-                                        :key="album.id"
-                                        type="button"
-                                        class="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[10px] text-white/40 transition hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-white/70"
-                                        :disabled="isAddingToAlbum"
-                                        @click="addSelectedToAlbum(album.id)"
-                                    >
-                                        {{ album.name }}
-                                    </button>
-                                </div>
-
-                                <!-- Remove from album -->
-                                <button
-                                    v-if="activeAlbum"
-                                    type="button"
-                                    class="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[10px] text-white/40 transition hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-white/70 disabled:opacity-40"
-                                    :disabled="isRemovingFromAlbum"
-                                    @click="removeSelectedFromAlbum"
-                                >
-                                    Remove from album
-                                </button>
-
-                                <!-- Delete -->
-                                <button
-                                    type="button"
-                                    class="rounded-full border border-red-400/[0.12] bg-red-400/[0.035] px-3 py-1.5 text-[10px] text-red-200/50 transition hover:border-red-300/[0.22] hover:bg-red-400/[0.07] hover:text-red-100 disabled:opacity-40"
-                                    :disabled="
-                                        isDeletingPhotos ||
-                                        isRemovingFromAlbum ||
-                                        isAddingToAlbum
-                                    "
-                                    @click="openDeleteConfirmation"
-                                >
-                                    Delete
-                                </button>
-
-                            </div>
-                        </div>
-
-                        <!-- GALLERY -->
-                        <div
-                            v-if="filteredPhotos.length"
-                            class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4"
-                        >
-                            <div
-                                v-for="photo in filteredPhotos"
-                                :key="photo.id"
-                                draggable="true"
-                                class="group relative aspect-[4/5] overflow-hidden rounded-[18px] border bg-white/[0.035] shadow-2xl transition duration-300 hover:-translate-y-1 sm:rounded-[22px]"
-                                :class="
-                                    isPhotoSelected(photo)
-                                        ? 'border-white/[0.35] ring-1 ring-white/20'
-                                        : 'border-white/[0.08] hover:border-white/[0.16]'
-                                "
-                                @dragstart="startDrag($event, photo)"
-                                @dragend="endDrag"
-                            >
-                                <button
-                                    type="button"
-                                    class="absolute inset-0 z-10 h-full w-full cursor-grab active:cursor-grabbing"
-                                    @click="openPhoto(photo)"
-                                >
-                                    <img
-                                        :src="photoUrl(photo)"
-                                        alt="Travel photo"
-                                        class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                                        loading="lazy"
-                                    />
-                                </button>
-
-                                <!-- SELECT -->
-                                <button
-                                    type="button"
-                                    class="absolute left-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-black/30 text-[11px] text-white/70 opacity-0 backdrop-blur-md transition group-hover:opacity-100"
-                                    :class="
-                                        isPhotoSelected(photo)
-                                            ? 'border-white/40 bg-white text-black opacity-100'
-                                            : ''
-                                    "
-                                    @click.stop="togglePhotoSelection(photo)"
-                                >
-                                    <span v-if="isPhotoSelected(photo)">
-                                        ✓
-                                    </span>
-                                </button>
-
-                                <!-- SELECTED INDICATOR -->
-                                <div
-                                    v-if="isPhotoSelected(photo)"
-                                    class="pointer-events-none absolute inset-0 z-[5] border-2 border-white/40 rounded-[22px]"
-                                ></div>
-
-                                <!-- DRAG INDICATOR -->
-                                <div
-                                    class="pointer-events-none absolute right-3 top-3 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30 text-[11px] text-white/50 opacity-0 backdrop-blur-md transition group-hover:opacity-100"
-                                >
-                                    ↕
-                                </div>
-
-                                <!-- HOVER INFO -->
-                                <div
-                                    class="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 pb-3 pt-14 opacity-0 transition duration-300 group-hover:opacity-100"
-                                >
-                                    <div
-                                        v-if="photo.taken_at"
-                                        class="text-[10px] text-white/55"
-                                    >
-                                        {{ formatDate(photo.taken_at) }}
-                                    </div>
-
-                                    <div
-                                        class="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30 text-xs text-white/60 backdrop-blur-md"
-                                    >
-                                        ↗
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- SEARCH EMPTY -->
-                        <div
-                            v-else-if="search"
-                            class="rounded-[30px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-24 text-center"
-                        >
-                            <div
-                                class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xl text-white/30"
-                            >
-                                ⌕
-                            </div>
-
-                            <h3
-                                class="mt-5 text-lg font-medium tracking-[-0.03em] text-white"
-                            >
-                                No photos found
-                            </h3>
-
-                            <p
-                                class="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/30"
-                            >
-                                Try searching with another filename.
-                            </p>
-                        </div>
-
-                        <!-- FILTER EMPTY -->
-                        <div
-                            v-else-if="
-                                activeAlbumId !== null ||
-                                activeTripId !== null ||
-                                dateFrom ||
-                                dateTo
-                            "
-                            class="rounded-[30px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-24 text-center"
-                        >
-                            <div
-                                class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xl text-white/30"
-                            >
-                                ◌
-                            </div>
-
-                            <h3
-                                class="mt-5 text-lg font-medium tracking-[-0.03em] text-white"
-                            >
-                                No photos here
-                            </h3>
-
-                            <p
-                                class="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/30"
-                            >
-                                There are no photos matching the current
-                                selection.
-                            </p>
-                        </div>
-
-                        <!-- NO PHOTOS -->
-                        <div
-                            v-else
-                            class="rounded-[30px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-24 text-center"
-                        >
-                            <div
-                                class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xl text-white/30"
-                            >
-                                +
-                            </div>
-
-                            <h3
-                                class="mt-5 text-lg font-medium tracking-[-0.03em] text-white"
-                            >
-                                No photos yet
-                            </h3>
-
-                            <p
-                                class="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/30"
-                            >
-                                Your travel memories will appear here once you
-                                start adding photos to your trips.
-                            </p>
-                        </div>
-                    </section>
+        <div class="vyamap-container">
+            <header class="vyamap-page-header">
+                <div>
+                    <h1 class="vyamap-page-title">Photos</h1>
+                    <p class="vyamap-page-description">
+                        Every place you've visited, captured in one place.
+                        <span class="vyamap-number font-semibold text-[var(--vyamap-text)]">{{ photos.length }}</span>
+                        {{ photos.length === 1 ? 'photo' : 'photos' }}, private to you.
+                    </p>
                 </div>
-            </main>
 
-            <!-- CREATE ALBUM -->
-            <Teleport to="body">
-                <div
-                    v-if="showCreateAlbum"
-                    class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-5 backdrop-blur-md"
-                    @click.self="closeCreateAlbum"
-                >
-                    <div
-                        class="w-full max-w-[440px] rounded-[26px] border border-white/[0.10] bg-[#151923] p-6 shadow-2xl"
-                    >
-                        <div
-                            class="text-[9px] uppercase tracking-[0.22em] text-white/25"
-                        >
-                            New album
-                        </div>
-
-                        <h2
-                            class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white"
-                        >
-                            Create an album
-                        </h2>
-
-                        <p
-                            class="mt-2 text-xs leading-5 text-white/30"
-                        >
-                            Group your travel memories into a collection.
-                        </p>
-
-                        <div class="mt-6 space-y-4">
-                            <label class="block">
-                                <span
-                                    class="text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                >
-                                    Name
-                                </span>
-
-                                <input
-                                    v-model="newAlbumName"
-                                    type="text"
-                                    maxlength="100"
-                                    placeholder="e.g. Albania 2026"
-                                    class="mt-2 w-full rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-white/[0.16]"
-                                    @keydown.enter="createAlbum"
-                                />
-                            </label>
-
-                            <label class="block">
-                                <span
-                                    class="text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                >
-                                    Description
-                                </span>
-
-                                <textarea
-                                    v-model="newAlbumDescription"
-                                    rows="3"
-                                    maxlength="1000"
-                                    placeholder="Optional"
-                                    class="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-white/[0.16]"
-                                ></textarea>
-                            </label>
-                        </div>
-
-                        <div
-                            class="mt-6 flex items-center justify-end gap-2"
-                        >
-                            <button
-                                type="button"
-                                class="rounded-full px-4 py-2.5 text-[11px] text-white/35 transition hover:text-white/70"
-                                :disabled="isCreatingAlbum"
-                                @click="closeCreateAlbum"
-                            >
-                                Cancel
-                            </button>
-
-                            <button
-                                type="button"
-                                class="rounded-full border border-white/[0.12] bg-white/[0.08] px-5 py-2.5 text-[11px] text-white transition hover:bg-white/[0.12] disabled:opacity-40"
-                                :disabled="
-                                    !newAlbumName.trim() ||
-                                    isCreatingAlbum
-                                "
-                                @click="createAlbum"
-                            >
-                                {{
-                                    isCreatingAlbum
-                                        ? 'Creating...'
-                                        : 'Create album'
-                                }}
-                            </button>
-                        </div>
+                <div v-if="photos.length" class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <div class="relative sm:w-64">
+                        <label for="photo-search" class="sr-only">Search photos</label>
+                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--vyamap-text-subtle)]">
+                            <Icon name="search" :size="18" />
+                        </span>
+                        <input id="photo-search" v-model="search" type="search" placeholder="Search by file name..." class="vyamap-input !pl-10" />
                     </div>
-                </div>
-            </Teleport>
-
-            <!-- PHOTO VIEWER -->
-            <Teleport to="body">
-                <div
-                    v-if="selectedPhoto"
-                    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-5 backdrop-blur-xl"
-                    @click.self="closePhoto"
-                >
                     <button
                         type="button"
-                        class="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xl text-white/50 transition hover:bg-white/10 hover:text-white"
-                        @click="closePhoto"
+                        class="vyamap-button-secondary"
+                        :aria-expanded="showFilters"
+                        aria-controls="photo-filters"
+                        @click="toggleFilters"
                     >
-                        ×
+                        Filters
+                        <span v-if="hasActiveFilters" class="h-2 w-2 rounded-full bg-[var(--vyamap-cyan)]" aria-label="Filters active" />
                     </button>
+                </div>
+            </header>
 
-                    <div
-                        class="flex max-h-[92vh] max-w-[94vw] items-center justify-center"
-                    >
-                        <img
-                            :src="fullPhotoUrl(selectedPhoto)"
-                            alt="Travel photo"
-                            class="max-h-[88vh] max-w-[94vw] rounded-[20px] object-contain shadow-2xl"
-                        />
+            <!-- FILTROS -->
+            <section v-if="showFilters" id="photo-filters" class="vyamap-panel mb-5">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                        <label for="photo-filter-trip" class="vyamap-label">Trip</label>
+                        <select id="photo-filter-trip" v-model="activeTripId" class="vyamap-input">
+                            <option :value="null">All trips</option>
+                            <option v-for="trip in trips" :key="trip.id" :value="trip.id">{{ trip.name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="photo-filter-from" class="vyamap-label">Taken from</label>
+                        <input id="photo-filter-from" v-model="dateFrom" type="date" class="vyamap-input" />
+                    </div>
+                    <div>
+                        <label for="photo-filter-to" class="vyamap-label">Taken until</label>
+                        <input id="photo-filter-to" v-model="dateTo" type="date" class="vyamap-input" />
                     </div>
                 </div>
-            </Teleport>
+                <div class="mt-4 flex items-center justify-between border-t border-[var(--vyamap-border)] pt-4 text-sm">
+                    <span class="vyamap-number text-[var(--vyamap-text-muted)]">{{ filteredPhotos.length }} photos match your filters</span>
+                    <button type="button" class="vyamap-button-ghost vyamap-button-sm" :disabled="!hasActiveFilters" @click="resetFilters">Reset filters</button>
+                </div>
+            </section>
 
-            <!-- DELETE PHOTOS CONFIRMATION -->
-            <Teleport to="body">
-                <div
-                    v-if="showDeleteConfirmation"
-                    class="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-5 backdrop-blur-md"
-                    @click.self="closeDeleteConfirmation"
-                >
-                    <div
-                        class="w-full max-w-[420px] rounded-[26px] border border-white/[0.10] bg-[#151923] p-6 shadow-2xl"
-                    >
-                        <div
-                            class="flex h-11 w-11 items-center justify-center rounded-[14px] border border-red-400/[0.12] bg-red-400/[0.06] text-red-200/60"
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                class="h-5 w-5"
-                            >
-                                <path
-                                    d="M4 7h16M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7m-8 0 .7 12.1A2 2 0 0 0 9.7 21h4.6a2 2 0 0 0 2-1.9L17 7M10 11v6M14 11v6"
-                                    stroke="currentColor"
-                                    stroke-width="1.4"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
+            <EmptyState
+                v-if="!photos.length"
+                icon="photo"
+                title="No photos yet"
+                text="Your travel memories will appear here once you start adding photos to your trips. They stay private: only you can see them."
+            >
+                <template #actions>
+                    <Link href="/trips" class="vyamap-button-secondary">Go to my trips</Link>
+                </template>
+            </EmptyState>
+
+            <div v-else class="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6">
+                <!-- ÁLBUMES (móvil) -->
+                <div class="mb-4 lg:hidden">
+                    <label for="mobile-album" class="vyamap-label">Album</label>
+                    <div class="flex gap-2">
+                        <select id="mobile-album" :value="activeAlbumId ?? ''" class="vyamap-input" @change="handleMobileAlbumChange">
+                            <option value="">All photos · {{ photos.length }}</option>
+                            <option v-for="album in albums" :key="album.id" :value="album.id">
+                                {{ album.name }} · {{ album.photos_count ?? 0 }} {{ (album.photos_count ?? 0) === 1 ? 'photo' : 'photos' }}
+                            </option>
+                        </select>
+                        <button type="button" class="vyamap-icon-button !h-11 !w-11" aria-label="New album" @click="openCreateAlbum">
+                            <Icon name="plus" :size="18" />
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ÁLBUMES (escritorio) -->
+                <aside class="hidden lg:block" aria-label="Albums">
+                    <div class="lg:sticky lg:top-6">
+                        <div class="mb-2 flex items-center justify-between">
+                            <h2 class="text-sm font-semibold">Albums</h2>
+                            <button type="button" class="vyamap-button-ghost vyamap-button-sm !px-2" aria-label="New album" title="New album" @click="openCreateAlbum">
+                                <Icon name="plus" :size="16" />
+                            </button>
                         </div>
 
-                        <div class="mt-5">
-                            <div
-                                class="text-[9px] uppercase tracking-[0.22em] text-white/25"
+                        <div class="flex flex-col gap-1.5">
+                            <button
+                                type="button"
+                                class="vyamap-album-item"
+                                :class="{ 'is-active': activeAlbumId === null }"
+                                :aria-pressed="activeAlbumId === null"
+                                @click="selectAlbum(null)"
                             >
-                                Delete photos
+                                <span class="vyamap-album-thumb"><Icon name="photo" :size="18" /></span>
+                                <span class="min-w-0">
+                                    <span class="block truncate text-sm font-medium">All photos</span>
+                                    <span class="vyamap-number block text-[0.75rem] text-[var(--vyamap-text-subtle)]">{{ photos.length }} photos</span>
+                                </span>
+                            </button>
+
+                            <div
+                                v-for="album in albums"
+                                :key="album.id"
+                                @dragenter.prevent="enterAlbumDrag(album.id)"
+                                @dragover.prevent="dragOverAlbumId = album.id"
+                                @dragleave="leaveAlbumDrag(album.id)"
+                                @drop="dropOnAlbum($event, album.id)"
+                            >
+                                <button
+                                    type="button"
+                                    class="vyamap-album-item"
+                                    :class="{ 'is-active': activeAlbumId === album.id, 'is-drop-target': dragOverAlbumId === album.id }"
+                                    :aria-pressed="activeAlbumId === album.id"
+                                    @click="selectAlbum(album.id)"
+                                >
+                                    <span class="vyamap-album-thumb">
+                                        <img v-if="albumCoverUrl(album)" :src="albumCoverUrl(album)!" alt="" class="h-full w-full object-cover" />
+                                        <Icon v-else name="image-plus" :size="18" />
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate text-sm font-medium">{{ album.name }}</span>
+                                        <span class="vyamap-number block text-[0.75rem] text-[var(--vyamap-text-subtle)]">
+                                            {{ album.photos_count ?? 0 }} {{ (album.photos_count ?? 0) === 1 ? 'photo' : 'photos' }}
+                                        </span>
+                                    </span>
+                                    <span v-if="dragOverAlbumId === album.id" class="text-[0.75rem] font-semibold text-[var(--vyamap-cyan-soft)]">Drop</span>
+                                </button>
                             </div>
 
-                            <h2
-                                class="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white"
-                            >
-                                Delete
-                                {{ photosToDelete.length }}
-                                {{
-                                    photosToDelete.length === 1
-                                        ? 'photo'
-                                        : 'photos'
-                                }}?
-                            </h2>
-
-                            <p
-                                class="mt-3 text-xs leading-5 text-white/35"
-                            >
-                                These photos will be permanently deleted. This
-                                action cannot be undone.
-                            </p>
-                        </div>
-
-                        <div
-                            v-if="deleteError"
-                            class="mt-4 rounded-[14px] border border-red-400/[0.12] bg-red-400/[0.05] px-3 py-2.5 text-[10px] leading-4 text-red-200/60"
-                        >
-                            {{ deleteError }}
-                        </div>
-
-                        <div
-                            class="mt-6 flex items-center justify-end gap-2"
-                        >
-                            <button
-                                type="button"
-                                class="rounded-full px-4 py-2.5 text-[11px] text-white/35 transition hover:text-white/70 disabled:opacity-30"
-                                :disabled="isDeletingPhotos"
-                                @click="closeDeleteConfirmation"
-                            >
-                                Cancel
+                            <button type="button" class="vyamap-album-item border-dashed" @click="openCreateAlbum">
+                                <span class="vyamap-album-thumb"><Icon name="plus" :size="18" /></span>
+                                <span class="text-sm text-[var(--vyamap-text-muted)]">New album</span>
                             </button>
+                        </div>
 
+                        <p v-if="albums.length" class="vyamap-help mt-3">
+                            {{ isDragging ? 'Drop the photo on an album to add it.' : 'Drag photos onto an album to add them.' }}
+                        </p>
+                    </div>
+                </aside>
+
+                <!-- GALERÍA -->
+                <section class="min-w-0" aria-label="Gallery">
+                    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="text-sm font-semibold">
+                            {{ activeAlbum ? activeAlbum.name : 'All photos' }}
+                            <span class="vyamap-number ml-1 font-normal text-[var(--vyamap-text-muted)]">{{ filteredPhotos.length }}</span>
+                        </h2>
+                        <button v-if="filteredPhotos.length" type="button" class="vyamap-button-ghost vyamap-button-sm" @click="selectAll">
+                            {{ selectedPhotos.length === filteredPhotos.length ? 'Clear selection' : 'Select all' }}
+                        </button>
+                    </div>
+
+                    <!-- BARRA DE SELECCIÓN -->
+                    <div
+                        v-if="selectedPhotos.length"
+                        class="vyamap-glass sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-30 mb-4 flex flex-col gap-3 rounded-[var(--vyamap-radius-lg)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between lg:top-4"
+                        role="region"
+                        aria-label="Selection"
+                    >
+                        <div class="flex items-center gap-2 text-sm">
+                            <button type="button" class="vyamap-button-ghost vyamap-button-sm !px-2" aria-label="Clear selection" @click="clearSelection">
+                                <Icon name="close" :size="16" />
+                            </button>
+                            <span class="vyamap-number font-medium">{{ selectedPhotos.length }} {{ selectedPhotos.length === 1 ? 'photo selected' : 'photos selected' }}</span>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <template v-if="albums.length">
+                                <span class="text-[0.8125rem] text-[var(--vyamap-text-muted)]">Add to</span>
+                                <button
+                                    v-for="album in albums"
+                                    :key="album.id"
+                                    type="button"
+                                    class="vyamap-button-secondary vyamap-button-sm"
+                                    :disabled="isAddingToAlbum"
+                                    @click="addSelectedToAlbum(album.id)"
+                                >
+                                    {{ album.name }}
+                                </button>
+                            </template>
+                            <button
+                                v-if="activeAlbum"
+                                type="button"
+                                class="vyamap-button-secondary vyamap-button-sm"
+                                :disabled="isRemovingFromAlbum"
+                                @click="removeSelectedFromAlbum"
+                            >
+                                Remove from album
+                            </button>
                             <button
                                 type="button"
-                                class="rounded-full border border-red-300/[0.16] bg-red-400/[0.08] px-5 py-2.5 text-[11px] text-red-100/80 transition hover:border-red-300/[0.25] hover:bg-red-400/[0.12] hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-40"
-                                :disabled="isDeletingPhotos"
-                                @click="deleteSelectedPhotos"
+                                class="vyamap-button-danger vyamap-button-sm"
+                                :disabled="isDeletingPhotos || isRemovingFromAlbum || isAddingToAlbum"
+                                @click="openDeleteConfirmation"
                             >
-                                {{
-                                    isDeletingPhotos
-                                        ? 'Deleting...'
-                                        : 'Delete photos'
-                                }}
+                                <Icon name="trash" :size="16" />
+                                Delete
                             </button>
                         </div>
                     </div>
-                </div>
-            </Teleport>
 
+                    <ul v-if="filteredPhotos.length" class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
+                        <li
+                            v-for="photo in filteredPhotos"
+                            :key="photo.id"
+                            draggable="true"
+                            class="group relative aspect-[4/5] overflow-hidden rounded-[var(--vyamap-radius-lg)] border bg-[var(--vyamap-surface-strong)] transition-colors"
+                            :class="isPhotoSelected(photo) ? 'border-[var(--vyamap-cyan)] ring-2 ring-[rgba(34,211,238,0.35)]' : 'border-[var(--vyamap-border)] hover:border-[var(--vyamap-border-strong)]'"
+                            @dragstart="startDrag($event, photo)"
+                            @dragend="endDrag"
+                        >
+                            <button
+                                type="button"
+                                class="absolute inset-0 h-full w-full cursor-grab active:cursor-grabbing"
+                                :aria-label="`Open ${photo.original_filename ?? 'photo'}`"
+                                @click="openPhoto(photo)"
+                            >
+                                <img :src="photoUrl(photo)" :alt="photo.original_filename ?? 'Travel photo'" class="h-full w-full object-cover" loading="lazy" />
+                            </button>
+
+                            <button
+                                type="button"
+                                class="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full border transition-opacity focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                                :class="isPhotoSelected(photo)
+                                    ? '!opacity-100 border-[var(--vyamap-cyan)] bg-[var(--vyamap-cyan)] text-[#041019]'
+                                    : 'border-white/40 bg-[rgba(7,11,20,0.55)] text-transparent'"
+                                :aria-pressed="isPhotoSelected(photo)"
+                                :aria-label="`Select ${photo.original_filename ?? 'photo'}`"
+                                @click.stop="togglePhotoSelection(photo)"
+                            >
+                                <Icon name="check" :size="16" />
+                            </button>
+
+                            <span
+                                v-if="photo.taken_at"
+                                class="vyamap-number pointer-events-none absolute bottom-2.5 left-2.5 rounded-[var(--vyamap-radius-sm)] bg-[rgba(7,11,20,0.7)] px-2 py-1 text-[0.75rem] text-[var(--vyamap-text)] sm:opacity-0 sm:group-hover:opacity-100"
+                            >
+                                {{ formatDate(photo.taken_at) }}
+                            </span>
+                        </li>
+                    </ul>
+
+                    <EmptyState v-else-if="search" icon="search" title="No photos found" text="Try searching with another filename.">
+                        <template #actions>
+                            <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="search = ''">Clear search</button>
+                        </template>
+                    </EmptyState>
+
+                    <EmptyState
+                        v-else
+                        icon="photo"
+                        title="No photos here"
+                        text="There are no photos matching the current selection."
+                    >
+                        <template #actions>
+                            <button v-if="hasActiveFilters" type="button" class="vyamap-button-secondary vyamap-button-sm" @click="resetFilters">Reset filters</button>
+                            <button v-if="activeAlbumId !== null" type="button" class="vyamap-button-secondary vyamap-button-sm" @click="selectAlbum(null)">Show all photos</button>
+                        </template>
+                    </EmptyState>
+                </section>
+            </div>
         </div>
+
+        <!-- CREAR ÁLBUM -->
+        <Teleport to="body">
+            <div
+                v-if="showCreateAlbum"
+                class="fixed inset-0 z-[110] flex items-end justify-center bg-[rgba(4,7,14,0.7)] p-4 sm:items-center"
+                @click.self="closeCreateAlbum"
+            >
+                <form
+                    class="vyamap-glass w-full max-w-md rounded-[var(--vyamap-radius-xl)] p-5 sm:p-6"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="create-album-title"
+                    @submit.prevent="createAlbum"
+                >
+                    <h2 id="create-album-title" class="vyamap-h2">Create an album</h2>
+                    <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Group your travel memories into a collection.</p>
+
+                    <div class="mt-5 space-y-4">
+                        <div>
+                            <label for="album-name" class="vyamap-label">Name</label>
+                            <input id="album-name" v-model="newAlbumName" type="text" maxlength="100" placeholder="e.g. Albania 2026" class="vyamap-input" />
+                        </div>
+                        <div>
+                            <label for="album-description" class="vyamap-label">Description <span class="text-[var(--vyamap-text-subtle)]">(optional)</span></label>
+                            <textarea id="album-description" v-model="newAlbumDescription" rows="3" maxlength="1000" class="vyamap-textarea"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" class="vyamap-button-ghost" :disabled="isCreatingAlbum" @click="closeCreateAlbum">Cancel</button>
+                        <button type="submit" class="vyamap-button" :disabled="!newAlbumName.trim() || isCreatingAlbum">
+                            {{ isCreatingAlbum ? 'Creating...' : 'Create album' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </Teleport>
+
+        <!-- VISOR -->
+        <Teleport to="body">
+            <div
+                v-if="selectedPhoto"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(4,7,14,0.94)] p-4"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="selectedPhoto.original_filename ?? 'Photo'"
+                @click.self="closePhoto"
+            >
+                <button type="button" class="vyamap-icon-button absolute right-4 top-4" aria-label="Close photo" @click="closePhoto">
+                    <Icon name="close" :size="20" />
+                </button>
+                <figure class="flex max-h-[92vh] max-w-[94vw] flex-col items-center gap-3">
+                    <img
+                        :src="fullPhotoUrl(selectedPhoto)"
+                        :alt="selectedPhoto.original_filename ?? 'Travel photo'"
+                        class="max-h-[84vh] max-w-[94vw] rounded-[var(--vyamap-radius-lg)] object-contain"
+                    />
+                    <figcaption class="text-sm text-[var(--vyamap-text-muted)]">
+                        {{ selectedPhoto.original_filename }}
+                        <template v-if="formatDate(selectedPhoto.taken_at)"> · <span class="vyamap-number">{{ formatDate(selectedPhoto.taken_at) }}</span></template>
+                    </figcaption>
+                </figure>
+            </div>
+        </Teleport>
+
+        <!-- CONFIRMAR BORRADO -->
+        <Teleport to="body">
+            <div
+                v-if="showDeleteConfirmation"
+                class="fixed inset-0 z-[120] flex items-end justify-center bg-[rgba(4,7,14,0.75)] p-4 sm:items-center"
+                @click.self="closeDeleteConfirmation"
+            >
+                <div
+                    class="vyamap-glass w-full max-w-md rounded-[var(--vyamap-radius-xl)] p-5 sm:p-6"
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-photos-title"
+                    aria-describedby="delete-photos-text"
+                >
+                    <span class="flex h-11 w-11 items-center justify-center rounded-[var(--vyamap-radius-md)] border border-[rgba(251,113,133,0.35)] bg-[rgba(251,113,133,0.1)] text-[var(--vyamap-danger)]">
+                        <Icon name="trash" :size="20" />
+                    </span>
+                    <h2 id="delete-photos-title" class="vyamap-h2 mt-4">
+                        Delete {{ photosToDelete.length }} {{ photosToDelete.length === 1 ? 'photo' : 'photos' }}?
+                    </h2>
+                    <p id="delete-photos-text" class="mt-2 text-sm text-[var(--vyamap-text-muted)]">
+                        These photos will be permanently deleted. This action cannot be undone.
+                    </p>
+                    <p v-if="deleteError" role="alert" class="vyamap-error">{{ deleteError }}</p>
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" class="vyamap-button-ghost" :disabled="isDeletingPhotos" @click="closeDeleteConfirmation">Cancel</button>
+                        <button type="button" class="vyamap-button-danger" :disabled="isDeletingPhotos" @click="deleteSelectedPhotos">
+                            {{ isDeletingPhotos ? 'Deleting...' : 'Delete photos' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
+
+<style scoped>
+.vyamap-album-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--vyamap-border);
+    border-radius: var(--vyamap-radius-md);
+    background: var(--vyamap-surface-muted);
+    padding: 0.5rem;
+    text-align: left;
+    transition: border-color 0.15s var(--vyamap-ease), background-color 0.15s var(--vyamap-ease);
+}
+
+.vyamap-album-item:hover {
+    border-color: var(--vyamap-border-strong);
+    background: var(--vyamap-surface-strong);
+}
+
+.vyamap-album-item.is-active {
+    border-color: rgba(34, 211, 238, 0.4);
+    background: rgba(34, 211, 238, 0.08);
+}
+
+.vyamap-album-item.is-drop-target {
+    border-color: var(--vyamap-cyan);
+    background: rgba(34, 211, 238, 0.14);
+}
+
+.vyamap-album-thumb {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--vyamap-radius-sm);
+    background: var(--vyamap-surface-raised);
+    color: var(--vyamap-text-muted);
+}
+</style>

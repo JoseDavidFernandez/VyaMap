@@ -3,6 +3,9 @@
 import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import Icon from '../../components/ui/Icon.vue';
+import EmptyState from '../../components/ui/EmptyState.vue';
+import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
 import { calendarYear, tripDays as calendarTripDays } from '../../utils/tripDates';
 import type { CountryStatus } from '../../utils/countryStatus';
 import { emptyYear, type PlaceCounts, type YearPlaceStats } from '../../types/statistics';
@@ -75,8 +78,7 @@ const formatDate = (date: string | null) => {
         day: '2-digit',
         month: 'short',
     })
-        .format(new Date(`${date}T00:00:00`))
-        .toUpperCase();
+        .format(new Date(`${date}T00:00:00`));
 };
 
 const formatDateRange = (trip: Trip) => {
@@ -88,7 +90,7 @@ const formatDateRange = (trip: Trip) => {
         return formatDate(trip.start_date);
     }
 
-    return `${formatDate(trip.start_date)} — ${formatDate(trip.end_date)}`;
+    return `${formatDate(trip.start_date)} – ${formatDate(trip.end_date)}`;
 };
 
 const tripYear = (trip: Trip) => calendarYear(trip.start_date) ?? '';
@@ -105,494 +107,167 @@ const flagEmoji = (isoCode: string) => {
         .join('');
 };
 
-const getTripGradient = (index: number) => {
-    const gradients = [
-        'from-cyan-300/[0.14] via-[#171b28] to-[#0d1119]',
-        'from-violet-400/[0.14] via-[#171b28] to-[#0d1119]',
-        'from-blue-400/[0.14] via-[#171b28] to-[#0d1119]',
-        'from-emerald-300/[0.12] via-[#171b28] to-[#0d1119]',
-    ];
-
-    return gradients[index % gradients.length];
-};
+// Portada sin foto: un fondo de la paleta que varía por posición.
+const placeholderTones = [
+    'radial-gradient(circle at 25% 20%, rgba(34, 211, 238, 0.32), transparent 55%), radial-gradient(circle at 85% 90%, rgba(124, 92, 255, 0.28), transparent 55%)',
+    'radial-gradient(circle at 75% 15%, rgba(167, 139, 250, 0.32), transparent 55%), radial-gradient(circle at 15% 90%, rgba(34, 211, 238, 0.22), transparent 55%)',
+    'radial-gradient(circle at 50% 0%, rgba(124, 155, 255, 0.3), transparent 60%), radial-gradient(circle at 90% 100%, rgba(34, 211, 238, 0.18), transparent 55%)',
+];
 
 </script>
 
 <template>
-
     <AppLayout title="Trips">
+        <div class="vyamap-container">
+            <header class="vyamap-page-header">
+                <div>
+                    <h1 class="vyamap-page-title">Trips</h1>
+                    <p class="vyamap-page-description">Every journey in one place.</p>
+                </div>
+                <Link href="/trips/create" class="vyamap-button hidden lg:inline-flex">
+                    <Icon name="plus" :size="16" />
+                    New trip
+                </Link>
+            </header>
 
-        <div class="vyamap-page">
-
-            <main
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
-            >
-
-                <!-- HEADER -->
-
-                <section class="mb-8">
-
-                    <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
-                    >
-
-                        <div
-                            class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
-                        ></div>
-
-                        <div
-                            class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"
-                        ></div>
-
-                        <div class="relative z-10">
-
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Travel history
-                            </div>
-
-                            <div
-                                class="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
-                            >
-
-                                <div>
-
-                                    <h1
-                                        class="text-3xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
-                                    >
-                                        Trips
-                                    </h1>
-
-                                    <p
-                                        class="mt-4 max-w-xl text-sm leading-6 text-white/40 sm:mt-5 sm:text-base"
-                                    >
-                                        Every journey in one place.
-                                    </p>
-
-                                </div>
-
-                                <div
-                                    class="grid grid-cols-2 gap-x-6 gap-y-5 sm:flex sm:flex-wrap sm:items-end sm:gap-x-8 sm:gap-y-5"
-                                >
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ periodStats.trips }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ periodStats.trips === 1 ? 'Trip' : 'Trips' }}
-                                        </div>
-
-                                        <div
-                                            v-if="plannedCount"
-                                            class="mt-1 text-[11px] text-lime-300/80"
-                                        >
-                                            + {{ plannedCount }} planned
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ periodStats.days }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            Days
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ periodStats.countries }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ periodStats.countries === 1 ? 'Country' : 'Countries' }}
-                                        </div>
-
-                                        <div
-                                            v-if="periodStats.territories"
-                                            class="mt-1 text-[11px] text-white/40"
-                                        >
-                                            + {{ periodStats.territories }} {{ periodStats.territories === 1 ? 'territory' : 'territories' }}
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ periodStats.cities }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ periodStats.cities === 1 ? 'City' : 'Cities' }}
-                                        </div>
-
-                                    </div>
-
-                                    <Link
-                                        href="/trips/create"
-                                        class="col-span-2 inline-flex h-10 w-full items-center justify-center rounded-xl bg-white px-4 text-xs font-medium text-[#0d1119] transition hover:bg-white/90 sm:col-auto sm:w-auto"
-                                    >
-                                        + New trip
-                                    </Link>
-
-                                </div>
-
-                            </div>
-
+            <template v-if="trips.length">
+                <!-- CIFRAS DEL PERIODO (servidor: solo viajes completados) -->
+                <section class="vyamap-card mb-4" aria-label="Period statistics">
+                    <dl class="grid grid-cols-2 sm:grid-cols-4">
+                        <div class="vyamap-stat p-4 sm:p-5">
+                            <dt class="vyamap-stat-label order-2">{{ periodStats.trips === 1 ? 'Trip' : 'Trips' }}</dt>
+                            <dd class="vyamap-stat-value order-1">{{ periodStats.trips }}</dd>
+                            <dd v-if="plannedCount" class="vyamap-stat-hint order-3 !text-[var(--vyamap-violet)]">+ {{ plannedCount }} planned</dd>
                         </div>
-
-                    </div>
-
+                        <div class="vyamap-stat border-l border-[var(--vyamap-border)] p-4 sm:p-5">
+                            <dt class="vyamap-stat-label order-2">Days</dt>
+                            <dd class="vyamap-stat-value order-1">{{ periodStats.days }}</dd>
+                        </div>
+                        <div class="vyamap-stat border-t border-[var(--vyamap-border)] p-4 sm:border-l sm:border-t-0 sm:p-5">
+                            <dt class="vyamap-stat-label order-2">{{ periodStats.countries === 1 ? 'Country' : 'Countries' }}</dt>
+                            <dd class="vyamap-stat-value order-1">{{ periodStats.countries }}</dd>
+                            <dd v-if="periodStats.territories" class="vyamap-stat-hint order-3">
+                                + {{ periodStats.territories }} {{ periodStats.territories === 1 ? 'territory' : 'territories' }}
+                            </dd>
+                        </div>
+                        <div class="vyamap-stat border-l border-t border-[var(--vyamap-border)] p-4 sm:border-t-0 sm:p-5">
+                            <dt class="vyamap-stat-label order-2">{{ periodStats.cities === 1 ? 'City' : 'Cities' }}</dt>
+                            <dd class="vyamap-stat-value order-1">{{ periodStats.cities }}</dd>
+                        </div>
+                    </dl>
                 </section>
 
-
-                <!-- FILTER -->
-
-                <section class="mb-7">
-
-                    <div
-                        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-
-                        <div
-                            class="flex gap-1 overflow-x-auto rounded-xl border border-white/[0.07] bg-white/[0.025] p-1"
-                        >
-
+                <!-- FILTRO POR AÑO -->
+                <section class="mb-5">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="vyamap-segmented" role="group" aria-label="Filter by year">
                             <button
                                 type="button"
-                                class="rounded-lg px-3 py-1.5 text-xs transition"
-                                :class="
-                                    selectedYear === 'all'
-                                        ? 'bg-white text-[#0d1119]'
-                                        : 'text-white/35 hover:text-white'
-                                "
+                                class="vyamap-segment"
+                                :aria-pressed="selectedYear === 'all'"
                                 @click="selectedYear = 'all'"
                             >
                                 All
                             </button>
-
                             <button
                                 v-for="year in years"
                                 :key="year"
                                 type="button"
-                                class="rounded-lg px-3 py-1.5 text-xs transition"
-                                :class="
-                                    selectedYear === year
-                                        ? 'bg-white text-[#0d1119]'
-                                        : 'text-white/35 hover:text-white'
-                                "
+                                class="vyamap-segment vyamap-number"
+                                :aria-pressed="selectedYear === year"
                                 @click="selectedYear = year"
                             >
                                 {{ year }}
                             </button>
-
                         </div>
-
-                        <span
-                            class="hidden text-[10px] uppercase tracking-[0.16em] text-white/25 sm:block"
-                        >
-                            {{ filteredTrips.length }}
-                            {{ filteredTrips.length === 1 ? 'trip' : 'trips' }}
+                        <span class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">
+                            {{ filteredTrips.length }} {{ filteredTrips.length === 1 ? 'trip' : 'trips' }}
                         </span>
-
                     </div>
 
                     <!-- Criterios distintos: viajes por año de inicio; días, países y ciudades por año natural. -->
-                    <p
-                        v-if="selectedYear !== 'all'"
-                        class="mt-3 text-[11px] text-white/35"
-                    >
+                    <p v-if="selectedYear !== 'all'" class="vyamap-help mt-2">
                         Trips that start in {{ selectedYear }}. Days, countries and cities count everything within {{ selectedYear }}, including trips that started the year before.
                     </p>
-
                 </section>
 
-
-                <!-- TRIPS -->
-
-                <section>
-
-                    <div
-                        v-if="filteredTrips.length"
-                        class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                    >
-
-                        <Link
-                            v-for="(trip, index) in filteredTrips"
-                            :key="trip.id"
-                            :href="`/trips/${trip.id}`"
-                            class="group overflow-hidden rounded-[24px] border border-white/[0.07] bg-white/[0.025] transition duration-300 hover:-translate-y-1 hover:border-white/[0.14] hover:bg-white/[0.04]"
-                        >
-
-                            <!-- COVER -->
-
-                            <div
-                                class="relative aspect-[1.35] overflow-hidden bg-gradient-to-br"
-                                :class="getTripGradient(index)"
-                            >
-
+                <!-- VIAJES -->
+                <ul v-if="filteredTrips.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <li v-for="(trip, index) in filteredTrips" :key="trip.id">
+                        <Link :href="`/trips/${trip.id}`" class="vyamap-trip-card group flex h-full flex-col overflow-hidden">
+                            <div class="relative aspect-[16/9] overflow-hidden border-b border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]">
                                 <img
                                     v-if="trip.cover"
                                     :src="trip.cover"
-                                    :alt="trip.name"
-                                    class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                    alt=""
+                                    class="h-full w-full object-cover"
+                                    loading="lazy"
                                 />
-
                                 <div
                                     v-else
-                                    class="trip-placeholder"
+                                    class="flex h-full w-full items-center justify-center text-[var(--vyamap-text-muted)]"
+                                    :style="{ background: placeholderTones[index % placeholderTones.length] }"
                                 >
-                                    <span>
-                                        {{ trip.name.charAt(0) }}
-                                    </span>
+                                    <Icon name="map" :size="32" />
                                 </div>
 
-                                <div
-                                    class="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 pt-16"
+                                <span
+                                    v-if="trip.phase !== 'completed'"
+                                    class="vyamap-badge absolute left-3 top-3 !bg-[rgba(7,11,20,0.75)]"
+                                    :class="[tripPhaseBadge[trip.phase], trip.phase === 'cancelled' ? 'line-through' : '']"
                                 >
-
-                                    <div>
-
-                                        <p
-                                            class="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55"
-                                        >
-                                            {{ formatDateRange(trip) }}
-                                        </p>
-
-                                        <h2
-                                            class="mt-1 text-lg font-semibold tracking-[-0.035em] text-white"
-                                        >
-                                            {{ trip.name }}
-                                        </h2>
-
-                                        <span
-                                            v-if="trip.phase !== 'completed'"
-                                            class="mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-                                            :class="trip.phase === 'cancelled'
-                                                ? 'border-white/15 text-white/45 line-through'
-                                                : 'border-lime-300/40 text-lime-300'"
-                                        >
-                                            {{ { upcoming: 'Planned', ongoing: 'In progress', pending: 'Pending confirmation', cancelled: 'Cancelled' }[trip.phase] }}
-                                        </span>
-
-                                    </div>
-
-                                    <span
-                                        class="text-xs text-white/60"
-                                    >
-                                        {{ tripYear(trip) }}
-                                    </span>
-
-                                </div>
-
+                                    {{ tripPhaseLabel[trip.phase] }}
+                                </span>
                             </div>
 
-
-                            <!-- INFO -->
-
-                            <div class="p-4">
-
-                                <p
-                                    v-if="trip.countries.length"
-                                    class="truncate text-xs text-white/35"
-                                >
-                                    {{
-                                        trip.countries
-                                            .map((country) => country.name)
-                                            .join(' · ')
-                                    }}
-                                </p>
-
-                                <p
-                                    v-else
-                                    class="text-xs text-white/20"
-                                >
-                                    No destinations recorded
-                                </p>
-
-                                <div
-                                    class="mt-4 flex items-center justify-between border-t border-white/[0.07] pt-3"
-                                >
-
-                                    <div class="flex items-center gap-1">
-
-                                        <span
-                                            v-for="country in trip.countries"
-                                            :key="country.iso_code"
-                                            :title="country.name"
-                                            class="text-base"
-                                        >
-                                            {{ flagEmoji(country.iso_code) }}
-                                        </span>
-
-                                    </div>
-
-                                    <span
-                                        class="text-[10px] text-white/25"
-                                    >
-
-                                        <template v-if="tripDays(trip)">
-                                            {{ tripDays(trip) }} days
-                                        </template>
-
-                                        <template
-                                            v-if="
-                                                tripDays(trip) &&
-                                                trip.cities.length
-                                            "
-                                        >
-                                            ·
-                                        </template>
-
-                                        <template v-if="trip.cities.length">
-                                            {{ trip.cities.length }}
-                                            {{
-                                                trip.cities.length === 1
-                                                    ? 'city'
-                                                    : 'cities'
-                                            }}
-                                        </template>
-
-                                    </span>
-
+                            <div class="flex flex-1 flex-col gap-1 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <h2 class="text-[1.0625rem] font-semibold tracking-[-0.015em] group-hover:text-[var(--vyamap-cyan-soft)]">
+                                        {{ trip.name }}
+                                    </h2>
+                                    <span class="vyamap-number shrink-0 pt-0.5 text-sm text-[var(--vyamap-text-subtle)]">{{ tripYear(trip) }}</span>
                                 </div>
+                                <p class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">{{ formatDateRange(trip) }}</p>
 
+                                <div class="mt-auto flex items-center justify-between gap-3 border-t border-[var(--vyamap-border)] pt-3 text-[0.8125rem]">
+                                    <span v-if="trip.countries.length" class="flex min-w-0 items-center gap-1.5 text-[var(--vyamap-text-muted)]">
+                                        <span aria-hidden="true">{{ trip.countries.map((country) => flagEmoji(country.iso_code)).join(' ') }}</span>
+                                        <span class="truncate">{{ trip.countries.map((country) => country.name).join(', ') }}</span>
+                                    </span>
+                                    <span v-else class="text-[var(--vyamap-text-subtle)]">No destinations recorded</span>
+
+                                    <span class="vyamap-number shrink-0 text-[var(--vyamap-text-subtle)]">
+                                        <template v-if="tripDays(trip)">{{ tripDays(trip) }} days</template>
+                                        <template v-if="tripDays(trip) && trip.cities.length"> · </template>
+                                        <template v-if="trip.cities.length">{{ trip.cities.length }} {{ trip.cities.length === 1 ? 'city' : 'cities' }}</template>
+                                    </span>
+                                </div>
                             </div>
-
                         </Link>
+                    </li>
+                </ul>
 
-                    </div>
+                <EmptyState
+                    v-else
+                    icon="calendar"
+                    title="No trips found"
+                    text="There are no trips for this period."
+                />
+            </template>
 
-
-                    <!-- EMPTY STATE -->
-
-                    <div
-                        v-else
-                        class="rounded-[30px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-24 text-center"
-                    >
-
-                        <div
-                            class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xl text-white/30"
-                        >
-                            ◌
-                        </div>
-
-                        <h3
-                            class="mt-5 text-lg font-medium tracking-[-0.03em] text-white"
-                        >
-                            No trips found
-                        </h3>
-
-                        <p
-                            class="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/30"
-                        >
-                            There are no trips for this period.
-                        </p>
-
-                    </div>
-
-                </section>
-
-
-                <!-- FOOTER CONTEXT -->
-
-                <section
-                    v-if="filteredTrips.length"
-                    class="mt-12 border-t border-white/[0.07] pt-8"
-                >
-
-                    <div
-                        class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-                    >
-
-                        <div>
-
-                            <p
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Travel archive
-                            </p>
-
-                            <h2
-                                class="mt-2 text-2xl font-semibold tracking-[-0.045em] text-white"
-                            >
-                                Your journeys
-                            </h2>
-
-                        </div>
-
-                        <p
-                            class="max-w-md text-xs leading-5 text-white/30"
-                        >
-                            Each trip contains its visits, flights, photos,
-                            maps and travel history.
-                        </p>
-
-                    </div>
-
-                </section>
-
-            </main>
-
+            <EmptyState
+                v-else
+                icon="trips"
+                title="No trips yet"
+                text="Create a trip with its dates, then add the cities you visited and the flights you took. Each trip keeps its own map and statistics."
+            >
+                <template #actions>
+                    <Link href="/trips/create" class="vyamap-button">
+                        <Icon name="plus" :size="16" />
+                        Create your first trip
+                    </Link>
+                </template>
+            </EmptyState>
         </div>
-
     </AppLayout>
-
 </template>
-
-<style scoped>
-
-.trip-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background:
-        radial-gradient(
-            circle at 25% 20%,
-            rgba(255, 255, 255, 0.09),
-            transparent 32%
-        ),
-        radial-gradient(
-            circle at 80% 75%,
-            rgba(255, 255, 255, 0.045),
-            transparent 35%
-        ),
-        var(--vyamap-surface-strong);
-}
-
-.trip-placeholder span {
-    color: rgba(255, 255, 255, 0.12);
-    font-size: 100px;
-    font-weight: 700;
-    letter-spacing: -0.08em;
-}
-
-</style>

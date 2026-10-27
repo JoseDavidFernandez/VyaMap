@@ -2,6 +2,9 @@
 
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
+import Icon from '../../components/ui/Icon.vue';
+import EmptyState from '../../components/ui/EmptyState.vue';
+import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
 
 interface Country {
     id: number;
@@ -56,410 +59,96 @@ const formatDate = (date: string | null) => {
     });
 };
 
-const getTripGradient = (index: number) => {
-    const gradients = [
-        'from-cyan-300/[0.14] via-[#171b28] to-[#0d1119]',
-        'from-violet-400/[0.14] via-[#171b28] to-[#0d1119]',
-        'from-blue-400/[0.14] via-[#171b28] to-[#0d1119]',
-        'from-emerald-300/[0.12] via-[#171b28] to-[#0d1119]',
-    ];
-
-    return gradients[index % gradients.length];
-};
-
 </script>
 
 <template>
-
     <AppLayout :title="country.name">
+        <div class="vyamap-container vyamap-stack">
+            <section>
+                <Link href="/countries" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-3">
+                    <Icon name="arrow-left" :size="16" />
+                    Countries
+                </Link>
 
-        <div class="vyamap-page">
+                <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--vyamap-radius-lg)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)] text-4xl" aria-hidden="true">
+                            {{ flagEmoji(country.iso_code) }}
+                        </span>
+                        <div>
+                            <h1 class="vyamap-page-title">{{ country.name }}</h1>
+                            <p class="vyamap-page-description !mt-1">A record of the places and trips you've experienced here.</p>
+                        </div>
+                    </div>
 
-            <main
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
-            >
+                    <dl class="flex gap-8">
+                        <div class="vyamap-stat">
+                            <dt class="vyamap-stat-label order-2">{{ cities.length === 1 ? 'City' : 'Cities' }}</dt>
+                            <dd class="vyamap-stat-value order-1">{{ cities.length }}</dd>
+                        </div>
+                        <div class="vyamap-stat">
+                            <dt class="vyamap-stat-label order-2">{{ trips.length === 1 ? 'Trip' : 'Trips' }}</dt>
+                            <dd class="vyamap-stat-value order-1">{{ trips.length }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </section>
 
-                <!-- BACK -->
-
-                <div class="mb-5">
-
-                    <Link
-                        href="/countries"
-                        class="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/25 transition hover:text-white/60"
-                    >
-                        <span class="text-sm">←</span>
-                        Countries
-                    </Link>
-
+            <!-- CIUDADES -->
+            <section class="vyamap-panel">
+                <div class="vyamap-panel-header">
+                    <h2 class="vyamap-h2">Cities visited</h2>
+                    <span class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">{{ cities.length }} {{ cities.length === 1 ? 'city' : 'cities' }}</span>
                 </div>
 
-
-                <!-- HEADER -->
-
-                <section class="mb-10">
-
-                    <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
-                    >
-
-                        <div
-                            class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
-                        ></div>
-
-                        <div
-                            class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"
-                        ></div>
-
-                        <div class="relative z-10">
-
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Country
-                            </div>
-
-                            <div
-                                class="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
-                            >
-
-                                <div class="flex items-center gap-3 sm:gap-5">
-
-                                    <div
-                                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.04] text-3xl shadow-2xl sm:h-20 sm:w-20 sm:text-5xl"
-                                    >
-                                        {{ flagEmoji(country.iso_code) }}
-                                    </div>
-
-                                    <div>
-
-                                        <h1
-                                            class="text-3xl font-semibold leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl lg:text-6xl"
-                                        >
-                                            {{ country.name }}
-                                        </h1>
-
-                                        <p
-                                            class="mt-3 max-w-xl text-xs leading-5 text-white/40 sm:mt-4 sm:text-base sm:leading-6"
-                                        >
-                                            A record of the places and trips you've experienced here.
-                                        </p>
-
-                                    </div>
-
-                                </div>
-
-                                <div
-                                    class="grid grid-cols-2 gap-4 sm:flex sm:shrink-0 sm:gap-8"
-                                >
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ cities.length }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ cities.length === 1 ? 'City' : 'Cities' }}
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ trips.length }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ trips.length === 1 ? 'Trip' : 'Trips' }}
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- CITIES -->
-
-                <section class="mb-12">
-
-                    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
-                        <div>
-
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Destinations
-                            </div>
-
-                            <h2
-                                class="mt-2 text-2xl font-semibold tracking-[-0.045em] text-white"
-                            >
-                                Cities visited
-                            </h2>
-
-                        </div>
-
-                        <div class="text-xs text-white/25">
-                            {{ cities.length }}
-                            {{ cities.length === 1 ? 'city' : 'cities' }}
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        v-if="cities.length"
-                        class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                    >
-
-                        <div
-                            v-for="city in cities"
-                            :key="city.id"
-                            class="rounded-[20px] border border-white/[0.07] bg-white/[0.025] px-5 py-4 transition duration-300 hover:border-white/[0.12] hover:bg-white/[0.04]"
-                        >
-
-                            <div class="flex items-center justify-between gap-4">
-
-                                <div class="min-w-0">
-
-                                    <div
-                                        class="truncate text-sm font-medium text-white"
-                                    >
-                                        {{ city.name }}
-                                    </div>
-
-                                    <div
-                                        class="mt-1 text-[10px] uppercase tracking-[0.14em] text-white/25"
-                                    >
-                                        <template v-if="city.visits_count">
-                                            {{ city.visits_count }}
-                                            {{ city.visits_count === 1 ? 'visit' : 'visits' }}
-                                        </template>
-                                        <span
-                                            v-if="city.planned"
-                                            class="text-lime-300/80"
-                                        >
-                                            {{ city.visits_count ? '· planned' : 'Planned' }}
-                                        </span>
-                                    </div>
-
-                                </div>
-
-                                <div
-                                    class="h-2 w-2 shrink-0 rounded-full bg-cyan-300/60 shadow-[0_0_12px_rgba(103,232,249,0.35)]"
-                                ></div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        v-else
-                        class="rounded-[24px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-16 text-center"
-                    >
-
-                        <p class="text-sm text-white/30">
-                            No cities recorded yet.
-                        </p>
-
-                    </div>
-
-                </section>
-
-
-                <!-- TRIPS -->
-
-                <section>
-
-                    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
-                        <div>
-
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Travel history
-                            </div>
-
-                            <h2
-                                class="mt-2 text-2xl font-semibold tracking-[-0.045em] text-white"
-                            >
-                                Trips in {{ country.name }}
-                            </h2>
-
-                        </div>
-
-                        <div class="text-xs text-white/25">
-                            {{ trips.length }}
-                            {{ trips.length === 1 ? 'trip' : 'trips' }}
-                        </div>
-
-                    </div>
-
-
-                    <div
-                        v-if="trips.length"
-                        class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-                    >
-
-                        <Link
-                            v-for="(trip, index) in trips"
-                            :key="trip.id"
-                            :href="`/trips/${trip.id}`"
-                            class="group overflow-hidden rounded-[24px] border border-white/[0.07] bg-white/[0.025] transition duration-300 hover:-translate-y-1 hover:border-white/[0.14] hover:bg-white/[0.04]"
-                        >
-
-                            <!-- COVER -->
-
-                            <div
-                                class="relative aspect-[16/9] overflow-hidden bg-gradient-to-br"
-                                :class="getTripGradient(index)"
-                            >
-
-                                <img
-                                    v-if="trip.cover"
-                                    :src="trip.cover"
-                                    :alt="trip.name"
-                                    class="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                                />
-
-                                <div
-                                    v-if="trip.cover"
-                                    class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
-                                ></div>
-
-                                <div
-                                    v-else
-                                    class="absolute inset-0 flex items-center justify-center"
-                                >
-
-                                    <div
-                                        class="text-[9px] uppercase tracking-[0.25em] text-white/20"
-                                    >
-                                        VyaMap
-                                    </div>
-
-                                </div>
-
-                                <div
-                                    class="absolute bottom-4 left-4 right-4"
-                                >
-
-                                    <div
-                                        class="text-[9px] uppercase tracking-[0.18em] text-white/40"
-                                    >
-                                        {{ formatDate(trip.start_date) }}
-                                        <span v-if="trip.end_date">
-                                            — {{ formatDate(trip.end_date) }}
-                                        </span>
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- CONTENT -->
-
-                            <div class="p-5">
-
-                                <div
-                                    class="flex items-start justify-between gap-4"
-                                >
-
-                                    <div class="min-w-0">
-
-                                        <h3
-                                            class="truncate text-lg font-medium tracking-[-0.025em] text-white"
-                                        >
-                                            {{ trip.name }}
-                                        </h3>
-
-                                        <span
-                                            v-if="trip.phase !== 'completed'"
-                                            class="mt-1 inline-flex rounded-full border border-lime-300/40 px-2.5 py-0.5 text-[11px] font-medium text-lime-300"
-                                        >
-                                            {{ { upcoming: 'Planned', ongoing: 'In progress', pending: 'Pending confirmation' }[trip.phase] }}
-                                        </span>
-
-                                        <p
-                                            v-if="trip.description"
-                                            class="mt-2 line-clamp-2 text-xs leading-5 text-white/30"
-                                        >
-                                            {{ trip.description }}
-                                        </p>
-
-                                    </div>
-
-                                    <div
-                                        class="shrink-0 text-lg text-white/15 transition duration-300 group-hover:translate-x-1 group-hover:text-white/60"
-                                    >
-                                        →
-                                    </div>
-
-                                </div>
-
-
-                                <div
-                                    v-if="trip.cities.length"
-                                    class="mt-4 flex flex-wrap gap-1.5"
-                                >
-
-                                    <span
-                                        v-for="city in trip.cities"
-                                        :key="city"
-                                        class="rounded-full border border-white/[0.06] bg-white/[0.025] px-2.5 py-1 text-[10px] text-white/35"
-                                    >
-                                        {{ city }}
-                                    </span>
-
-                                </div>
-
-                            </div>
-
+                <ul v-if="cities.length" class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <li v-for="city in cities" :key="city.id" class="vyamap-flight flex items-center gap-3">
+                        <Icon name="pin" :size="18" :class="city.visits_count ? 'text-[var(--vyamap-cyan-soft)]' : 'text-[var(--vyamap-violet)]'" />
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate text-sm font-semibold">{{ city.name }}</span>
+                            <span class="vyamap-number block text-[0.8125rem] text-[var(--vyamap-text-muted)]">
+                                <template v-if="city.visits_count">{{ city.visits_count }} {{ city.visits_count === 1 ? 'visit' : 'visits' }}</template>
+                                <template v-if="city.visits_count && city.planned"> · </template>
+                                <span v-if="city.planned" class="text-[var(--vyamap-violet)]">{{ city.visits_count ? 'planned' : 'Planned' }}</span>
+                            </span>
+                        </span>
+                    </li>
+                </ul>
+                <EmptyState v-else compact icon="pin" title="No cities recorded yet" text="Cities appear when a trip has a visit in this country." />
+            </section>
+
+            <!-- VIAJES -->
+            <section class="vyamap-panel">
+                <div class="vyamap-panel-header">
+                    <h2 class="vyamap-h2">Trips in {{ country.name }}</h2>
+                    <span class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">{{ trips.length }} {{ trips.length === 1 ? 'trip' : 'trips' }}</span>
+                </div>
+
+                <ul v-if="trips.length" class="-mx-2 flex flex-col">
+                    <li v-for="trip in trips" :key="trip.id">
+                        <Link :href="`/trips/${trip.id}`" class="vyamap-row vyamap-row-link group flex items-center gap-4 px-2 py-3">
+                            <span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]">
+                                <img v-if="trip.cover" :src="trip.cover" alt="" class="h-full w-full object-cover" loading="lazy" />
+                                <span v-else class="flex h-full w-full items-center justify-center text-[var(--vyamap-text-muted)]">
+                                    <Icon name="map" :size="20" />
+                                </span>
+                            </span>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex flex-wrap items-center gap-2">
+                                    <span class="truncate text-[0.9375rem] font-semibold group-hover:text-[var(--vyamap-cyan-soft)]">{{ trip.name }}</span>
+                                    <span v-if="trip.phase !== 'completed'" class="vyamap-badge" :class="tripPhaseBadge[trip.phase]">{{ tripPhaseLabel[trip.phase] }}</span>
+                                </span>
+                                <span class="block truncate text-[0.8125rem] text-[var(--vyamap-text-muted)]">
+                                    <span class="vyamap-number">{{ formatDate(trip.start_date) }}<template v-if="trip.end_date"> – {{ formatDate(trip.end_date) }}</template></span>
+                                    <template v-if="trip.cities.length"> · {{ trip.cities.join(', ') }}</template>
+                                </span>
+                            </span>
+                            <Icon name="chevron-right" :size="18" class="shrink-0 text-[var(--vyamap-text-subtle)] group-hover:text-[var(--vyamap-text)]" />
                         </Link>
-
-                    </div>
-
-
-                    <div
-                        v-else
-                        class="rounded-[24px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-16 text-center"
-                    >
-
-                        <p class="text-sm text-white/30">
-                            No trips recorded in this country yet.
-                        </p>
-
-                    </div>
-
-                </section>
-
-            </main>
-
+                    </li>
+                </ul>
+                <EmptyState v-else compact icon="trips" title="No trips recorded in this country yet" />
+            </section>
         </div>
-
     </AppLayout>
-
 </template>

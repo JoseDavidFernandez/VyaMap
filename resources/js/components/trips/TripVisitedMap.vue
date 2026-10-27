@@ -23,18 +23,18 @@ interface Visit {
 
 const props = withDefaults(defineProps<{
     visits: Visit[];
-    // Fase del viaje: lima para planificados, en curso o pendientes; gris si está cancelado.
+    // Fase del viaje: violeta para planificados, en curso o pendientes; gris si está cancelado.
     phase?: 'upcoming' | 'ongoing' | 'pending' | 'completed' | 'cancelled';
 }>(), {
     phase: 'completed',
 });
 
 const overlayKicker = computed(() => ({
-    completed: 'PLACES VISITED',
-    upcoming: 'PLANNED DESTINATIONS',
-    ongoing: 'TRIP IN PROGRESS',
-    pending: 'PENDING CONFIRMATION',
-    cancelled: 'CANCELLED TRIP',
+    completed: 'Places visited',
+    upcoming: 'Planned destinations',
+    ongoing: 'Trip in progress',
+    pending: 'Pending confirmation',
+    cancelled: 'Cancelled trip',
 })[props.phase]);
 
 const mapElement = ref<HTMLElement | null>(null);
@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
 <template>
     <div
         ref="mapElement"
-        class="visited-map"
+        class="visited-map vyamap-leaflet-dark"
         :class="{
             'visited-map--planned': phase === 'upcoming' || phase === 'ongoing' || phase === 'pending',
             'visited-map--ongoing': phase === 'ongoing',
@@ -187,7 +187,7 @@ onBeforeUnmount(() => {
     >
         <div class="visited-map-overlay">
             <div class="visited-map-kicker">{{ overlayKicker }}</div>
-            <div class="visited-map-count">{{ visits.length }} cities</div>
+            <div class="visited-map-count">{{ visits.length }} {{ visits.length === 1 ? 'city' : 'cities' }}</div>
         </div>
     </div>
 </template>
@@ -199,46 +199,7 @@ onBeforeUnmount(() => {
     min-height: 100%;
     width: 100%;
     overflow: hidden;
-    background: #10191c;
-}
-
-.visited-map :deep(.leaflet-tile-pane) {
-    /* Base oscura como en los mapas de vuelos, con algo de color en agua y tierra. */
-    filter: invert(1) hue-rotate(180deg) brightness(0.68) contrast(0.92) saturate(0.6);
-}
-
-.visited-map :deep(.leaflet-control-zoom) {
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 10px !important;
-    background: rgba(16, 19, 22, 0.88) !important;
-    box-shadow: none !important;
-}
-
-.visited-map :deep(.leaflet-control-zoom a) {
-    width: 30px;
-    height: 30px;
-    border: 0 !important;
-    background: transparent !important;
-    color: rgba(255, 255, 255, 0.72) !important;
-    line-height: 30px;
-}
-
-.visited-map :deep(.leaflet-control-zoom a:hover) {
-    background: rgba(103, 232, 249, 0.1) !important;
-    color: #a5f3fc !important;
-}
-
-.visited-map :deep(.leaflet-control-attribution) {
-    padding: 2px 6px;
-    border-radius: 4px 0 0 0;
-    background: rgba(10, 12, 14, 0.68);
-    color: rgba(255, 255, 255, 0.36);
-    font-size: 8px;
-}
-
-.visited-map :deep(.leaflet-control-attribution a) {
-    color: rgba(255, 255, 255, 0.5);
+    background: #0A0F1B;
 }
 
 .visited-map :deep(.vyamap-visited-icon) {
@@ -264,8 +225,8 @@ onBeforeUnmount(() => {
     width: 30px;
     height: 30px;
     border-radius: 999px;
-    background: rgba(15, 18, 21, 0.92);
-    border: 1px solid rgba(103, 232, 249, 0.45);
+    background: rgba(10, 16, 30, 0.92);
+    border: 1px solid rgba(34, 211, 238, 0.55);
     box-shadow:
         0 0 0 4px rgba(103, 232, 249, 0.08),
         0 8px 20px rgba(0, 0, 0, 0.28);
@@ -276,7 +237,7 @@ onBeforeUnmount(() => {
     width: 10px;
     height: 10px;
     border-radius: 999px;
-    background: #67e8f9;
+    background: #22D3EE;
     box-shadow: 0 0 10px rgba(103, 232, 249, 0.65);
 }
 
@@ -284,90 +245,76 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    padding: 6px 9px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 9px;
-    background: rgba(15, 18, 21, 0.9);
-    color: #ffffff;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--vyamap-border-strong);
+    border-radius: var(--vyamap-radius-sm);
+    background: rgba(10, 16, 30, 0.9);
+    color: var(--vyamap-text);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
     white-space: nowrap;
     backdrop-filter: blur(10px);
 }
 
 .visited-map :deep(.vyamap-visited-label span) {
-    font-size: 11px;
+    font-size: 0.8125rem;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.25;
 }
 
 .visited-map :deep(.vyamap-visited-label small) {
-    color: rgba(165, 243, 252, 0.6);
-    font-size: 8px;
-    line-height: 1.2;
-}
-
-.visited-map :deep(.vyamap-visited-tooltip) {
-    border: 1px solid rgba(103, 232, 249, 0.18);
-    border-radius: 9px;
-    background: rgba(15, 18, 21, 0.96);
-    color: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-    font-size: 10px;
-    line-height: 1.5;
+    color: var(--vyamap-cyan-soft);
+    font-size: 0.75rem;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
 }
 
 .visited-map :deep(.vyamap-visited-tooltip strong) {
-    color: #ffffff;
     font-weight: 600;
-}
-
-.visited-map :deep(.leaflet-tooltip-top:before) {
-    border-top-color: rgba(15, 18, 21, 0.96);
 }
 
 .visited-map-overlay {
     position: absolute;
     z-index: 500;
-    top: 18px;
-    left: 18px;
-    padding: 9px 11px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    background: rgba(15, 18, 21, 0.82);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-    backdrop-filter: blur(12px);
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--vyamap-border-strong);
+    border-radius: var(--vyamap-radius-md);
+    background: rgba(10, 16, 30, 0.7);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
     pointer-events: none;
 }
 
 .visited-map-kicker {
-    color: rgba(103, 232, 249, 0.7);
-    font-size: 8px;
+    color: var(--vyamap-cyan-soft);
+    font-size: 0.75rem;
     font-weight: 600;
-    letter-spacing: 0.16em;
 }
 
 .visited-map-count {
-    margin-top: 2px;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 11px;
+    color: var(--vyamap-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
-/* Viaje planificado (lima), en curso (lima con pulso) o cancelado (gris). */
+/* Viaje planificado (violeta), en curso (violeta con pulso) o cancelado (gris). */
 .visited-map--planned :deep(.vyamap-visited-pin) {
-    border-color: rgba(190, 242, 100, 0.5);
+    border-color: rgba(167, 139, 250, 0.55);
     box-shadow:
-        0 0 0 4px rgba(190, 242, 100, 0.08),
+        0 0 0 4px rgba(167, 139, 250, 0.1),
         0 8px 20px rgba(0, 0, 0, 0.28);
 }
 
 .visited-map--planned :deep(.vyamap-visited-dot) {
-    background: #bef264;
-    box-shadow: 0 0 10px rgba(190, 242, 100, 0.6);
+    background: #A78BFA;
+    box-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
 }
 
 .visited-map--planned :deep(.vyamap-visited-label small),
 .visited-map--planned .visited-map-kicker {
-    color: rgba(217, 249, 157, 0.75);
+    color: rgba(196, 181, 253, 0.9);
 }
 
 .visited-map--ongoing :deep(.vyamap-visited-dot) {
@@ -376,7 +323,7 @@ onBeforeUnmount(() => {
 
 @keyframes visited-map-pulse {
     50% {
-        box-shadow: 0 0 0 6px rgba(190, 242, 100, 0.2);
+        box-shadow: 0 0 0 6px rgba(167, 139, 250, 0.22);
     }
 }
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '../layouts/AppLayout.vue';
+import Icon from '../components/ui/Icon.vue';
+import EmptyState from '../components/ui/EmptyState.vue';
 import CountryMap from '../components/dashboard/CountryMap.vue';
 import { calendarYear, touchesYear } from '../utils/tripDates';
 import type { CountryStatus } from '../utils/countryStatus';
@@ -198,20 +200,6 @@ const countriesPercentage = computed(() => {
     );
 });
 
-const countriesRingStyle = computed(() => {
-    const percentage = Math.min(
-        100,
-        countriesPercentage.value,
-    );
-
-    return {
-        background: `conic-gradient(
-            var(--vyamap-text) ${percentage}%,
-            var(--vyamap-surface-strong) ${percentage}% 100%
-        )`,
-    };
-});
-
 const activePassportPage = ref(1);
 const activePassportStamp = ref<PassportStamp | null>(null);
 
@@ -395,1261 +383,711 @@ const formatDate = (
 
 };
 
+
+// Zona tipo MRZ con datos reales del titular (sin números ni fechas inventados).
+const machineReadable = computed(() => {
+    const name = userName.value.toUpperCase().replace(/[^A-Z0-9]+/g, '<').replace(/^<+|<+$/g, '') || 'VYAMAP';
+    const line1 = `P<VYA<<${name}`.padEnd(36, '<').slice(0, 36);
+    const line2 = `${String(visitedSovereignCount.value).padStart(3, '0')}C<<${String(visitedCities.value).padStart(4, '0')}T<<${String(periodStats.value.trips).padStart(3, '0')}V`.padEnd(36, '<').slice(0, 36);
+
+    return [line1, line2];
+});
 </script>
 
 <template>
     <AppLayout title="Passport">
-        <div class="vyamap-page">
-            <div
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
-            >
-                <!-- =====================================================
-                     HEADER
-                ====================================================== -->
+        <div class="vyamap-container vyamap-stack">
+            <header class="vyamap-page-header !mb-0">
+                <div>
+                    <h1 class="vyamap-page-title">Passport</h1>
+                    <p class="vyamap-page-description">A visual record of the places you have visited and the journeys you have taken.</p>
+                </div>
 
-                <section class="mb-7">
-                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
-                        <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
-                        <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
+                <div class="vyamap-segmented" role="group" aria-label="Period">
+                    <button type="button" class="vyamap-segment" :aria-pressed="selectedPeriod === 'all'" @click="selectedPeriod = 'all'">All-Time</button>
+                    <button
+                        v-for="year in props.years"
+                        :key="year"
+                        type="button"
+                        class="vyamap-segment vyamap-number"
+                        :aria-pressed="selectedPeriod === year"
+                        @click="selectedPeriod = year"
+                    >
+                        {{ year }}
+                    </button>
+                </div>
+            </header>
 
-                        <div class="relative z-10">
-                            <div class="text-[9px] uppercase tracking-[0.24em] text-white/25">
-                                Travel history
-                            </div>
-
-                            <div class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                                <div class="min-w-0">
-                                    <h1 class="text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
-                                        Passport
-                                    </h1>
-
-                                    <p class="mt-3 max-w-2xl text-xs leading-5 text-white/35 sm:mt-4 sm:text-base sm:leading-6">
-                                        A visual record of the places you have visited and the journeys you have taken.
-                                    </p>
-                                </div>
-
-                                <div class="shrink-0">
-                                    <div class="mt-5 grid grid-cols-2 gap-2 sm:mt-0 sm:flex sm:overflow-x-auto sm:pb-1 lg:justify-end lg:pb-0">
-                                        <button
-                                            type="button"
-                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
-                                            :class="selectedPeriod === 'all'
-                                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
-                                            @click="selectedPeriod = 'all'"
-                                        >
-                                            All-Time
-                                        </button>
-
-                                        <button
-                                            v-for="year in props.years"
-                                            :key="year"
-                                            type="button"
-                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
-                                            :class="selectedPeriod === year
-                                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
-                                            @click="selectedPeriod = year"
-                                        >
-                                            {{ year }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- =====================================================
-                     PASSPORT
-                ====================================================== -->
-
-                <section class="mb-8">
-                    <div class="passport-heading">
-                        <div>
-                            <p class="passport-eyebrow">
-                                Personal travel document
-                            </p>
-                            <h2 class="mt-2 text-2xl font-semibold tracking-[-0.045em]">
-                                VyaMap Passport
-                            </h2>
-                        </div>
-
-                        <div class="passport-page-control">
-                            <button
-                                type="button"
-                                class="passport-arrow"
-                                :disabled="activePassportPage === 1"
-                                @click="goToPassportPage(activePassportPage - 1)"
-                            >
-                                ←
-                            </button>
-
-                            <span>
-                                Page {{ activePassportPage }} / {{ passportTotalPages }}
-                            </span>
-
-                            <button
-                                type="button"
-                                class="passport-arrow"
-                                :disabled="activePassportPage === passportTotalPages"
-                                @click="goToPassportPage(activePassportPage + 1)"
-                            >
-                                →
-                            </button>
-                        </div>
+            <!-- PASAPORTE -->
+            <section aria-label="VyaMap passport">
+                <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <h2 class="vyamap-h2">VyaMap Passport</h2>
+                        <p class="mt-0.5 text-sm text-[var(--vyamap-text-muted)]">
+                            One stamp for the first entry into each country<template v-if="selectedPeriod !== 'all'"> in {{ selectedPeriod }}</template>.
+                        </p>
                     </div>
 
-                    <div class="passport-book">
-                        <!-- LEFT PAGE -->
-
-                        <div class="passport-page-left">
-                            <div class="passport-watermark">V</div>
-
-                            <div class="passport-page-content">
-                                <div class="flex items-start justify-between gap-5">
-                                    <div>
-                                        <p class="passport-document-label">
-                                            TRAVEL DOCUMENT
-                                        </p>
-                                        <h3 class="mt-2 text-2xl font-semibold tracking-[-0.05em]">
-                                            {{ userName }}
-                                        </h3>
-                                    </div>
-
-                                    <div class="passport-emblem">
-                                        <span>V</span>
-                                    </div>
-                                </div>
-
-                                <div class="passport-photo-area">
-                                    <div class="passport-photo-placeholder">
-                                        <img
-                                            v-if="userAvatar"
-                                            :src="userAvatar"
-                                            :alt="userName"
-                                            class="h-full w-full object-cover"
-                                        />
-                                        <span v-else>
-                                            {{ userName.charAt(0).toUpperCase() }}
-                                        </span>
-                                    </div>
-
-                                    <div class="passport-identity">
-                                        <div>
-                                            <span>Document</span>
-                                            <strong>TRAVEL PASSPORT</strong>
-                                        </div>
-
-                                        <div>
-                                            <span>Passport No.</span>
-                                            <strong>VYM-00001</strong>
-                                        </div>
-
-                                        <div>
-                                            <span>Issued</span>
-                                            <strong>2023</strong>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="passport-name">
-                                    <span>Holder</span>
-                                    <strong>{{ userName.toUpperCase() }}</strong>
-                                </div>
-
-                                <!-- GRAPHICAL STATS -->
-
-                                <div class="passport-stat-grid">
-                                    <div class="passport-stat-ring">
-                                        <svg viewBox="0 0 42 42">
-                                            <circle
-                                                cx="21"
-                                                cy="21"
-                                                r="17"
-                                                fill="none"
-                                                stroke="rgba(38,35,29,.12)"
-                                                stroke-width="3"
-                                            />
-                                            <circle
-                                                cx="21"
-                                                cy="21"
-                                                r="17"
-                                                fill="none"
-                                                stroke="rgba(61,75,68,.62)"
-                                                stroke-width="3"
-                                                stroke-linecap="round"
-                                                :stroke-dasharray="`${passportCountriesPercentage} ${100 - passportCountriesPercentage}`"
-                                                stroke-dashoffset="25"
-                                            />
-                                        </svg>
-
-                                        <div>
-                                            <strong>{{ passportCountriesPercentage }}%</strong>
-                                            <span>world</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="passport-stat">
-                                        <strong>{{ visitedSovereignCount }}</strong>
-                                        <span>/ {{ props.totalCountries }}</span>
-                                        <small>countries</small>
-                                    </div>
-
-                                    <div class="passport-stat">
-                                        <strong>{{ visitedCities }}</strong>
-                                        <small>cities</small>
-                                    </div>
-
-                                    <div class="passport-stat">
-                                        <strong>{{ periodStats.trips }}</strong>
-                                        <small>trips</small>
-                                    </div>
-                                </div>
-
-                                <div class="passport-mrz">
-                                    <div>VYAMAP&lt;&lt;TRAVEL&lt;&lt;PASSPORT&lt;&lt;&lt;&lt;&lt;&lt;&lt;</div>
-                                    <div>VYM00001&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;2023</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- RIGHT PAGE -->
-
-                        <div class="passport-page-right">
-                            <div class="passport-page-header">
-                                <div>
-                                    <p class="passport-document-label">
-                                        VISAS &amp; STAMPS
-                                    </p>
-                                    <h3 class="mt-2 text-xl font-semibold tracking-[-0.04em]">
-                                        Places visited
-                                    </h3>
-                                </div>
-
-                                <div class="passport-page-number">
-                                    {{ String(activePassportPage).padStart(2, '0') }}
-                                </div>
-                            </div>
-
-                            <div class="stamp-grid">
-                                <button
-                                    v-for="stamp in currentPassportStamps"
-                                    :key="stamp.id"
-                                    type="button"
-                                    class="passport-stamp"
-                                    :class="{ 'passport-stamp-active': activePassportStamp?.id === stamp.id }"
-                                    :style="{ '--stamp-rotation': stamp.rotation }"
-                                    @click="selectPassportStamp(stamp)"
-                                >
-                                    <span class="stamp-ring">
-                                        <span class="stamp-country">{{ stamp.country }}</span>
-                                        <span class="stamp-flag">{{ flagEmoji(stamp.iso_code) }}</span>
-                                        <span class="stamp-type">{{ stampLabel(stamp) }}</span>
-                                        <span class="stamp-date">{{ formatPassportDate(stamp.date) }}</span>
-                                    </span>
-                                </button>
-
-                                <div
-                                    v-if="!currentPassportStamps.length"
-                                    class="passport-empty-page"
-                                >
-                                    <span>✦</span>
-                                    <p>More journeys will appear here.</p>
-                                </div>
-                            </div>
-
-                            <div class="passport-page-footer">
-                                <div>
-                                    <span>VALID FOR</span>
-                                    <strong>PERSONAL TRAVEL HISTORY</strong>
-                                </div>
-
-                                <div class="passport-footer-code">
-                                    VYM / {{ String(activePassportPage).padStart(2, '0') }}
-                                </div>
-                            </div>
-                        </div>
-                        
-                    </div>
-
-                    <div class="passport-page-dots">
+                    <div class="flex items-center gap-2">
                         <button
-                            v-for="page in passportTotalPages"
-                            :key="page"
                             type="button"
-                            :class="{ active: activePassportPage === page }"
-                            @click="goToPassportPage(page)"
-                        ></button>
-                    </div>
-
-                    <Transition name="passport-detail">
-                        <div
-                            v-if="activePassportStamp"
-                            class="passport-stamp-detail"
+                            class="vyamap-icon-button"
+                            aria-label="Previous page"
+                            :disabled="activePassportPage === 1"
+                            @click="goToPassportPage(activePassportPage - 1)"
                         >
-                            <div>
-                                <p class="passport-eyebrow">
-                                    Selected stamp
-                                </p>
-
-                                <div class="mt-2 flex items-center gap-3">
-                                    <span class="text-2xl">
-                                        {{ flagEmoji(activePassportStamp.iso_code) }}
-                                    </span>
-
-                                    <h3 class="text-lg font-semibold">
-                                        {{ activePassportStamp.country }}
-                                    </h3>
-                                </div>
-                            </div>
-
-                            <div class="text-right">
-                                <p class="passport-eyebrow">
-                                    {{ stampLabel(activePassportStamp) }}
-                                </p>
-                                <p class="mt-2 text-sm font-medium">
-                                    {{ formatPassportDate(activePassportStamp.date) }}
-                                </p>
-                            </div>
-                        </div>
-                    </Transition>
-                </section>
-
-                <!-- =====================================================
-                     WORLD MAP
-                ====================================================== -->
-
-                <section class="mt-8">
-                    <div class="passport-map-shell mb-7">
-                        <div class="flex flex-col gap-3 px-6 pt-6 sm:px-8 sm:pt-7 md:flex-row md:items-end md:justify-between">
-                            <div>
-                                <p class="passport-eyebrow">
-                                    World explored
-                                </p>
-                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-                                    Your map
-                                </h2>
-                            </div>
-
-                            <div class="passport-map-counter">
-                                <span>{{ visitedSovereignCount }}</span>
-                                / {{ props.totalCountries }} countries explored
-                            </div>
-                        </div>
-
-                        <div class="passport-map">
-                            <CountryMap :countries="visitedCountries" :planned="props.plannedCountries" theme="dark" />
-                        </div>
+                            <Icon name="chevron-left" :size="18" />
+                        </button>
+                        <span class="vyamap-number min-w-[5.5rem] text-center text-sm text-[var(--vyamap-text-muted)]">
+                            Page {{ activePassportPage }} / {{ passportTotalPages }}
+                        </span>
+                        <button
+                            type="button"
+                            class="vyamap-icon-button"
+                            aria-label="Next page"
+                            :disabled="activePassportPage === passportTotalPages"
+                            @click="goToPassportPage(activePassportPage + 1)"
+                        >
+                            <Icon name="chevron-right" :size="18" />
+                        </button>
                     </div>
-                </section>
+                </div>
 
-                <!-- =====================================================
-                     INFO
-                ====================================================== -->
+                <div class="passport-book">
+                    <!-- PÁGINA DE DATOS -->
+                    <div class="passport-sheet passport-sheet-left">
+                        <span class="passport-watermark" aria-hidden="true">V</span>
 
-                <section class="mt-8">
-                    <div class="analytics-card">
-                        <div>
-                            <p class="passport-eyebrow">Travel analytics</p>
-                            <h2 class="mt-2 text-2xl font-semibold tracking-[-0.045em]">
-                                At a glance
-                            </h2>
-                        </div>
-
-                        <div class="analytics-grid">
-                            <div class="analytics-item">
-                                <span>Countries</span>
-                                <strong>{{ visitedSovereignCount }} / {{ props.totalCountries }}</strong>
-                                <div class="analytics-bar">
-                                    <div :style="{ width: `${passportCountriesPercentage}%` }"></div>
-                                </div>
-                                <small v-if="visitedTerritoriesCount" class="analytics-note">
-                                    + {{ visitedTerritoriesCount }} {{ visitedTerritoriesCount === 1 ? 'territory' : 'territories' }}
-                                </small>
-                            </div>
-
-                            <div class="analytics-item">
-                                <span>Cities</span>
-                                <strong>{{ visitedCities }}</strong>
-                                <div class="analytics-bars">
-                                    <i
-                                        v-for="n in 8"
-                                        :key="n"
-                                        :class="{ filled: n <= Math.min(8, Math.ceil(visitedCities / 10)) }"
-                                    ></i>
-                                </div>
-                            </div>
-
-                            <div class="analytics-item">
-                                <span>Trips</span>
-                                <strong>{{ periodStats.trips }}</strong>
-                                <small v-if="selectedPeriod !== 'all'" class="analytics-note">Starting in {{ selectedPeriod }}</small>
-                                <div class="analytics-bars">
-                                    <i
-                                        v-for="n in 8"
-                                        :key="n"
-                                        :class="{ filled: n <= Math.min(8, Math.ceil(periodStats.trips / 2)) }"
-                                    ></i>
-                                </div>
-                            </div>
-
-                            <div class="analytics-item">
-                                <span>Days traveling</span>
-                                <strong>{{ formatNumber(periodStats.days) }}</strong>
-                                <small class="analytics-note">
-                                    {{ selectedPeriod === 'all' ? 'Completed trips' : `Within ${selectedPeriod}` }}, overlaps counted once
-                                </small>
-                            </div>
-
-                            <div class="analytics-item">
-                                <span>Continents</span>
-                                <strong>{{ periodStats.continents }} / {{ props.stats.continents.items.length }}</strong>
-                                <small v-if="selectedPeriod === 'all' && visitedContinents.length" class="analytics-note">
-                                    {{ visitedContinents.map((continent) => `${continent.name} ${continent.countries}/${continent.total_countries}`).join(' · ') }}
-                                </small>
-                            </div>
-
-                            <div class="analytics-item">
-                                <span>Flights</span>
-                                <strong>{{ periodFlightStats?.flights ?? 0 }}</strong>
-                                <div class="analytics-distance">
-                                    <template v-if="passportTotalDistance !== null">{{ formatNumber(passportTotalDistance) }} km</template>
-                                    <template v-else-if="periodFlightStats?.flights">Distance unknown</template>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- =====================================================
-                     COUNTRIES DISCOVERED BY YEAR (primeras visitas)
-                ====================================================== -->
-
-                <section v-if="discoveriesByYear.length" class="mt-8">
-                    <div class="vyamap-card-lg p-6 sm:p-8">
-                        <p class="vyamap-section-title">First visits</p>
-                        <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">Countries discovered by year</h2>
-
-                        <div class="mt-7 divide-y divide-[var(--vyamap-border)]">
-                            <div
-                                v-for="item in discoveriesByYear"
-                                :key="item.year"
-                                class="flex flex-wrap items-baseline gap-x-4 gap-y-2 py-4 first:pt-0 last:pb-0"
-                            >
-                                <span class="w-14 shrink-0 text-sm font-medium">{{ item.year }}</span>
-                                <span class="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1 text-sm">
-                                    <span v-for="country in item.countries" :key="country.iso_code">
-                                        {{ flagEmoji(country.iso_code) }} {{ country.name }}
-                                    </span>
-                                    <span v-if="item.territories" class="vyamap-muted">
-                                        + {{ item.territories }} {{ item.territories === 1 ? 'territory' : 'territories' }}
-                                    </span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- =====================================================
-                     RECENT VISITS + TRIPS BY YEAR
-                ====================================================== -->
-
-                <section class="mt-8">
-                    <div class="grid gap-7 lg:grid-cols-[0.8fr_1.2fr]">
-                        <!-- RECENT VISITS -->
-                        <div class="vyamap-card-lg p-6 sm:p-8">
-                            <div class="flex items-end justify-between gap-4">
+                        <div class="passport-sheet-inner">
+                            <div class="flex items-start justify-between gap-4">
                                 <div>
-                                    <p class="vyamap-section-title">Recent</p>
-                                    <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">Últimos visitados</h2>
+                                    <p class="passport-micro">VyaMap · Travel passport</p>
+                                    <h3 class="mt-1.5 text-[1.375rem] font-semibold tracking-[-0.02em]">{{ userName }}</h3>
                                 </div>
-                                <span class="text-xs vyamap-muted">{{ recentVisits.length }}</span>
+                                <span class="passport-emblem" aria-hidden="true">V</span>
                             </div>
 
-                            <div
-                                v-if="recentVisits.length"
-                                class="mt-7 divide-y divide-[var(--vyamap-border)]"
-                            >
+                            <div class="mt-6 flex gap-5">
+                                <div class="passport-photo">
+                                    <img v-if="userAvatar" :src="userAvatar" alt="" class="h-full w-full object-cover" />
+                                    <span v-else>{{ userName.charAt(0).toUpperCase() }}</span>
+                                    <span class="passport-photo-seal" aria-hidden="true" />
+                                </div>
+
+                                <dl class="passport-fields">
+                                    <div>
+                                        <dt>Document</dt>
+                                        <dd>Travel passport</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Holder</dt>
+                                        <dd>{{ userName }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Period</dt>
+                                        <dd>{{ selectedPeriod === 'all' ? 'All-time' : selectedPeriod }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
+
+                            <div class="passport-figures">
                                 <div
-                                    v-for="visit in recentVisits"
-                                    :key="visit.id"
-                                    class="flex items-center gap-3 py-4 first:pt-0 last:pb-0"
+                                    class="passport-ring"
+                                    role="img"
+                                    :aria-label="`${passportCountriesPercentage}% of the world's countries`"
+                                    :style="{ '--value': `${Math.min(100, passportCountriesPercentage)}%` }"
                                 >
-                                    <span class="text-2xl leading-none">{{ flagEmoji(visit.iso_code) }}</span>
-                                    <div class="min-w-0 flex-1">
-                                        <div class="truncate text-sm font-medium">{{ visit.city }}</div>
-                                        <div class="mt-1 truncate text-xs vyamap-muted">{{ visit.country }}</div>
-                                    </div>
-                                    <div class="shrink-0 text-right text-[11px] vyamap-text-subtle">{{ formatDate(visit.visited_from) }}</div>
+                                    <span class="vyamap-number">{{ passportCountriesPercentage }}%</span>
+                                    <small>world</small>
                                 </div>
-                            </div>
-
-                            <div
-                                v-else
-                                class="mt-7 border-t border-[var(--vyamap-border)] pt-6"
-                            >
-                                <p class="text-sm vyamap-text-subtle">No visits recorded yet.</p>
-                            </div>
-                        </div>
-
-                        <!-- TRIPS BY YEAR -->
-                        <div class="vyamap-card-lg p-6 sm:p-8">
-                            <div class="flex items-end justify-between gap-4">
-                                <div>
-                                    <p class="vyamap-section-title">Travel history</p>
-                                    <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">Trips by year</h2>
-                                </div>
-                                <span class="text-xs vyamap-muted">{{ periodStats.trips }} trips</span>
-                            </div>
-
-                            <div v-if="tripsByYear.length" class="mt-9 space-y-6">
-                                <div v-for="item in tripsByYear" :key="item.year">
-                                    <div class="mb-2 flex items-center justify-between">
-                                        <span class="text-sm font-medium">{{ item.year }}</span>
-                                        <span class="text-xs vyamap-muted">
-                                            {{ item.count }} {{ item.count === 1 ? 'trip' : 'trips' }}
-                                        </span>
+                                <dl class="grid flex-1 grid-cols-3 gap-2">
+                                    <div class="passport-figure">
+                                        <dd class="vyamap-number">{{ visitedSovereignCount }}<small>/{{ props.totalCountries }}</small></dd>
+                                        <dt>Countries</dt>
                                     </div>
-                                    <div class="h-2 overflow-hidden rounded-full bg-[var(--vyamap-surface-strong)]">
-                                        <div
-                                            class="h-full rounded-full bg-[var(--vyamap-text)] transition-all duration-500"
-                                            :style="{ width: `${(item.count / maxTripsByYear) * 100}%` }"
-                                        ></div>
+                                    <div class="passport-figure">
+                                        <dd class="vyamap-number">{{ visitedCities }}</dd>
+                                        <dt>Cities</dt>
                                     </div>
-                                </div>
+                                    <div class="passport-figure">
+                                        <dd class="vyamap-number">{{ periodStats.trips }}</dd>
+                                        <dt>Trips</dt>
+                                    </div>
+                                </dl>
                             </div>
 
-                            <div
-                                v-else
-                                class="mt-7 border-t border-[var(--vyamap-border)] pt-6"
-                            >
-                                <p class="text-sm vyamap-text-subtle">No trips recorded yet.</p>
+                            <div class="passport-mrz" aria-hidden="true">
+                                <div v-for="line in machineReadable" :key="line">{{ line }}</div>
                             </div>
                         </div>
                     </div>
-                </section>
 
-            </div>
+                    <!-- PÁGINA DE SELLOS -->
+                    <div class="passport-sheet passport-sheet-right">
+                        <div class="passport-sheet-inner">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="passport-micro">Visas &amp; stamps</p>
+                                    <h3 class="mt-1.5 text-lg font-semibold tracking-[-0.01em]">Places visited</h3>
+                                </div>
+                                <span class="passport-micro vyamap-number">{{ String(activePassportPage).padStart(2, '0') }}</span>
+                            </div>
 
+                            <ul v-if="currentPassportStamps.length" class="passport-stamps">
+                                <li v-for="(stamp, index) in currentPassportStamps" :key="stamp.id">
+                                    <button
+                                        type="button"
+                                        class="passport-stamp"
+                                        :class="[index % 3 === 1 ? 'is-violet' : 'is-cyan', { 'is-active': activePassportStamp?.id === stamp.id }]"
+                                        :style="{ '--stamp-rotation': stamp.rotation }"
+                                        :aria-pressed="activePassportStamp?.id === stamp.id"
+                                        :aria-label="`${stamp.country}, first entry ${formatDate(stamp.date)}`"
+                                        @click="selectPassportStamp(stamp)"
+                                    >
+                                        <span class="passport-stamp-ring">
+                                            <span class="text-lg leading-none" aria-hidden="true">{{ flagEmoji(stamp.iso_code) }}</span>
+                                            <span class="passport-stamp-country">{{ stamp.country }}</span>
+                                            <span class="passport-stamp-type">{{ stampLabel(stamp) }}</span>
+                                            <span class="passport-stamp-date vyamap-number">{{ formatPassportDate(stamp.date) }}</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <div v-else class="passport-empty">
+                                <Icon name="passport" :size="28" />
+                                <p class="font-semibold text-[var(--vyamap-text)]">No stamps yet</p>
+                                <p>Each country you visit on a completed trip adds a stamp here.</p>
+                                <Link href="/trips" class="vyamap-button-secondary vyamap-button-sm mt-2">Go to my trips</Link>
+                            </div>
+
+                            <div class="passport-sheet-footer">
+                                <div>
+                                    <p class="passport-micro">Valid for</p>
+                                    <p class="text-[0.75rem] font-semibold tracking-[0.06em]">PERSONAL TRAVEL HISTORY</p>
+                                </div>
+                                <span class="passport-micro vyamap-number">VYM / {{ String(activePassportPage).padStart(2, '0') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="passportTotalPages > 1" class="mt-3 flex justify-center gap-2">
+                    <button
+                        v-for="pageNumber in passportTotalPages"
+                        :key="pageNumber"
+                        type="button"
+                        class="passport-dot"
+                        :class="{ 'is-active': activePassportPage === pageNumber }"
+                        :aria-label="`Page ${pageNumber}`"
+                        :aria-current="activePassportPage === pageNumber ? 'page' : undefined"
+                        @click="goToPassportPage(pageNumber)"
+                    />
+                </div>
+
+                <p
+                    v-if="activePassportStamp"
+                    role="status"
+                    class="mx-auto mt-4 flex max-w-[60rem] items-center justify-between gap-3 rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] px-4 py-3 text-sm"
+                >
+                    <span class="flex items-center gap-2 font-semibold">
+                        <span aria-hidden="true">{{ flagEmoji(activePassportStamp.iso_code) }}</span>
+                        {{ activePassportStamp.country }}
+                    </span>
+                    <span class="vyamap-number text-[var(--vyamap-text-muted)]">First entry · {{ formatDate(activePassportStamp.date) }}</span>
+                </p>
+            </section>
+
+            <!-- DE UN VISTAZO -->
+            <section class="vyamap-card overflow-hidden" aria-label="At a glance">
+                <dl class="grid grid-cols-2 lg:grid-cols-3">
+                    <div class="vyamap-stat gap-2 p-5">
+                        <dt class="vyamap-stat-label order-2">Countries</dt>
+                        <dd class="vyamap-stat-value order-1">{{ visitedSovereignCount }}<span class="vyamap-stat-unit">/ {{ props.totalCountries }}</span></dd>
+                        <dd class="order-3"><div class="vyamap-progress"><span :style="{ width: `${Math.max(passportCountriesPercentage, visitedSovereignCount ? 1 : 0)}%` }" /></div></dd>
+                        <dd v-if="visitedTerritoriesCount" class="vyamap-stat-hint order-4">
+                            + {{ visitedTerritoriesCount }} {{ visitedTerritoriesCount === 1 ? 'territory' : 'territories' }}
+                        </dd>
+                    </div>
+                    <div class="vyamap-stat border-l border-[var(--vyamap-border)] p-5">
+                        <dt class="vyamap-stat-label order-2">Cities</dt>
+                        <dd class="vyamap-stat-value order-1">{{ visitedCities }}</dd>
+                    </div>
+                    <div class="vyamap-stat border-t border-[var(--vyamap-border)] p-5 lg:border-l lg:border-t-0">
+                        <dt class="vyamap-stat-label order-2">Trips</dt>
+                        <dd class="vyamap-stat-value order-1">{{ periodStats.trips }}</dd>
+                        <dd v-if="selectedPeriod !== 'all'" class="vyamap-stat-hint order-3">Starting in {{ selectedPeriod }}</dd>
+                    </div>
+                    <div class="vyamap-stat border-l border-t border-[var(--vyamap-border)] p-5 lg:border-l-0">
+                        <dt class="vyamap-stat-label order-2">Days traveling</dt>
+                        <dd class="vyamap-stat-value order-1">{{ formatNumber(periodStats.days) }}</dd>
+                        <dd class="vyamap-stat-hint order-3">{{ selectedPeriod === 'all' ? 'Completed trips' : `Within ${selectedPeriod}` }}, overlaps counted once</dd>
+                    </div>
+                    <div class="vyamap-stat border-t border-[var(--vyamap-border)] p-5 lg:border-l">
+                        <dt class="vyamap-stat-label order-2">Continents</dt>
+                        <dd class="vyamap-stat-value order-1">{{ periodStats.continents }}<span class="vyamap-stat-unit">/ {{ props.stats.continents.items.length }}</span></dd>
+                        <dd v-if="selectedPeriod === 'all' && visitedContinents.length" class="vyamap-stat-hint order-3">
+                            {{ visitedContinents.map((continent) => `${continent.name} ${continent.countries}/${continent.total_countries}`).join(' · ') }}
+                        </dd>
+                    </div>
+                    <div class="vyamap-stat border-l border-t border-[var(--vyamap-border)] p-5">
+                        <dt class="vyamap-stat-label order-2">Flights</dt>
+                        <dd class="vyamap-stat-value order-1">{{ periodFlightStats?.flights ?? 0 }}</dd>
+                        <dd class="vyamap-stat-hint order-3 vyamap-number">
+                            <template v-if="passportTotalDistance !== null">{{ formatNumber(passportTotalDistance) }} km</template>
+                            <template v-else-if="periodFlightStats?.flights">Distance unknown</template>
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <!-- MAPA -->
+            <section class="vyamap-map-card h-[320px] sm:h-[460px]">
+                <div class="vyamap-map-overlay left-4 top-4">
+                    <h2 class="text-sm font-semibold">World explored</h2>
+                    <p class="vyamap-number text-xs text-[var(--vyamap-text-muted)]">{{ visitedSovereignCount }} / {{ props.totalCountries }} countries</p>
+                </div>
+                <div class="vyamap-map-overlay bottom-4 left-4 hidden gap-4 text-xs sm:flex">
+                    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-[var(--vyamap-cyan)]" />Visited</span>
+                    <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-[var(--vyamap-violet)]" />Planned</span>
+                </div>
+                <CountryMap :countries="visitedCountries" :planned="props.plannedCountries" theme="dark" />
+            </section>
+
+            <!-- DESCUBRIMIENTOS, RECIENTES Y AÑOS -->
+            <section class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div class="vyamap-panel">
+                    <h2 class="vyamap-h2 mb-3">Countries discovered by year</h2>
+                    <ol v-if="discoveriesByYear.length" class="flex flex-col divide-y divide-[var(--vyamap-border)]">
+                        <li v-for="item in discoveriesByYear" :key="item.year" class="flex gap-4 py-3 first:pt-0 last:pb-0">
+                            <span class="vyamap-number w-12 shrink-0 text-sm font-semibold text-[var(--vyamap-cyan-soft)]">{{ item.year }}</span>
+                            <span class="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1 text-sm">
+                                <span v-for="country in item.countries" :key="country.iso_code">
+                                    <span aria-hidden="true">{{ flagEmoji(country.iso_code) }}</span> {{ country.name }}
+                                </span>
+                                <span v-if="item.territories" class="text-[var(--vyamap-text-muted)]">
+                                    + {{ item.territories }} {{ item.territories === 1 ? 'territory' : 'territories' }}
+                                </span>
+                            </span>
+                        </li>
+                    </ol>
+                    <p v-else class="text-sm text-[var(--vyamap-text-muted)]">Your first visit to each country will be listed by year.</p>
+                </div>
+
+                <div class="vyamap-panel">
+                    <h2 class="vyamap-h2 mb-3">Recently visited</h2>
+                    <ul v-if="recentVisits.length" class="flex flex-col divide-y divide-[var(--vyamap-border)]">
+                        <li v-for="visit in recentVisits" :key="visit.id" class="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                            <span class="text-xl leading-none" aria-hidden="true">{{ flagEmoji(visit.iso_code) }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-sm font-medium">{{ visit.city }}</span>
+                                <span class="block truncate text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ visit.country }}</span>
+                            </span>
+                            <span class="vyamap-number shrink-0 text-[0.8125rem] text-[var(--vyamap-text-subtle)]">{{ formatDate(visit.visited_from) }}</span>
+                        </li>
+                    </ul>
+                    <p v-else class="text-sm text-[var(--vyamap-text-muted)]">No visits recorded yet.</p>
+                </div>
+
+                <div class="vyamap-panel">
+                    <div class="mb-3 flex items-baseline justify-between gap-3">
+                        <h2 class="vyamap-h2">Trips by year</h2>
+                        <span class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">{{ periodStats.trips }} {{ periodStats.trips === 1 ? 'trip' : 'trips' }}</span>
+                    </div>
+                    <ul v-if="tripsByYear.length" class="flex flex-col gap-4">
+                        <li v-for="item in tripsByYear" :key="item.year">
+                            <div class="mb-1.5 flex items-baseline justify-between text-sm">
+                                <span class="vyamap-number font-semibold">{{ item.year }}</span>
+                                <span class="vyamap-number text-[var(--vyamap-text-muted)]">{{ item.count }} {{ item.count === 1 ? 'trip' : 'trips' }}</span>
+                            </div>
+                            <div class="vyamap-progress"><span :style="{ width: `${(item.count / maxTripsByYear) * 100}%` }" /></div>
+                        </li>
+                    </ul>
+                    <p v-else class="text-sm text-[var(--vyamap-text-muted)]">No trips recorded yet.</p>
+                </div>
+            </section>
         </div>
-
     </AppLayout>
-
 </template>
 
 <style scoped>
-
-.passport-page {
-    min-height: 100vh;
-    color: #f4f4f2;
-}
-
-.passport-eyebrow,
-.passport-document-label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.34);
-}
-
-.passport-intro {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 32px;
-    padding: 30px 34px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 22px;
-    background:
-        radial-gradient(circle at 85% 15%, rgba(90, 110, 92, 0.09), transparent 34%),
-        rgba(255, 255, 255, 0.025);
-}
-
-.passport-period {
-    display: flex;
-    gap: 5px;
-    padding: 5px;
-    overflow-x: auto;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.14);
-    white-space: nowrap;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.34);
-}
-
-.passport-period span {
-    padding: 8px 13px;
-    border-radius: 999px;
-}
-
-.passport-period-active {
-    background: rgba(255, 255, 255, 0.09);
-    color: #fff;
-}
-
-.passport-map-shell {
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
-    background:
-        radial-gradient(circle at 50% 20%, rgba(83, 107, 105, 0.1), transparent 45%),
-        #10191c;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.16);
-}
-
-.passport-map-counter {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.35);
-}
-
-.passport-map-counter span {
-    margin-right: 5px;
-    color: rgba(245, 239, 219, 0.9);
-    font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.04em;
-}
-
-
-.passport-map {
-    height: 540px;
-    margin-top: 18px;
-    overflow: hidden;
-}
-
-
-.passport-map :deep(.leaflet-container) {
-    background: #10191c;
-}
-
-
-.passport-heading {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 24px;
-    margin: 0 auto 14px;
-    max-width: 930px;
-}
-
-.passport-page-control {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.32);
-}
-
-.passport-arrow {
-    display: flex;
-    height: 29px;
-    width: 29px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.025);
-    color: rgba(255, 255, 255, 0.65);
-    transition: 160ms ease;
-}
-
-.passport-arrow:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-}
-
-.passport-arrow:disabled {
-    cursor: default;
-    opacity: 0.25;
-}
-
+/*
+ * Pasaporte: librillo abierto en papel de seguridad azul tinta. Guilloché y
+ * grano muy tenues para que el texto mantenga el contraste; los sellos usan
+ * las tintas del sistema (cian y violeta).
+ */
 .passport-book {
     position: relative;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    width: min(100%, 930px);
-    min-height: 570px;
-    margin: 0 auto;
+    grid-template-columns: 1fr;
+    width: min(100%, 60rem);
+    margin-inline: auto;
     overflow: hidden;
-    border: 1px solid rgba(42, 35, 25, 0.25);
-    border-radius: 18px;
-    background: #c9c1aa;
+    border: 1px solid rgba(148, 170, 214, 0.22);
+    border-radius: 1.25rem;
+    background: #0B1224;
     box-shadow:
-        0 35px 80px rgba(0, 0, 0, 0.24),
-        inset 0 0 0 1px rgba(45, 38, 26, 0.16);
+        0 1px 0 rgba(255, 255, 255, 0.06) inset,
+        0 30px 70px -30px rgba(0, 0, 0, 0.95),
+        0 0 0 6px rgba(13, 20, 36, 0.6);
 }
 
-.passport-book::after {
+@media (min-width: 768px) {
+    .passport-book {
+        grid-template-columns: 1fr 1fr;
+        min-height: 34rem;
+    }
+}
+
+.passport-sheet {
+    position: relative;
+    overflow: hidden;
+    color: var(--vyamap-text);
+    background:
+        repeating-radial-gradient(circle at 18% 22%, rgba(34, 211, 238, 0.05) 0 1px, transparent 1px 9px),
+        repeating-radial-gradient(circle at 85% 80%, rgba(167, 139, 250, 0.05) 0 1px, transparent 1px 11px),
+        linear-gradient(160deg, #121C33 0%, #0D152A 55%, #0B1224 100%);
+}
+
+/* Grano de papel */
+.passport-sheet::after {
     content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    z-index: 10;
-    background:
-        repeating-linear-gradient(
-            0deg,
-            rgba(40, 32, 20, 0.025) 0,
-            rgba(40, 32, 20, 0.025) 1px,
-            transparent 1px,
-            transparent 4px
-        );
-    mix-blend-mode: multiply;
+    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 3px);
 }
 
-.passport-page-left,
-.passport-page-right {
+/* Lomo: sombra hacia el centro del libro */
+.passport-sheet-left {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 -18px 24px -18px rgba(0, 0, 0, 0.9);
+}
+
+@media (min-width: 768px) {
+    .passport-sheet-left {
+        border-bottom: 0;
+        border-right: 1px solid rgba(0, 0, 0, 0.55);
+        box-shadow: inset -26px 0 30px -24px rgba(0, 0, 0, 0.95);
+    }
+
+    .passport-sheet-right {
+        box-shadow: inset 26px 0 30px -24px rgba(0, 0, 0, 0.95);
+    }
+}
+
+.passport-sheet-inner {
     position: relative;
-    overflow: hidden;
-}
-
-.passport-page-left {
-    border-right: 1px solid rgba(42, 35, 25, 0.22);
-    background:
-        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.28), transparent 25%),
-        linear-gradient(135deg, #d4cdbb 0%, #c6bea9 100%);
-    color: #26231d;
-}
-
-.passport-page-right {
-    background:
-        radial-gradient(circle at 70% 15%, rgba(255, 255, 255, 0.24), transparent 24%),
-        linear-gradient(135deg, #d0c8b4 0%, #c3baa4 100%);
-    color: #26231d;
-}
-
-.passport-page-content {
-    position: relative;
-    z-index: 2;
+    z-index: 1;
+    display: flex;
     height: 100%;
-    padding: 31px;
+    flex-direction: column;
+    padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.passport-micro {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--vyamap-text-subtle);
 }
 
 .passport-watermark {
     position: absolute;
-    top: 40%;
     left: 50%;
-    z-index: 1;
+    top: 46%;
     transform: translate(-50%, -50%);
-    color: rgba(66, 79, 72, 0.055);
-    font-size: 300px;
+    font-size: 17rem;
     font-weight: 800;
     line-height: 1;
+    letter-spacing: -0.06em;
+    color: rgba(124, 155, 255, 0.045);
+    pointer-events: none;
 }
 
 .passport-emblem {
     display: flex;
-    height: 48px;
-    width: 48px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(38, 35, 29, 0.32);
-    border-radius: 50%;
-    color: rgba(38, 35, 29, 0.68);
-    font-size: 20px;
-    font-weight: 700;
-}
-
-.passport-photo-area {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    gap: 20px;
-    margin-top: 35px;
-}
-
-.passport-photo-placeholder {
-    display: flex;
-    height: 120px;
-    width: 94px;
+    height: 3rem;
+    width: 3rem;
     flex-shrink: 0;
-    overflow: hidden;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(38, 35, 29, 0.24);
-    background: rgba(50, 55, 50, 0.08);
-    color: rgba(38, 35, 29, 0.24);
-    font-size: 40px;
-    font-weight: 700;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background:
+        radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.35), transparent 45%),
+        conic-gradient(from 200deg, #22D3EE, #7C9BFF, #A78BFA, #5EE7F7, #22D3EE);
+    color: #041019;
+    font-size: 1.125rem;
+    font-weight: 800;
+    box-shadow: 0 6px 16px -6px rgba(124, 155, 255, 0.7);
 }
 
-.passport-identity {
+.passport-photo {
+    position: relative;
+    display: flex;
+    height: 7.5rem;
+    width: 6rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(148, 170, 214, 0.3);
+    border-radius: 0.5rem;
+    background: #17223D;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--vyamap-text-subtle);
+}
+
+/* Sello holográfico sobre la esquina de la foto */
+.passport-photo-seal {
+    position: absolute;
+    right: -0.85rem;
+    bottom: -0.85rem;
+    height: 2.75rem;
+    width: 2.75rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background:
+        repeating-conic-gradient(from 0deg, rgba(94, 231, 247, 0.55) 0 8deg, rgba(167, 139, 250, 0.55) 8deg 16deg);
+    opacity: 0.55;
+}
+
+.passport-fields {
     display: grid;
     align-content: center;
-    gap: 14px;
-}
-
-.passport-identity span,
-.passport-name span,
-.passport-stat span {
-    display: block;
-    margin-bottom: 3px;
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(38, 35, 29, 0.48);
-}
-
-.passport-identity strong,
-.passport-name strong {
-    font-size: 9px;
-    letter-spacing: 0.06em;
-}
-
-.passport-name {
-    position: relative;
-    z-index: 2;
-    margin-top: 25px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(38, 35, 29, 0.18);
-}
-
-.passport-stat-grid {
-    position: relative;
-    z-index: 2;
-    display: grid;
-    grid-template-columns: 1.25fr 1fr 1fr 1fr;
-    align-items: center;
-    gap: 13px;
-    margin-top: 27px;
-    padding-top: 18px;
-    border-top: 1px solid rgba(38, 35, 29, 0.18);
-}
-
-.passport-stat-ring {
-    position: relative;
-    height: 64px;
-    width: 64px;
-}
-
-.passport-stat-ring svg {
-    height: 100%;
-    width: 100%;
-    transform: rotate(-90deg);
-}
-
-.passport-stat-ring > div {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.passport-stat-ring strong {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-}
-
-.passport-stat-ring span {
-    margin: 0;
-    font-size: 6px;
-}
-
-.passport-stat strong {
-    display: block;
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.05em;
-}
-
-.passport-stat small {
-    display: block;
-    margin-top: 1px;
-    font-size: 7px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(38, 35, 29, 0.48);
-}
-
-.passport-mrz {
-    position: absolute;
-    right: 31px;
-    bottom: 27px;
-    left: 31px;
-    z-index: 2;
-    display: grid;
-    gap: 3px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 7px;
-    letter-spacing: 0.16em;
-    color: rgba(38, 35, 29, 0.48);
-}
-
-.passport-page-header {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 31px 31px 0;
-}
-
-.passport-page-number {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 8px;
-    letter-spacing: 0.2em;
-    color: rgba(38, 35, 29, 0.38);
-}
-
-.stamp-grid {
-    position: relative;
-    z-index: 2;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-content: start;
-    gap: 18px 14px;
-    padding: 27px 25px 65px;
-}
-
-.passport-stamp {
-    position: relative;
-    min-height: 124px;
-    border: 0;
-    background: transparent;
-    color: rgba(54, 67, 61, 0.62);
-    transform: rotate(var(--stamp-rotation));
-    transition: transform 180ms ease, opacity 180ms ease;
-    opacity: 0.72;
-    cursor: pointer;
-}
-
-.passport-stamp:hover,
-.passport-stamp-active {
-    opacity: 1;
-    transform: rotate(0deg) scale(1.035);
-}
-
-.stamp-ring {
-    position: relative;
-    display: flex;
-    height: 100%;
-    min-height: 124px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid currentColor;
-    border-radius: 48%;
-    padding: 12px;
-}
-
-.stamp-ring::before,
-.stamp-ring::after {
-    content: '';
-    position: absolute;
-    inset: 6px;
-    border: 1px dashed currentColor;
-    border-radius: 46%;
-}
-
-.stamp-ring::after {
-    inset: 13px;
-    border-style: dotted;
-    opacity: 0.45;
-}
-
-.stamp-country,
-.stamp-type,
-.stamp-date,
-.stamp-flag {
-    position: relative;
-    z-index: 2;
-}
-
-.stamp-country {
-    font-size: 8px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-}
-
-.stamp-flag {
-    margin-top: 4px;
-    font-size: 17px;
-    filter: grayscale(0.55);
-}
-
-.stamp-type {
-    margin-top: 3px;
-    font-size: 6px;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-}
-
-.stamp-date {
-    margin-top: 5px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 6px;
-    letter-spacing: 0.1em;
-}
-
-.passport-empty-page {
-    display: flex;
-    min-height: 260px;
-    grid-column: 1 / -1;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 10px;
-    color: rgba(38, 35, 29, 0.32);
-    font-size: 11px;
-}
-
-.passport-empty-page span {
-    font-size: 22px;
-}
-
-.passport-page-footer {
-    position: absolute;
-    right: 25px;
-    bottom: 25px;
-    left: 25px;
-    z-index: 3;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 20px;
-    padding-top: 13px;
-    border-top: 1px solid rgba(38, 35, 29, 0.18);
-}
-
-.passport-page-footer span {
-    display: block;
-    font-size: 6px;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    color: rgba(38, 35, 29, 0.42);
-}
-
-.passport-page-footer strong {
-    display: block;
-    margin-top: 3px;
-    font-size: 7px;
-    letter-spacing: 0.08em;
-}
-
-.passport-footer-code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 7px;
-    letter-spacing: 0.18em;
-    color: rgba(38, 35, 29, 0.42);
-}
-
-.passport-page-dots {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 14px;
-}
-
-.passport-page-dots button {
-    height: 5px;
-    width: 5px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.18);
-    transition: 160ms ease;
-}
-
-.passport-page-dots button.active {
-    width: 18px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.65);
-}
-
-.passport-stamp-detail {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 30px;
-    width: min(100%, 930px);
-    margin: 12px auto 0;
-    padding: 15px 19px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.025);
-}
-
-.passport-detail-enter-active,
-.passport-detail-leave-active {
-    transition: all 180ms ease;
-}
-
-.passport-detail-enter-from,
-.passport-detail-leave-to {
-    opacity: 0;
-    transform: translateY(-5px);
-}
-
-.analytics-card {
-    display: grid;
-    grid-template-columns: 0.55fr 1.45fr;
-    gap: 40px;
-    padding: 27px 30px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.025);
-}
-
-.analytics-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
-}
-
-.analytics-item {
+    gap: 0.75rem;
     min-width: 0;
 }
 
-.analytics-item > span {
-    display: block;
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.32);
-}
-
-.analytics-item strong {
-    display: block;
-    margin-top: 5px;
-    font-size: 23px;
+.passport-fields dt {
+    font-size: 0.6875rem;
     font-weight: 600;
-    letter-spacing: -0.045em;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--vyamap-text-subtle);
 }
 
-.analytics-note {
-    display: block;
-    margin-top: 6px;
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 11px;
-}
-
-.analytics-bar {
-    height: 4px;
-    margin-top: 12px;
+.passport-fields dd {
     overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
-.analytics-bar div {
-    height: 100%;
-    border-radius: inherit;
-    background: rgba(230, 222, 196, 0.7);
+.passport-figures {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid rgba(148, 170, 214, 0.18);
+    padding-top: 1.25rem;
 }
 
-.analytics-bars {
+.passport-ring {
+    display: flex;
+    height: 4.5rem;
+    width: 4.5rem;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background:
+        radial-gradient(closest-side, #0F1830 80%, transparent 81% 100%),
+        conic-gradient(#22D3EE 0%, #A78BFA var(--value), rgba(148, 170, 214, 0.18) var(--value));
+    font-size: 0.875rem;
+    font-weight: 650;
+    line-height: 1.1;
+}
+
+.passport-ring small {
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--vyamap-text-subtle);
+}
+
+.passport-figure {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.passport-figure dd {
+    font-size: 1.5rem;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+
+.passport-figure dd small {
+    margin-left: 0.125rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--vyamap-text-subtle);
+}
+
+.passport-figure dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--vyamap-text-subtle);
+}
+
+.passport-mrz {
+    margin-top: auto;
+    padding-top: 1.25rem;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    line-height: 1.6;
+    color: rgba(166, 179, 202, 0.75);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.passport-stamps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+    .passport-stamps {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.passport-stamp {
+    display: flex;
+    width: 100%;
+    aspect-ratio: 1.25;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    transition: background-color 0.15s var(--vyamap-ease);
+}
+
+.passport-stamp:hover,
+.passport-stamp.is-active {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.passport-stamp.is-cyan {
+    --ink: rgba(94, 231, 247, 0.85);
+}
+
+.passport-stamp.is-violet {
+    --ink: rgba(167, 139, 250, 0.9);
+}
+
+.passport-stamp-ring {
+    display: flex;
+    height: 92%;
+    max-width: 100%;
+    aspect-ratio: 1.2;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    outline: 1px dashed var(--ink);
+    outline-offset: -6px;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    transform: rotate(var(--stamp-rotation, 0deg));
+    /* Tinta: algo transparente para que se vea el papel debajo */
+    opacity: 0.92;
+}
+
+.passport-stamp.is-active .passport-stamp-ring {
+    opacity: 1;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.passport-stamp-country {
+    display: -webkit-box;
+    max-width: 88%;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.15;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+}
+
+.passport-stamp-type {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--ink);
+}
+
+.passport-stamp-date {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--vyamap-text);
+}
+
+.passport-empty {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    margin-block: 1.5rem;
+    border: 1px dashed rgba(148, 170, 214, 0.24);
+    border-radius: 1rem;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--vyamap-text-muted);
+}
+
+.passport-sheet-footer {
     display: flex;
     align-items: flex-end;
-    gap: 3px;
-    height: 18px;
-    margin-top: 10px;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: auto;
+    border-top: 1px solid rgba(148, 170, 214, 0.18);
+    padding-top: 1rem;
 }
 
-.analytics-bars i {
-    display: block;
-    width: 5px;
-    height: 7px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.09);
+.passport-stamps + .passport-sheet-footer {
+    margin-top: 1.5rem;
 }
 
-.analytics-bars i:nth-child(2) { height: 10px; }
-.analytics-bars i:nth-child(3) { height: 8px; }
-.analytics-bars i:nth-child(4) { height: 13px; }
-.analytics-bars i:nth-child(5) { height: 11px; }
-.analytics-bars i:nth-child(6) { height: 16px; }
-.analytics-bars i:nth-child(7) { height: 12px; }
-.analytics-bars i:nth-child(8) { height: 17px; }
-.analytics-bars i.filled {
-    background: rgba(230, 222, 196, 0.65);
-}
-
-.analytics-distance {
-    margin-top: 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 8px;
-    color: rgba(255, 255, 255, 0.34);
-}
-
-@media (max-width: 900px) {
-    .passport-intro {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .passport-heading {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .passport-book {
-        grid-template-columns: 1fr;
-    }
-
-    .passport-page-left {
-        border-right: 0;
-        border-bottom: 1px solid rgba(42, 35, 25, 0.22);
-    }
-
-    .analytics-card {
-        grid-template-columns: 1fr;
-    }
-
-    .analytics-grid {
-        grid-template-columns: repeat(2, 1fr);
+@media (min-width: 768px) {
+    .passport-stamps + .passport-sheet-footer {
+        margin-top: auto;
     }
 }
 
-@media (max-width: 560px) {
-    .passport-book {
-        border-radius: 22px;
-    }
-
-    .passport-map {
-        height: 390px;
-    }
-
-    .passport-page-content,
-    .passport-page-header {
-        padding: 24px;
-    }
-
-    .stamp-grid {
-        gap: 14px 8px;
-        padding: 22px 14px 62px;
-    }
-
-    .passport-stamp,
-    .stamp-ring {
-        min-height: 112px;
-    }
-
-    .passport-stat-grid {
-        grid-template-columns: 1.2fr 1fr 1fr;
-    }
-
-    .passport-stat:last-child {
-        display: none;
-    }
-
-    .passport-stamp-detail {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+.passport-dot {
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 9999px;
+    background: rgba(148, 170, 214, 0.3);
+    transition: width 0.15s var(--vyamap-ease), background-color 0.15s var(--vyamap-ease);
 }
 
+.passport-dot.is-active {
+    width: 1.5rem;
+    background: var(--vyamap-route);
+}
 </style>
-
-

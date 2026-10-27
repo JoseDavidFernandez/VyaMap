@@ -54,13 +54,12 @@ const renderMap = async () => {
             return;
         }
 
-        // Próximo en lima, cancelado en gris, realizado en cian.
-        // Próximo en lima; cancelado o pendiente de confirmar en gris; realizado en cian.
+        // Próximo en violeta; cancelado o pendiente de confirmar en gris; realizado en cian.
         const accent = flight.status === 'upcoming'
-            ? '#bef264'
+            ? '#A78BFA'
             : flight.status === 'cancelled' || flight.status === 'pending'
-                ? 'rgba(255, 255, 255, 0.35)'
-                : '#67e8f9';
+                ? 'rgba(166, 179, 202, 0.5)'
+                : '#5EE7F7';
 
         const route = L.polyline([origin, destination], {
             color: accent,
@@ -77,7 +76,7 @@ const renderMap = async () => {
             radius: 4,
             color: accent,
             weight: 1.5,
-            fillColor: '#0d1119',
+            fillColor: '#070B14',
             fillOpacity: 1,
         });
 
@@ -94,7 +93,7 @@ const renderMap = async () => {
 
         const destinationMarker = L.circleMarker(destination, {
             radius: 5,
-            color: '#0d1119',
+            color: '#070B14',
             weight: 2,
             fillColor: accent,
             fillOpacity: 1,
@@ -171,7 +170,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="mapElement" class="flight-history-map"></div>
+    <div ref="mapElement" class="flight-history-map vyamap-leaflet-dark"></div>
 </template>
 
 <style scoped>
@@ -181,63 +180,10 @@ onBeforeUnmount(() => {
     min-height: 100%;
     width: 100%;
     overflow: hidden;
-    background: #101316;
-}
-
-.flight-history-map :deep(.leaflet-tile-pane) {
-    filter: invert(1) hue-rotate(180deg) brightness(0.66) contrast(0.92) saturate(0.6);
-}
-
-.flight-history-map :deep(.leaflet-control-zoom) {
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 10px !important;
-    background: rgba(15, 18, 21, 0.86) !important;
-    box-shadow: none !important;
-}
-
-.flight-history-map :deep(.leaflet-control-zoom a) {
-    width: 30px;
-    height: 30px;
-    border: 0 !important;
-    background: transparent !important;
-    color: rgba(255, 255, 255, 0.7) !important;
-    line-height: 30px;
-}
-
-.flight-history-map :deep(.leaflet-control-zoom a:hover) {
-    background: rgba(103, 232, 249, 0.1) !important;
-    color: #a5f3fc !important;
-}
-
-.flight-history-map :deep(.leaflet-control-attribution) {
-    padding: 2px 6px;
-    border-radius: 4px 0 0 0;
-    background: rgba(10, 12, 14, 0.65);
-    color: rgba(255, 255, 255, 0.35);
-    font-size: 8px;
-}
-
-.flight-history-map :deep(.leaflet-control-attribution a) {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.flight-history-map :deep(.vyamap-flight-tooltip) {
-    border: 1px solid rgba(103, 232, 249, 0.18);
-    border-radius: 10px;
-    background: rgba(15, 18, 21, 0.95);
-    color: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-    font-size: 10px;
-    line-height: 1.5;
+    background: #0A0F1B;
 }
 
 .flight-history-map :deep(.vyamap-flight-tooltip strong) {
-    color: #ffffff;
     font-weight: 600;
-}
-
-.flight-history-map :deep(.leaflet-tooltip-top:before) {
-    border-top-color: rgba(15, 18, 21, 0.95);
 }
 </style>

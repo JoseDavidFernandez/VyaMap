@@ -5,7 +5,7 @@ import type { FlightRecord as Flight } from '../../types/flights';
 import { greatCircleRoute, toPoint, type Point } from '../../utils/greatCircle';
 import { escapeHtml } from '../../utils/escapeHtml';
 
-// Realizados en blanco, próximos en lima y pendientes de confirmar en gris.
+// Realizados en cian, próximos en violeta y pendientes de confirmar en gris.
 const props = defineProps<{
     flights: Flight[];
 }>();
@@ -42,7 +42,7 @@ const renderRoutes = () => {
         const upcoming = flight.status === 'upcoming';
         // Pendiente de confirmar: gris, nunca como un vuelo realizado.
         const unconfirmed = flight.status === 'pending';
-        const stroke = upcoming ? '#BEF264' : unconfirmed ? 'rgba(255, 255, 255, 0.3)' : '#ffffff';
+        const stroke = upcoming ? '#A78BFA' : unconfirmed ? 'rgba(166, 179, 202, 0.5)' : '#5EE7F7';
 
         route.flat().forEach((point) => bounds.extend(point));
 
@@ -60,7 +60,7 @@ const renderRoutes = () => {
             radius: 4,
             color: stroke,
             weight: 1.5,
-            fillColor: '#111827',
+            fillColor: '#070B14',
             fillOpacity: 1,
         })
             .bindTooltip(
@@ -68,6 +68,7 @@ const renderRoutes = () => {
                 {
                     direction: 'top',
                     offset: [0, -4],
+                    className: 'vyamap-tooltip',
                 },
             )
             .addTo(layerGroup!);
@@ -76,7 +77,7 @@ const renderRoutes = () => {
             radius: 4,
             color: stroke,
             weight: 1.5,
-            fillColor: '#111827',
+            fillColor: '#070B14',
             fillOpacity: 1,
         })
             .bindTooltip(
@@ -84,6 +85,7 @@ const renderRoutes = () => {
                 {
                     direction: 'top',
                     offset: [0, -4],
+                    className: 'vyamap-tooltip',
                 },
             )
             .addTo(layerGroup!);
@@ -156,7 +158,6 @@ onBeforeUnmount(() => {
 .flight-history-map {
     width: 100%;
     height: 100%;
-    min-height: 520px;
-    background: #111827;
+    background: #0A0F1B;
 }
 </style>

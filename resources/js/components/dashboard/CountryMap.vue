@@ -34,9 +34,9 @@ const props = withDefaults(defineProps<{
     planned: () => [],
 });
 
-// Planificado en lima (lime-300); en curso, lima más intenso con borde blanco.
-const PLANNED = { fillColor: '#BEF264', fillOpacity: 0.35, color: 'rgba(190, 242, 100, 0.8)', weight: 0.8 };
-const ONGOING = { fillColor: '#BEF264', fillOpacity: 0.6, color: '#FFFFFF', weight: 1.4, dashArray: '3 3' };
+// Planificado en violeta; en curso, violeta más intenso con borde blanco.
+const PLANNED = { fillColor: '#A78BFA', fillOpacity: 0.35, color: 'rgba(167, 139, 250, 0.85)', weight: 0.8 };
+const ONGOING = { fillColor: '#A78BFA', fillOpacity: 0.6, color: '#FFFFFF', weight: 1.4, dashArray: '3 3' };
 
 const PALETTES = {
     light: {
@@ -47,8 +47,8 @@ const PALETTES = {
     },
     // Acento cian, el mismo tono que los degradados de la Home (cyan-300).
     dark: {
-        visited: { fillColor: '#67E8F9', fillOpacity: 0.55, color: 'rgba(103, 232, 249, 0.85)', weight: 0.8 },
-        other: { fillColor: '#FFFFFF', fillOpacity: 0.05, color: 'rgba(255, 255, 255, 0.14)', weight: 0.5 },
+        visited: { fillColor: '#22D3EE', fillOpacity: 0.5, color: 'rgba(94, 231, 247, 0.9)', weight: 0.8 },
+        other: { fillColor: '#94AAD6', fillOpacity: 0.06, color: 'rgba(148, 170, 214, 0.22)', weight: 0.5 },
         planned: PLANNED,
         ongoing: ONGOING,
     },
@@ -56,9 +56,9 @@ const PALETTES = {
 
 // Al pasar el cursor, en el tema oscuro, el país se ilumina ligeramente.
 const DARK_HOVER = {
-    visited: { fillOpacity: 0.75, color: '#A5F3FC', weight: 1 },
+    visited: { fillOpacity: 0.72, color: '#A5F3FC', weight: 1 },
     other: { fillOpacity: 0.1, color: 'rgba(255, 255, 255, 0.3)', weight: 0.8 },
-    planned: { fillOpacity: 0.55, color: '#D9F99D', weight: 1 },
+    planned: { fillOpacity: 0.55, color: '#C4B5FD', weight: 1 },
     ongoing: { fillOpacity: 0.75, color: '#FFFFFF', weight: 1.6 },
 } satisfies Record<'visited' | 'other' | 'planned' | 'ongoing', L.PathOptions>;
 
@@ -267,13 +267,14 @@ onBeforeUnmount(() => {
 }
 
 .country-map-dark :deep(.country-map-tooltip) {
-    padding: 4px 9px;
-    border: 1px solid rgba(103, 232, 249, 0.18);
-    border-radius: 8px;
-    background: rgba(13, 17, 25, 0.95);
-    color: rgba(255, 255, 255, 0.85);
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
-    font-size: 11px;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--vyamap-border-strong);
+    border-radius: var(--vyamap-radius-sm);
+    background: rgba(10, 16, 30, 0.92);
+    color: var(--vyamap-text);
+    box-shadow: var(--vyamap-shadow-floating);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
 }
 
 .country-map-dark :deep(.country-map-tooltip::before) {

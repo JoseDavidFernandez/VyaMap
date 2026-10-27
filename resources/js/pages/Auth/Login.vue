@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useForm, Link } from '@inertiajs/vue3';
+import AuthShell from '../../components/ui/AuthShell.vue';
 
 defineProps<{
     status?: string | null;
@@ -18,147 +19,67 @@ const submit = () => {
 </script>
 
 <template>
-    <main class="min-h-screen bg-[var(--vyamap-background)] text-[var(--vyamap-text)]">
-        <div
-            class="mx-auto flex min-h-screen max-w-[var(--vyamap-content-width)] flex-col px-6 py-6 sm:px-8 lg:px-10"
-        >
-            <!-- HEADER -->
-            <header>
-                <Link
-                    href="/login"
-                    class="text-lg font-semibold tracking-[-0.04em]"
-                >
-                    VyaMap
-                </Link>
-            </header>
-
-            <!-- FORM -->
-            <div class="flex flex-1 items-center justify-center py-16">
-                <div class="w-full max-w-[420px]">
-
-                    <div class="mb-10">
-                        <p class="vyamap-eyebrow">
-                            Welcome back
-                        </p>
-
-                        <h1 class="mt-3 text-4xl font-semibold tracking-[-0.06em] sm:text-5xl">
-                            Sign in
-                        </h1>
-
-                        <p class="mt-4 text-sm leading-6 vyamap-muted">
-                            Continue building and exploring your travel history.
-                        </p>
-                    </div>
-
-                    <p
-                        v-if="status"
-                        role="status"
-                        class="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-6"
-                    >
-                        {{ status }}
-                    </p>
-
-                    <form
-                        @submit.prevent="submit"
-                        class="space-y-5"
-                    >
-                        <!-- EMAIL -->
-                        <div>
-                            <label
-                                for="email"
-                                class="vyamap-label"
-                            >
-                                Email
-                            </label>
-
-                            <input
-                                id="email"
-                                v-model="form.email"
-                                type="email"
-                                autocomplete="email"
-                                required
-                                class="vyamap-input"
-                            />
-
-                            <p
-                                v-if="form.errors.email"
-                                class="vyamap-error"
-                            >
-                                {{ form.errors.email }}
-                            </p>
-                        </div>
-
-                        <!-- PASSWORD -->
-                        <div>
-                            <label
-                                for="password"
-                                class="vyamap-label"
-                            >
-                                Password
-                            </label>
-
-                            <input
-                                id="password"
-                                v-model="form.password"
-                                type="password"
-                                autocomplete="current-password"
-                                required
-                                class="vyamap-input"
-                            />
-
-                            <p
-                                v-if="form.errors.password"
-                                class="vyamap-error"
-                            >
-                                {{ form.errors.password }}
-                            </p>
-                        </div>
-
-                        <!-- OPTIONS -->
-                        <div class="flex items-center justify-between gap-4 pt-1">
-                            <label class="flex cursor-pointer items-center gap-3">
-                                <input
-                                    v-model="form.remember"
-                                    type="checkbox"
-                                    class="h-4 w-4 rounded border-white/20 bg-white/5 accent-white"
-                                />
-
-                                <span class="text-xs vyamap-muted">
-                                    Remember me
-                                </span>
-                            </label>
-
-                            <Link
-                                href="/forgot-password"
-                                class="text-xs text-white/65 transition hover:text-white"
-                            >
-                                Forgot password?
-                            </Link>
-                        </div>
-
-                        <!-- SUBMIT -->
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="vyamap-button mt-2 w-full"
-                        >
-                            {{ form.processing ? 'Signing in...' : 'Sign in' }}
-                        </button>
-                    </form>
-
-                    <!-- REGISTER -->
-                    <p v-if="canRegister" class="mt-8 text-center text-xs vyamap-muted">
-                        Don't have an account?
-
-                        <Link
-                            href="/register"
-                            class="ml-1 text-white/65 transition hover:text-white"
-                        >
-                            Create one
-                        </Link>
-                    </p>
-                </div>
+    <AuthShell
+        title="Sign in"
+        description="Continue building and exploring your travel history."
+        :status="status"
+    >
+        <form class="space-y-5" @submit.prevent="submit">
+            <div>
+                <label for="email" class="vyamap-label">Email</label>
+                <input
+                    id="email"
+                    v-model="form.email"
+                    type="email"
+                    autocomplete="email"
+                    required
+                    class="vyamap-input"
+                    :aria-invalid="form.errors.email ? 'true' : undefined"
+                    aria-describedby="email-error"
+                />
+                <p v-if="form.errors.email" id="email-error" class="vyamap-error">
+                    {{ form.errors.email }}
+                </p>
             </div>
-        </div>
-    </main>
+
+            <div>
+                <div class="flex items-baseline justify-between gap-4">
+                    <label for="password" class="vyamap-label">Password</label>
+                    <Link href="/forgot-password" class="vyamap-link mb-2 text-[0.8125rem]">
+                        Forgot password?
+                    </Link>
+                </div>
+                <input
+                    id="password"
+                    v-model="form.password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                    class="vyamap-input"
+                    :aria-invalid="form.errors.password ? 'true' : undefined"
+                />
+                <p v-if="form.errors.password" class="vyamap-error">
+                    {{ form.errors.password }}
+                </p>
+            </div>
+
+            <label class="flex w-fit cursor-pointer items-center gap-3 text-sm text-[var(--vyamap-text-muted)]">
+                <input
+                    v-model="form.remember"
+                    type="checkbox"
+                    class="h-4 w-4 accent-[var(--vyamap-cyan)]"
+                />
+                Remember me
+            </label>
+
+            <button type="submit" :disabled="form.processing" class="vyamap-button w-full !min-h-11">
+                {{ form.processing ? 'Signing in...' : 'Sign in' }}
+            </button>
+        </form>
+
+        <template v-if="canRegister" #footer>
+            Don't have an account?
+            <Link href="/register" class="vyamap-link ml-1">Create one</Link>
+        </template>
+    </AuthShell>
 </template>

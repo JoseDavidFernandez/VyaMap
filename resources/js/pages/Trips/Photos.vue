@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
-import { computed, ref } from 'vue';
+import Icon from '../../components/ui/Icon.vue';
+import EmptyState from '../../components/ui/EmptyState.vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 interface Trip {
     id: number;
@@ -56,6 +59,22 @@ const closePhoto = () => {
     selectedPhoto.value = null;
 };
 
+const onKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+        closePhoto();
+    }
+};
+
+watch(selectedPhoto, (photo) => {
+    if (photo) {
+        window.addEventListener('keydown', onKeydown);
+    } else {
+        window.removeEventListener('keydown', onKeydown);
+    }
+});
+
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
+
 const formatDate = (date: string | null) => {
     if (!date) {
         return null;
@@ -70,221 +89,106 @@ const formatDate = (date: string | null) => {
 </script>
 
 <template>
-    <AppLayout title="Trip Photos">
-        <div class="vyamap-page">
-            <main
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
-            >
-                <!-- HEADER -->
-                <section class="mb-8">
-                    <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-6 py-9 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
-                    >
-                        <div
-                            class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
-                        ></div>
+    <AppLayout :title="`Photos · ${trip.name}`">
+        <div class="vyamap-container">
+            <Link :href="`/trips/${trip.id}`" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-3">
+                <Icon name="arrow-left" :size="16" />
+                {{ trip.name }}
+            </Link>
 
-                        <div
-                            class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"
-                        ></div>
-
-                        <div class="relative z-10">
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Travel memories
-                            </div>
-
-                            <div
-                                class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
-                            >
-                                <div class="min-w-0">
-                                    <div
-                                        class="text-[10px] uppercase tracking-[0.22em] text-white/35"
-                                    >
-                                        Photos
-                                    </div>
-
-                                    <h1
-                                        class="mt-2 text-3xl font-semibold tracking-[-0.05em] text-white sm:text-4xl"
-                                    >
-                                        {{ trip.name }}
-                                    </h1>
-
-                                    <div
-                                        v-if="trip.start_date || trip.end_date"
-                                        class="mt-3 text-xs text-white/30"
-                                    >
-                                        <span v-if="formatDate(trip.start_date)">
-                                            {{ formatDate(trip.start_date) }}
-                                        </span>
-
-                                        <span
-                                            v-if="trip.start_date && trip.end_date"
-                                            class="mx-2"
-                                        >
-                                            →
-                                        </span>
-
-                                        <span v-if="formatDate(trip.end_date)">
-                                            {{ formatDate(trip.end_date) }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="flex shrink-0 items-end gap-8 lg:gap-10"
-                                >
-                                    <div>
-                                        <div
-                                            class="text-[9px] uppercase tracking-[0.22em] text-white/25"
-                                        >
-                                            Photos
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-2xl font-semibold tracking-[-0.04em] text-white"
-                                        >
-                                            {{ photos.length }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- TOOLBAR -->
-                <section
-                    v-if="photos.length"
-                    class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                    <div>
-                        <div
-                            class="text-[9px] uppercase tracking-[0.22em] text-white/25"
-                        >
-                            Trip memories
-                        </div>
-
-                        <h2
-                            class="mt-1 text-lg font-medium tracking-[-0.03em] text-white"
-                        >
-                            All photos
-                        </h2>
-                    </div>
-
-                    <div class="relative">
-                        <input
-                            v-model="search"
-                            type="search"
-                            placeholder="Search photos..."
-                            class="w-full rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs text-white outline-none placeholder:text-white/20 transition focus:border-white/[0.16] sm:w-[220px]"
-                        />
-                    </div>
-                </section>
-
-                <!-- PHOTOS -->
-                <section v-if="filteredPhotos.length">
-                    <div
-                        class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-                    >
-                        <button
-                            v-for="photo in filteredPhotos"
-                            :key="photo.id"
-                            type="button"
-                            class="group relative aspect-square overflow-hidden rounded-[18px] border border-white/[0.07] bg-white/[0.03] text-left"
-                            @click="openPhoto(photo)"
-                        >
-                            <img
-                                :src="photoUrl(photo)"
-                                alt="Travel photo"
-                                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                loading="lazy"
-                            />
-
-                            <div
-                                class="pointer-events-none absolute inset-0 bg-black/0 transition duration-300 group-hover:bg-black/10"
-                            ></div>
-                        </button>
-                    </div>
-                </section>
-
-                <!-- SEARCH EMPTY -->
-                <section
-                    v-else-if="search"
-                    class="rounded-[30px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-24 text-center"
-                >
-                    <div
-                        class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xl text-white/30"
-                    >
-                        ⌕
-                    </div>
-
-                    <h3
-                        class="mt-5 text-lg font-medium tracking-[-0.03em] text-white"
-                    >
-                        No photos found
-                    </h3>
-
-                    <p
-                        class="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/30"
-                    >
-                        Try searching with another filename.
+            <header class="vyamap-page-header">
+                <div>
+                    <h1 class="vyamap-page-title">Photos</h1>
+                    <p class="vyamap-page-description">
+                        {{ trip.name }}<template v-if="trip.start_date || trip.end_date"> ·
+                            <span class="vyamap-number">{{ formatDate(trip.start_date) }}<template v-if="trip.start_date && trip.end_date"> – </template>{{ formatDate(trip.end_date) }}</span>
+                        </template>
+                        · <span class="vyamap-number">{{ photos.length }}</span> {{ photos.length === 1 ? 'photo' : 'photos' }}
                     </p>
-                </section>
+                </div>
 
-                <!-- NO PHOTOS -->
-                <section
-                    v-else
-                    class="rounded-[30px] border border-dashed border-white/[0.10] bg-white/[0.02] px-6 py-24 text-center"
-                >
-                    <div
-                        class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-xl text-white/30"
-                    >
-                        +
-                    </div>
+                <div v-if="photos.length" class="relative w-full sm:w-64">
+                    <label for="trip-photo-search" class="sr-only">Search photos</label>
+                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--vyamap-text-subtle)]">
+                        <Icon name="search" :size="18" />
+                    </span>
+                    <input
+                        id="trip-photo-search"
+                        v-model="search"
+                        type="search"
+                        placeholder="Search by file name..."
+                        class="vyamap-input !pl-10"
+                    />
+                </div>
+            </header>
 
-                    <h3
-                        class="mt-5 text-lg font-medium tracking-[-0.03em] text-white"
-                    >
-                        No photos yet
-                    </h3>
-
-                    <p
-                        class="mx-auto mt-2 max-w-sm text-xs leading-5 text-white/30"
-                    >
-                        Your travel memories will appear here once you start
-                        adding photos to this trip.
-                    </p>
-                </section>
-            </main>
-
-            <!-- PHOTO VIEWER -->
-            <Teleport to="body">
-                <div
-                    v-if="selectedPhoto"
-                    class="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-5 backdrop-blur-xl"
-                    @click.self="closePhoto"
-                >
+            <ul v-if="filteredPhotos.length" class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
+                <li v-for="photo in filteredPhotos" :key="photo.id">
                     <button
                         type="button"
-                        class="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xl text-white/50 transition hover:bg-white/10 hover:text-white"
-                        @click="closePhoto"
+                        class="block aspect-square w-full overflow-hidden rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)] transition-colors hover:border-[rgba(34,211,238,0.5)]"
+                        :aria-label="`Open ${photo.original_filename}`"
+                        @click="openPhoto(photo)"
                     >
-                        ×
+                        <img :src="photoUrl(photo)" :alt="photo.original_filename" class="h-full w-full object-cover" loading="lazy" />
                     </button>
+                </li>
+            </ul>
 
-                    <div
-                        class="flex max-h-[92vh] max-w-[94vw] items-center justify-center"
-                    >
-                        <img
-                            :src="fullPhotoUrl(selectedPhoto)"
-                            alt="Travel photo"
-                            class="max-h-[88vh] max-w-[94vw] rounded-[20px] object-contain shadow-2xl"
-                        />
-                    </div>
-                </div>
-            </Teleport>
+            <EmptyState
+                v-else-if="search"
+                icon="search"
+                title="No photos found"
+                text="Try searching with another filename."
+            >
+                <template #actions>
+                    <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="search = ''">Clear search</button>
+                </template>
+            </EmptyState>
+
+            <EmptyState
+                v-else
+                icon="photo"
+                title="No photos yet"
+                text="Your travel memories will appear here once you start adding photos to this trip."
+            >
+                <template #actions>
+                    <Link :href="`/trips/${trip.id}`" class="vyamap-button-secondary vyamap-button-sm">Back to the trip</Link>
+                </template>
+            </EmptyState>
         </div>
+
+        <!-- VISOR -->
+        <Teleport to="body">
+            <div
+                v-if="selectedPhoto"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(4,7,14,0.94)] p-4"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="selectedPhoto.original_filename"
+                @click.self="closePhoto"
+            >
+                <button
+                    type="button"
+                    class="vyamap-icon-button absolute right-4 top-4"
+                    aria-label="Close photo"
+                    @click="closePhoto"
+                >
+                    <Icon name="close" :size="20" />
+                </button>
+
+                <figure class="flex max-h-[92vh] max-w-[94vw] flex-col items-center gap-3">
+                    <img
+                        :src="fullPhotoUrl(selectedPhoto)"
+                        :alt="selectedPhoto.original_filename"
+                        class="max-h-[84vh] max-w-[94vw] rounded-[var(--vyamap-radius-lg)] object-contain"
+                    />
+                    <figcaption class="text-sm text-[var(--vyamap-text-muted)]">
+                        {{ selectedPhoto.original_filename }}
+                        <template v-if="formatDate(selectedPhoto.taken_at)"> · <span class="vyamap-number">{{ formatDate(selectedPhoto.taken_at) }}</span></template>
+                    </figcaption>
+                </figure>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>

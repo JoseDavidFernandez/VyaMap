@@ -1,6 +1,9 @@
 <script setup lang="ts">
 
 import AppLayout from '../../layouts/AppLayout.vue';
+import Icon from '../../components/ui/Icon.vue';
+import EmptyState from '../../components/ui/EmptyState.vue';
+import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
 import TripVisitedMap from '../../components/trips/TripVisitedMap.vue';
 import TripFlightMap from '../../components/trips/TripFlightMap.vue';
 
@@ -12,7 +15,7 @@ import FlightForm from '../../components/flights/FlightForm.vue';
 import type { FlightRecord as Flight } from '../../types/flights';
 import { countCountries, type CountryStatus } from '../../utils/countryStatus';
 
-type TripPhase = 'upcoming' | 'ongoing' | 'pending' | 'completed' | 'cancelled';
+import type { TripPhase } from '../../utils/tripPhase';
 
 interface Trip {
     id: number;
@@ -356,29 +359,13 @@ const closeFlightForm = () => {
 |--------------------------------------------------------------------------
 | Trip status
 |--------------------------------------------------------------------------
-| Un viaje solo se completa a mano (nunca por la fecha). Planificados, en
-| curso y pendientes se muestran en lima; cancelados, sin color.
+| Un viaje solo se completa a mano (nunca por la fecha). Planificados en
+| violeta, en curso y completados en cian, pendientes en ámbar y cancelados
+| sin color (utils/tripPhase).
 */
 
-const phaseLabel = computed(() => ({
-    upcoming: 'Planned',
-    ongoing: 'In progress',
-    pending: 'Pending confirmation',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-})[props.trip.phase]);
-
-const phaseBadgeClass = computed(() => {
-    if (props.trip.phase === 'completed') {
-        return 'border-cyan-300/40 text-cyan-200';
-    }
-
-    if (props.trip.phase === 'cancelled') {
-        return 'border-white/15 text-white/45';
-    }
-
-    return 'border-lime-300/40 text-lime-300';
-});
+const phaseLabel = computed(() => tripPhaseLabel[props.trip.phase]);
+const phaseBadgeClass = computed(() => tripPhaseBadge[props.trip.phase]);
 
 const isChangingStatus = ref(false);
 const statusError = ref('');
@@ -455,7 +442,6 @@ const flagEmoji = (isoCode: string) => {
 const uploadsEnabled = usePage().props.features.uploads;
 const photoInput = ref<HTMLInputElement | null>(null);
 
-const isPhotosHovered = ref(false);
 const isUploadingPhotos = ref(false);
 const photoUploadMessage = ref('');
 
@@ -758,1315 +744,619 @@ const formatDateShort = (date: string | null) => {
     }).format(new Date(date));
 };
 
+const flightStatusLabel: Record<string, string> = { upcoming: 'Upcoming', pending: 'Unconfirmed', cancelled: 'Cancelled', flown: 'Flown' };
+const flightStatusBadge: Record<string, string> = { upcoming: 'vyamap-badge-violet', pending: 'vyamap-badge-amber', cancelled: '', flown: 'vyamap-badge-cyan' };
+
+const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0 || props.processing_photos_count > 0);
 </script>
 
 <template>
-
     <AppLayout :title="trip.name">
-
-        <div class="vyamap-page">
-
-            <main
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
-            >
-
-                <!-- =====================================================
-                     TRIP HEADER
-                ====================================================== -->
-
-                <section class="mb-7">
-
-                    <div
-                        class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12"
-                    >
-
-                        <div
-                            class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"
-                        ></div>
-
-                        <div
-                            class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"
-                        ></div>
-
-                        <div class="relative z-10">
-
-                            <div
-                                class="text-[9px] uppercase tracking-[0.24em] text-white/25"
-                            >
-                                Travel history
-                            </div>
-
-                            <div
-                                class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between"
-                            >
-
-                                <div class="min-w-0">
-
-                                    <div
-                                        class="mb-3 flex items-center gap-3 text-[9px] uppercase tracking-[0.14em] text-white/30 sm:mb-4 sm:text-[10px] sm:tracking-[0.16em]"
-                                    >
-                                        <span>
-                                            {{ formatDateShort(trip.start_date) }}
-                                        </span>
-
-                                        <span class="text-white/15">
-                                            —
-                                        </span>
-
-                                        <span>
-                                            {{ formatDateShort(trip.end_date) }}
-                                        </span>
-                                    </div>
-
-                                    <h1
-                                        class="max-w-4xl text-3xl font-semibold leading-[0.98] tracking-[-0.06em] text-white sm:text-5xl lg:text-6xl"
-                                    >
-                                        {{ trip.name }}
-                                    </h1>
-
-                                    <!-- Estado del viaje: solo los completados cuentan como visitados. -->
-                                    <div class="mt-4 flex flex-wrap items-center gap-2">
-                                        <span
-                                            class="inline-flex rounded-full border px-3 py-1 text-[11px] font-medium"
-                                            :class="phaseBadgeClass"
-                                        >
-                                            {{ phaseLabel }}
-                                        </span>
-
-                                        <button
-                                            v-if="trip.can_complete"
-                                            type="button"
-                                            :disabled="isChangingStatus"
-                                            class="rounded-full bg-lime-300 px-3.5 py-1 text-[11px] font-semibold text-[#0d1119] transition hover:bg-lime-200 disabled:opacity-40"
-                                            @click="changeStatus('completed')"
-                                        >
-                                            Mark as completed
-                                        </button>
-
-                                        <button
-                                            v-if="trip.status === 'planned'"
-                                            type="button"
-                                            :disabled="isChangingStatus"
-                                            class="rounded-full border border-white/[0.10] px-3.5 py-1 text-[11px] font-medium text-white/55 transition hover:text-white disabled:opacity-40"
-                                            @click="changeStatus('cancelled')"
-                                        >
-                                            Cancel trip
-                                        </button>
-
-                                        <button
-                                            v-if="trip.status === 'cancelled'"
-                                            type="button"
-                                            :disabled="isChangingStatus"
-                                            class="rounded-full border border-white/[0.10] px-3.5 py-1 text-[11px] font-medium text-white/55 transition hover:text-white disabled:opacity-40"
-                                            @click="changeStatus('planned')"
-                                        >
-                                            Restore trip
-                                        </button>
-
-                                        <button
-                                            v-if="trip.status === 'completed'"
-                                            type="button"
-                                            :disabled="isChangingStatus"
-                                            class="rounded-full px-2 py-1 text-[11px] text-white/40 underline-offset-4 transition hover:text-white hover:underline disabled:opacity-40"
-                                            @click="changeStatus('planned')"
-                                        >
-                                            Mark as planned
-                                        </button>
-                                    </div>
-
-                                    <p
-                                        v-if="trip.phase === 'pending'"
-                                        class="mt-3 max-w-xl text-sm text-lime-200/80"
-                                    >
-                                        This trip has ended. Mark it as completed to count its places as visited.
-                                    </p>
-
-                                    <p
-                                        v-if="statusError"
-                                        class="mt-3 text-sm text-red-300"
-                                    >
-                                        {{ statusError }}
-                                    </p>
-
-                                    <p
-                                        v-if="trip.description"
-                                        class="mt-4 max-w-2xl text-xs leading-5 text-white/40 sm:mt-5 sm:text-base sm:leading-6"
-                                    >
-                                        {{ trip.description }}
-                                    </p>
-
-                                    <div class="mt-5 flex flex-wrap gap-2">
-                                        <Link
-                                            :href="`/trips/${trip.id}/edit`"
-                                            class="inline-flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[10px] font-medium text-white/60 transition hover:border-white/[0.14] hover:bg-white/[0.08] hover:text-white sm:px-5 sm:py-2.5 sm:text-xs"
-                                        >
-                                            Edit trip
-                                        </Link>
-
-                                        <button
-                                            type="button"
-                                            :disabled="isDeletingTrip"
-                                            class="inline-flex items-center justify-center rounded-full border border-red-400/[0.12] bg-red-400/[0.035] px-4 py-2 text-[10px] font-medium text-red-200/50 transition hover:border-red-300/[0.22] hover:bg-red-400/[0.07] hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-40 sm:px-5 sm:py-2.5 sm:text-xs"
-                                            @click="deleteTrip"
-                                        >
-                                            {{ isDeletingTrip ? 'Deleting...' : 'Delete trip' }}
-                                        </button>
-                                    </div>
-
-                                </div>
-
-
-                                <!-- STATS -->
-
-                                <div
-                                    class="grid shrink-0 grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 sm:gap-x-8 sm:gap-y-5 lg:min-w-[440px]"
-                                >
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ tripDays ?? '—' }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ tripDays === 1 ? 'Day' : 'Days' }}
-                                        </div>
-
-                                        <div
-                                            v-if="tripNights"
-                                            class="mt-1 text-[11px] text-white/40"
-                                        >
-                                            {{ tripNights }} {{ tripNights === 1 ? 'night' : 'nights' }}
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ cityCount }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            Cities
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ countryTotals.countries }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            {{ countryTotals.countries === 1 ? 'Country' : 'Countries' }}
-                                        </div>
-
-                                        <div
-                                            v-if="countryTotals.territories"
-                                            class="mt-1 text-[11px] text-white/40"
-                                        >
-                                            + {{ countryTotals.territories }} {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
-                                        </div>
-
-                                    </div>
-
-                                    <div>
-
-                                        <div
-                                            class="text-2xl font-semibold tracking-[-0.05em] text-white sm:text-3xl"
-                                        >
-                                            {{ flightCount }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25"
-                                        >
-                                            Flights
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- DESTINATIONS -->
-
-                            <div class="mt-7 border-t border-white/[0.07] pt-6 sm:mt-9 sm:pt-7">
-
-                                <div
-                                    class="mb-4 text-[9px] uppercase tracking-[0.24em] text-white/25"
-                                >
-                                    Destinations
-                                </div>
-
-                                <div
-                                    v-if="destinationsByCountry.length"
-                                    class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:gap-x-8 sm:gap-y-5"
-                                >
-
-                                    <div
-                                        v-for="group in destinationsByCountry"
-                                        :key="group.iso_code"
-                                        class="flex items-center gap-3"
-                                    >
-
-                                        <div
-                                            class="shrink-0 text-lg leading-none"
-                                            :title="group.country"
-                                        >
-                                            {{ flagEmoji(group.iso_code) }}
-                                        </div>
-
-                                        <div class="min-w-0">
-
-                                            <div
-                                                class="text-sm font-medium leading-5 text-white"
-                                            >
-                                                {{ group.country }}
-                                            </div>
-
-                                            <div
-                                                class="mt-0.5 text-[10px] leading-4 text-white/30"
-                                            >
-                                                {{ group.cities.join(' · ') }}
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <div
-                                    v-else
-                                    class="text-sm text-white/25"
-                                >
-                                    No destinations yet.
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- =====================================================
-                     MAP + PHOTOS
-                ====================================================== -->
-
-                <section
-                    class="mb-7 grid gap-7 lg:grid-cols-[1.75fr_0.85fr]"
-                >
-
-                    <!-- MAIN MAP -->
-
-                    <div class="vyamap-map-card h-[530px] overflow-hidden">
-
-                        <div class="h-full w-full min-h-0">
-
-                            <TripVisitedMap
-                                :phase="trip.phase"
-                                :visits="visits"
-                            />
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- RIGHT COLUMN -->
-
-                    <div class="grid gap-7 sm:grid-cols-2 lg:grid-cols-1">
-
-                        <!-- PHOTOS -->
-
-                        <div class="vyamap-memory group">
-
-                            <div class="vyamap-memory-content">
-
-                                <!-- HEADER -->
-
-                                <div class="flex items-center justify-between">
-
-                                    <div class="vyamap-memory-label">
-                                        Memories
-                                    </div>
-
-                                    <button
-                                        v-if="uploadsEnabled"
-                                        type="button"
-                                        class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl transition hover:bg-white/[0.12] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                                        :disabled="isUploadingPhotos"
-                                        @click="openPhotoPicker"
-                                    >
-                                        <span v-if="!isUploadingPhotos">
-                                            +
-                                        </span>
-
-                                        <span
-                                            v-else
-                                            class="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white"
-                                        ></span>
-                                    </button>
-
-                                </div>
-
-                                <div
-                                    v-if="photoUploadMessage"
-                                    class="mt-4 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-xs text-white/60 transition-all"
-                                >
-
-                                    <div class="flex items-center gap-3">
-
-                                        <span
-                                            v-if="isUploadingPhotos"
-                                            class="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-white/20 border-t-white"
-                                        ></span>
-
-                                        <span
-                                            v-else-if="photoUploadSuccess"
-                                            class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-bold text-black"
-                                        >
-                                            ✓
-                                        </span>
-
-                                        <span>
-                                            {{ photoUploadMessage }}
-                                        </span>
-
-                                    </div>
-
-                                </div>
-
-                                <p
-                                    v-if="processing_photos_count > 0"
-                                    role="status"
-                                    class="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 text-xs text-white/60"
-                                >
-                                    <span class="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border border-white/20 border-t-white"></span>
-                                    {{ processing_photos_count === 1 ? '1 photo is being processed' : `${processing_photos_count} photos are being processed` }}
-                                    and will appear here when ready.
-                                </p>
-
-                                <!-- Mismos formatos que valida el servidor (HEIC no es compatible). -->
-                                <input
-                                    v-if="uploadsEnabled"
-                                    ref="photoInput"
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    multiple
-                                    class="hidden"
-                                    @change="handlePhotoSelection"
-                                />
-
-                                <!-- PHOTOS -->
-
-                                <div
-                                    v-if="photos.length"
-                                    class="relative mt-5 h-[220px] overflow-hidden rounded-2xl sm:h-[300px]"
-                                    @mouseenter="isPhotosHovered = true"
-                                    @mouseleave="isPhotosHovered = false"
-                                >
-
-                                    <div
-                                        v-for="(photo, index) in photos.slice(0, 3)"
-                                        :key="photo.id"
-                                        class="absolute left-1/2 top-1/2 aspect-square w-[145px] overflow-hidden rounded-[16px] border-[4px] border-white bg-white shadow-2xl transition-transform duration-500 ease-out sm:w-[210px] sm:rounded-[22px] sm:border-[6px]"
-                                        :style="{
-                                            zIndex: 10 - index,
-                                            transform: `
-                                                translate(-50%, -50%)
-                                                translateX(${
-                                                    isPhotosHovered
-                                                        ? [-52, 0, 52][index]
-                                                        : [-36, 0, 36][index]
-                                                }px)
-                                                rotate(${[-7, 2, 8][index]}deg)
-                                            `,
-                                        }"
-                                    >
-
-                                        <img
-                                            :src="photo.thumbnail_url"
-                                            :alt="photo.original_filename"
-                                            class="h-full w-full object-cover"
-                                            loading="lazy"
-                                        />
-
-                                    </div>
-
-                                    <!-- VIEW MORE -->
-
-                                    <a
-                                        :href="`/trips/${props.trip.id}/photos`"
-                                        class="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.92] px-5 py-2.5 text-xs font-semibold tracking-[-0.02em] text-black shadow-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-white sm:px-7 sm:py-3 sm:text-sm"
-                                    >
-                                        View More
-                                    </a>
-
-                                </div>
-
-                                <!-- EMPTY STATE -->
-
-                                <div
-                                    v-else
-                                    class="mt-5 rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.02] px-5 py-8 text-center"
-                                >
-
-                                    <div class="text-2xl text-white/15">
-                                        +
-                                    </div>
-
-                                    <p class="mt-2 text-xs text-white/30">
-                                        Your visual story will live here.
-                                    </p>
-
-                                    <button
-                                        v-if="uploadsEnabled"
-                                        type="button"
-                                        class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.08] text-white/60 backdrop-blur-xl transition hover:bg-white/[0.12] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                                        :disabled="isUploadingPhotos"
-                                        @click="openPhotoPicker"
-                                    >
-
-                                        <span v-if="!isUploadingPhotos">
-                                            +
-                                        </span>
-
-                                        <span
-                                            v-else
-                                            class="h-3.5 w-3.5 animate-spin rounded-full border border-white/20 border-t-white"
-                                        ></span>
-
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- =====================================================
-                     ITINERARY + FLIGHTS
-                ====================================================== -->
-
-                <section
-                    class="mb-7 grid gap-7 lg:grid-cols-[0.85fr_1.15fr]"
-                >
-
-                    <!-- ITINERARY -->
-
-                    <div class="vyamap-card-lg p-6 sm:p-8">
-
-                        <div class="mb-7 flex items-start justify-between">
-
-                            <div>
-
-                                <div class="vyamap-section-title">
-                                    Journey
-                                </div>
-
-                                <h2
-                                    class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
-                                >
-                                    Itinerary
-                                </h2>
-
-                            </div>
-
-                            <div class="relative">
-
-                                <input
-                                    v-model="citySearch"
-                                    type="text"
-                                    placeholder="+"
-                                    aria-label="Add city"
-                                    class="h-9 w-9 cursor-text rounded-full border border-white/10 bg-white/[0.05] text-center text-sm text-white outline-none transition placeholder:text-white/30 focus:w-36 focus:px-4 focus:text-left"
-                                    @input="searchCities"
-                                />
-
-                                <p
-                                    v-if="cityError"
-                                    role="alert"
-                                    class="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-red-400/20 bg-[#11171d] px-4 py-3 text-xs text-red-300 shadow-2xl"
-                                >
-                                    {{ cityError }}
-                                </p>
-
-                                <div
-                                    v-if="citySearchDone && citySearch.trim().length >= 2"
-                                    class="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#11171d] shadow-2xl"
-                                >
-
-                                    <p
-                                        v-if="!cityResults.length"
-                                        class="px-4 py-3 text-xs text-white/40"
-                                    >
-                                        {{ cityExternalUnavailable ? 'No cities found here and worldwide search is unavailable right now.' : 'No cities found.' }}
-                                    </p>
-
-                                    <button
-                                        v-for="city in cityResults"
-                                        :key="`${city.source}-${city.id ?? city.external_id ?? city.name}`"
-                                        type="button"
-                                        class="block w-full px-4 py-3 text-left transition hover:bg-white/[0.06]"
-                                        @click="addCityToTrip(city)"
-                                    >
-
-                                        <div class="text-sm font-medium">
-                                            {{ city.name }}
-                                        </div>
-
-                                        <div class="mt-1 text-xs text-white/30">
-                                            {{ cityResultLabel(city) }}
-                                        </div>
-
-                                    </button>
-
-                                    <button
-                                        v-if="!cityExternalSearched"
-                                        type="button"
-                                        :disabled="isSearchingWorldwide"
-                                        class="block w-full border-t border-white/10 px-4 py-3 text-left text-xs text-white/50 transition hover:bg-white/[0.06] hover:text-white"
-                                        @click="searchCitiesWorldwide"
-                                    >
-                                        {{ isSearchingWorldwide ? 'Searching worldwide…' : 'Not the one? Search worldwide' }}
-                                    </button>
-
-                                    <p
-                                        v-else-if="cityExternalUnavailable && cityResults.length"
-                                        class="border-t border-white/10 px-4 py-3 text-xs text-white/40"
-                                    >
-                                        Worldwide search is unavailable right now.
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div
-                            v-if="timeline.length"
-                            class="border-t border-white/[0.08]"
-                        >
-
-                            <div
-                                v-for="(visit, index) in timeline"
-                                :key="visit.id"
-                                class="border-b border-white/[0.08] py-5 last:border-b-0"
-                            >
-
-                                <div class="flex items-start gap-4">
-
-                                    <div class="pt-1 text-[9px] font-semibold text-white/20">
-                                        {{ String(index + 1).padStart(2, '0') }}
-                                    </div>
-
-                                    <div class="min-w-0 flex-1">
-
-                                        <div class="flex items-start justify-between gap-4">
-
-                                            <div class="min-w-0">
-
-                                                <div class="flex items-center gap-3">
-
-                                                    <h3 class="text-lg font-semibold tracking-[-0.025em]">
-                                                        {{ visit.city.name }}
-                                                    </h3>
-
-                                                    <span class="text-base">
-                                                        {{ flagEmoji(visit.city.iso_code) }}
-                                                    </span>
-
-                                                </div>
-
-                                                <div class="mt-1 text-[11px] text-white/35">
-                                                    {{ visit.city.country }}
-                                                </div>
-
-                                                <div class="mt-3 text-[10px] uppercase tracking-[0.12em] text-white/25">
-                                                    {{ formatDateShort(visit.visited_from) }}
-                                                    <span class="mx-1">—</span>
-                                                    {{ formatDateShort(visit.visited_until) }}
-                                                </div>
-
-                                            </div>
-
-                                            <div
-                                                v-if="editingVisitId !== visit.id"
-                                                class="flex shrink-0 items-center gap-3"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    class="text-[10px] text-white/25 transition hover:text-white"
-                                                    @click="startEditingVisit(visit)"
-                                                >
-                                                    Edit
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    class="text-[10px] text-red-400/50 transition hover:text-red-400"
-                                                    @click="deleteVisit(visit)"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-
-                                        </div>
-
-                                        <p
-                                            v-if="editingVisitId !== visit.id && visit.notes"
-                                            class="mt-4 text-sm leading-6 text-white/35"
-                                        >
-                                            {{ visit.notes }}
-                                        </p>
-
-                                        <form
-                                            v-if="editingVisitId === visit.id"
-                                            class="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4"
-                                            @submit.prevent="saveVisit(visit)"
-                                        >
-
-                                            <div class="grid gap-3 sm:grid-cols-2">
-
-                                                <div>
-
-                                                    <label class="vyamap-label">
-                                                        From
-                                                    </label>
-
-                                                    <input
-                                                        v-model="editVisitForm.visited_from"
-                                                        type="date"
-                                                        :min="trip.start_date ?? undefined"
-                                                        :max="trip.end_date ?? undefined"
-                                                        class="vyamap-input"
-                                                    />
-
-                                                </div>
-
-                                                <div>
-
-                                                    <label class="vyamap-label">
-                                                        Until
-                                                    </label>
-
-                                                    <input
-                                                        v-model="editVisitForm.visited_until"
-                                                        type="date"
-                                                        :min="editVisitForm.visited_from || trip.start_date || undefined"
-                                                        :max="trip.end_date ?? undefined"
-                                                        class="vyamap-input"
-                                                    />
-
-                                                </div>
-
-                                            </div>
-
-                                            <label class="vyamap-label mt-3">
-                                                Notes
-                                            </label>
-
-                                            <textarea
-                                                v-model="editVisitForm.notes"
-                                                rows="4"
-                                                placeholder="What did you see?"
-                                                class="vyamap-textarea"
-                                            />
-
-                                            <div class="mt-3 flex gap-2">
-
-                                                <button
-                                                    type="submit"
-                                                    :disabled="editVisitForm.processing"
-                                                    class="vyamap-button"
-                                                >
-                                                    Save
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    class="vyamap-button-secondary"
-                                                    @click="cancelEditingVisit"
-                                                >
-                                                    Cancel
-                                                </button>
-
-                                            </div>
-
-                                        </form>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div
-                            v-else
-                            class="vyamap-empty"
-                        >
-
-                            <p class="text-sm text-white/25">
-                                Add cities to build your itinerary.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- FLIGHTS -->
-
-                    <div class="grid gap-7">
-
-                        <!-- FLIGHT MAP -->
-
-                        <div class="vyamap-map-card h-[360px] overflow-hidden">
-
-                            <div class="h-full w-full min-h-0">
-
-                                <TripFlightMap
-                                    :flights="flights"
-                                />
-
-                            </div>
-
-                        </div>
-
-
-                        <!-- FLIGHT INFORMATION -->
-
-                        <div class="vyamap-card-lg p-5 sm:p-6">
-
-                            <div class="mb-4 flex items-center justify-between">
-
-                                <div>
-
-                                    <div class="vyamap-section-title">
-                                        Transport
-                                    </div>
-
-                                    <h2
-                                        class="mt-1 text-xl font-semibold tracking-[-0.04em]"
-                                    >
-                                        Flight information
-                                    </h2>
-
-                                </div>
-
-                                <button
-                                    v-if="!showFlightForm"
-                                    type="button"
-                                    class="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-base text-white/50 transition hover:bg-white/[0.1] hover:text-white"
-                                    aria-label="Add flight"
-                                    @click="openFlightForm()"
-                                >
-                                    +
-                                </button>
-
-                            </div>
-
-                            <div
-                                v-if="flights.length"
-                                class="space-y-2"
-                            >
-
-                                <div
-                                    v-for="flight in flights"
-                                    :key="flight.id"
-                                    class="vyamap-flight"
-                                >
-
-                                    <div
-                                        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-                                    >
-
-                                        <div class="flex items-center gap-3">
-
-                                            <div>
-
-                                                <div class="text-sm font-semibold">
-                                                    {{ flight.flight_number || 'Flight' }}
-                                                    <span
-                                                        v-if="flight.status !== 'flown'"
-                                                        class="ml-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium"
-                                                        :class="flight.status === 'upcoming' ? 'border-lime-300/40 text-lime-300' : 'border-white/20 text-white/50'"
-                                                    >
-                                                        {{ { upcoming: 'Upcoming', pending: 'Unconfirmed', cancelled: 'Cancelled', flown: '' }[flight.status] }}
-                                                    </span>
-                                                </div>
-
-                                                <div class="mt-0.5 text-[10px] text-white/30">
-                                                    {{ flight.airline || '—' }}
-                                                </div>
-
-                                            </div>
-
-                                            <div class="h-7 w-px bg-white/[0.08]" />
-
-                                            <div class="text-xs text-white/60">
-
-                                                {{ flight.origin.city }}
-
-                                                <span class="mx-1 text-white/20">
-                                                    →
-                                                </span>
-
-                                                {{ flight.destination.city }}
-
-                                            </div>
-
-                                        </div>
-
-                                        <div
-                                            class="flex items-center gap-4 text-right"
-                                        >
-
-                                            <div>
-
-                                                <div class="vyamap-eyebrow">
-                                                    Departure
-                                                </div>
-
-                                                <div class="mt-0.5 text-xs text-white/55">
-                                                    {{ flightDepartureLabel(flight, false) }}
-                                                </div>
-
-                                            </div>
-
-                                            <div class="text-white/15">
-                                                →
-                                            </div>
-
-                                            <div>
-
-                                                <div class="vyamap-eyebrow">
-                                                    Arrival
-                                                </div>
-
-                                                <div class="mt-0.5 text-xs text-white/55">
-                                                    {{ flight.arrival ? flightTimeWithZone(flight.arrival, flight.destination.timezone) : '—' }}
-                                                </div>
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                    <div class="mt-4 flex justify-end gap-2 border-t border-white/[0.06] pt-3">
-                                        <button
-                                            type="button"
-                                            class="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] font-medium text-white/50 transition hover:border-white/[0.16] hover:bg-white/[0.04] hover:text-white"
-                                            @click="openFlightForm(flight)"
-                                        >
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="rounded-full border border-red-400/[0.12] px-3 py-1.5 text-[10px] font-medium text-red-200/60 transition hover:border-red-300/[0.25] hover:bg-red-400/[0.06] hover:text-red-100"
-                                            @click="deleteFlight(flight)"
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <div
-                                v-else
-                                class="vyamap-empty"
-                            >
-
-                                <p class="text-sm text-white/25">
-                                    No flights yet.
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-
-                <!-- =====================================================
-                     FLIGHT FORM (componente compartido con Flight History)
-                ====================================================== -->
-
-                <section
-                    v-if="showFlightForm"
-                    class="vyamap-card-lg mb-7 p-6 sm:p-8"
-                >
-                    <h2 class="mb-6 text-xl font-semibold tracking-[-0.04em]">
-                        {{ editingFlight ? 'Edit flight' : 'Add flight' }}
-                    </h2>
-
-                    <FlightForm
-                        :key="flightFormKey"
-                        :flight="editingFlight"
-                        :trip-id="trip.id"
-                        :default-date="trip.start_date"
-                        @close="closeFlightForm"
-                    />
-                </section>
-
-
-                <!-- =====================================================
-                     GOOGLE MAPS
-                ====================================================== -->
-
-                <section>
-
-                    <div class="vyamap-card-lg p-7 sm:p-8">
-
-                        <div
-                            class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"
-                        >
-
-                            <div>
-
-                                <div class="vyamap-section-title">
-                                    Planning
-                                </div>
-
-                                <h2
-                                    class="mt-2 text-3xl font-semibold tracking-[-0.05em]"
-                                >
-                                    Google Maps
-                                </h2>
-
-                                <p class="mt-2 max-w-xl text-sm text-white/30">
-                                    Maps and lists used while planning the trip.
-                                </p>
-
-                            </div>
+        <div class="vyamap-container vyamap-stack">
+            <!-- CABECERA -->
+            <section>
+                <Link href="/trips" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-3">
+                    <Icon name="arrow-left" :size="16" />
+                    Trips
+                </Link>
+
+                <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="min-w-0">
+                        <p class="mb-2 flex items-center gap-2 text-sm text-[var(--vyamap-text-muted)]">
+                            <Icon name="calendar" :size="16" />
+                            <span class="vyamap-number">{{ formatDate(trip.start_date) }} – {{ formatDate(trip.end_date) }}</span>
+                        </p>
+
+                        <h1 class="vyamap-page-title">{{ trip.name }}</h1>
+
+                        <!-- Estado del viaje: solo los completados cuentan como visitados. -->
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <span class="vyamap-badge" :class="phaseBadgeClass">{{ phaseLabel }}</span>
 
                             <button
+                                v-if="trip.can_complete"
                                 type="button"
-                                class="vyamap-button-secondary"
-                                @click="
-                                    showGoogleMapForm = !showGoogleMapForm;
-                                    googleMapMode = 'create';
-                                "
+                                :disabled="isChangingStatus"
+                                class="vyamap-button vyamap-button-sm"
+                                @click="changeStatus('completed')"
                             >
-                                + Add map
+                                <Icon name="check" :size="16" />
+                                Mark as completed
                             </button>
 
+                            <button
+                                v-if="trip.status === 'planned'"
+                                type="button"
+                                :disabled="isChangingStatus"
+                                class="vyamap-button-secondary vyamap-button-sm"
+                                @click="changeStatus('cancelled')"
+                            >
+                                Cancel trip
+                            </button>
+
+                            <button
+                                v-if="trip.status === 'cancelled'"
+                                type="button"
+                                :disabled="isChangingStatus"
+                                class="vyamap-button-secondary vyamap-button-sm"
+                                @click="changeStatus('planned')"
+                            >
+                                Restore trip
+                            </button>
+
+                            <button
+                                v-if="trip.status === 'completed'"
+                                type="button"
+                                :disabled="isChangingStatus"
+                                class="vyamap-button-ghost vyamap-button-sm"
+                                @click="changeStatus('planned')"
+                            >
+                                Mark as planned
+                            </button>
                         </div>
 
-                        <div
-                            v-if="showGoogleMapForm"
-                            class="mt-7 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5"
-                        >
+                        <p v-if="trip.phase === 'pending'" class="mt-3 max-w-xl text-sm text-[var(--vyamap-warning)]">
+                            This trip has ended. Mark it as completed to count its places as visited.
+                        </p>
 
-                            <div
-                                class="flex rounded-xl border border-white/[0.06] bg-black/20 p-1"
-                            >
+                        <p v-if="statusError" role="alert" class="vyamap-error">{{ statusError }}</p>
 
-                                <button
-                                    type="button"
-                                    class="flex-1 rounded-lg px-4 py-2.5 text-xs font-medium transition"
-                                    :class="
-                                        googleMapMode === 'create'
-                                            ? 'bg-white text-black'
-                                            : 'text-white/40 hover:text-white'
-                                    "
-                                    @click="googleMapMode = 'create'"
-                                >
-                                    Create new list
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="flex-1 rounded-lg px-4 py-2.5 text-xs font-medium transition"
-                                    :class="
-                                        googleMapMode === 'existing'
-                                            ? 'bg-white text-black'
-                                            : 'text-white/40 hover:text-white'
-                                    "
-                                    @click="googleMapMode = 'existing'"
-                                >
-                                    Use existing list
-                                </button>
-
-                            </div>
-
-                            <form
-                                v-if="googleMapMode === 'create'"
-                                class="mt-6"
-                                @submit.prevent="submitGoogleMap"
-                            >
-
-                                <div class="grid gap-4 sm:grid-cols-2">
-
-                                    <div>
-
-                                        <label class="vyamap-label">
-                                            List name
-                                        </label>
-
-                                        <input
-                                            v-model="googleMapForm.name"
-                                            type="text"
-                                            placeholder="Italy"
-                                            class="vyamap-input"
-                                        />
-
-                                        <p
-                                            v-if="googleMapForm.errors.name"
-                                            class="mt-2 text-xs text-red-400"
-                                        >
-                                            {{ googleMapForm.errors.name }}
-                                        </p>
-
-                                    </div>
-
-                                    <div>
-
-                                        <label class="vyamap-label">
-                                            Google Maps URL
-                                        </label>
-
-                                        <input
-                                            v-model="googleMapForm.url"
-                                            type="url"
-                                            placeholder="https://maps.app.goo.gl/..."
-                                            class="vyamap-input"
-                                        />
-
-                                        <p
-                                            v-if="googleMapForm.errors.url"
-                                            class="mt-2 text-xs text-red-400"
-                                        >
-                                            {{ googleMapForm.errors.url }}
-                                        </p>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="mt-5 flex gap-2">
-
-                                    <button
-                                        type="submit"
-                                        class="vyamap-button"
-                                        :disabled="googleMapForm.processing"
-                                    >
-                                        Add list
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        class="vyamap-button-secondary"
-                                        @click="cancelGoogleMapForm"
-                                    >
-                                        Cancel
-                                    </button>
-
-                                </div>
-
-                            </form>
-
-                            <div
-                                v-else
-                                class="mt-6"
-                            >
-
-                                <div v-if="availableGoogleMapLists.length">
-
-                                    <label class="vyamap-label">
-                                        Select a Google Maps list
-                                    </label>
-
-                                    <select
-                                        v-model="selectedGoogleMapListId"
-                                        class="vyamap-input"
-                                    >
-
-                                        <option :value="null">
-                                            Select a list...
-                                        </option>
-
-                                        <option
-                                            v-for="mapList in availableGoogleMapLists"
-                                            :key="mapList.id"
-                                            :value="mapList.id"
-                                        >
-                                            {{ mapList.name }}
-                                        </option>
-
-                                    </select>
-
-                                    <div class="mt-5 flex gap-2">
-
-                                        <button
-                                            type="button"
-                                            class="vyamap-button"
-                                            :disabled="!selectedGoogleMapListId"
-                                            @click="attachExistingGoogleMap"
-                                        >
-                                            Add list
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="vyamap-button-secondary"
-                                            @click="cancelGoogleMapForm"
-                                        >
-                                            Cancel
-                                        </button>
-
-                                    </div>
-
-                                </div>
-
-                                <div
-                                    v-else
-                                    class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
-                                >
-
-                                    <p class="text-xs text-white/30">
-                                        You don't have any other Google Maps lists available.
-                                    </p>
-
-                                    <button
-                                        type="button"
-                                        class="mt-4 text-xs font-medium text-white/60 transition hover:text-white"
-                                        @click="googleMapMode = 'create'"
-                                    >
-                                        + Create a new list
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <div
-                            v-if="props.google_map_lists.length"
-                            class="mt-7 grid gap-3 sm:grid-cols-2"
-                        >
-
-                            <div
-                                v-for="mapList in props.google_map_lists"
-                                :key="mapList.id"
-                                class="group relative border border-white/[0.08] bg-white/[0.025] p-6 transition hover:-translate-y-0.5 hover:bg-white/[0.04]"
-                            >
-
-                                <div class="flex items-center justify-between">
-
-                                    <span class="text-lg text-white/70">
-                                        ↗
-                                    </span>
-
-                                    <div class="flex items-center gap-3">
-
-                                        <a
-                                            :href="mapList.url"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="text-[9px] uppercase tracking-[0.15em] text-white/30 transition hover:text-white"
-                                        >
-                                            Open
-                                        </a>
-
-                                        <button
-                                            type="button"
-                                            class="text-[9px] uppercase tracking-[0.15em] text-white/20 transition hover:text-red-400"
-                                            @click="router.delete(`/trips/${props.trip.id}/google-maps/${mapList.id}`, { preserveScroll: true })"
-                                        >
-                                            Remove
-                                        </button>
-
-                                    </div>
-
-                                </div>
-
-                                <a
-                                    :href="mapList.url"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="block"
-                                >
-
-                                    <div
-                                        class="mt-10 text-lg font-semibold tracking-[-0.025em] text-white"
-                                    >
-                                        {{ mapList.name }}
-                                    </div>
-
-                                    <div class="mt-2 text-[10px] text-white/30">
-                                        Google Maps list
-                                    </div>
-
-                                </a>
-
-                            </div>
-
-                        </div>
-
-                        <div
-                            v-else-if="!showGoogleMapForm"
-                            class="vyamap-empty mt-7"
-                        >
-
-                            <div class="text-center">
-
-                                <div class="text-2xl text-white/10">
-                                    ↗
-                                </div>
-
-                                <p class="mt-2 text-xs text-white/25">
-                                    No Google Maps lists linked to this trip yet.
-                                </p>
-
-                            </div>
-
-                        </div>
-
+                        <p v-if="trip.description" class="vyamap-page-description">{{ trip.description }}</p>
                     </div>
 
-                </section>
+                    <div class="flex shrink-0 flex-wrap gap-2">
+                        <Link :href="`/trips/${trip.id}/edit`" class="vyamap-button-secondary">
+                            <Icon name="edit" :size="16" />
+                            Edit trip
+                        </Link>
+                        <button
+                            type="button"
+                            :disabled="isDeletingTrip"
+                            class="vyamap-button-danger"
+                            @click="deleteTrip"
+                        >
+                            <Icon name="trash" :size="16" />
+                            {{ isDeletingTrip ? 'Deleting...' : 'Delete trip' }}
+                        </button>
+                    </div>
+                </div>
+            </section>
 
-            </main>
+            <!-- CIFRAS Y DESTINOS -->
+            <section class="vyamap-card overflow-hidden" aria-label="Trip summary">
+                <dl class="grid grid-cols-2 sm:grid-cols-4">
+                    <div class="vyamap-stat p-4 sm:p-5">
+                        <dt class="vyamap-stat-label order-2">{{ tripDays === 1 ? 'Day' : 'Days' }}</dt>
+                        <dd class="vyamap-stat-value order-1">{{ tripDays ?? '—' }}</dd>
+                        <dd v-if="tripNights" class="vyamap-stat-hint order-3">{{ tripNights }} {{ tripNights === 1 ? 'night' : 'nights' }}</dd>
+                    </div>
+                    <div class="vyamap-stat border-l border-[var(--vyamap-border)] p-4 sm:p-5">
+                        <dt class="vyamap-stat-label order-2">Cities</dt>
+                        <dd class="vyamap-stat-value order-1">{{ cityCount }}</dd>
+                    </div>
+                    <div class="vyamap-stat border-t border-[var(--vyamap-border)] p-4 sm:border-l sm:border-t-0 sm:p-5">
+                        <dt class="vyamap-stat-label order-2">{{ countryTotals.countries === 1 ? 'Country' : 'Countries' }}</dt>
+                        <dd class="vyamap-stat-value order-1">{{ countryTotals.countries }}</dd>
+                        <dd v-if="countryTotals.territories" class="vyamap-stat-hint order-3">
+                            + {{ countryTotals.territories }} {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
+                        </dd>
+                    </div>
+                    <div class="vyamap-stat border-l border-t border-[var(--vyamap-border)] p-4 sm:border-t-0 sm:p-5">
+                        <dt class="vyamap-stat-label order-2">Flights</dt>
+                        <dd class="vyamap-stat-value order-1">{{ flightCount }}</dd>
+                    </div>
+                </dl>
 
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-[var(--vyamap-border)] bg-[var(--vyamap-surface-muted)] px-5 py-3">
+                    <span class="text-sm font-semibold">Destinations</span>
+                    <template v-if="destinationsByCountry.length">
+                        <span
+                            v-for="group in destinationsByCountry"
+                            :key="group.iso_code"
+                            class="flex items-center gap-2 text-sm"
+                        >
+                            <span aria-hidden="true" class="text-base leading-none">{{ flagEmoji(group.iso_code) }}</span>
+                            <span class="font-medium">{{ group.country }}</span>
+                            <span class="text-[var(--vyamap-text-muted)]">{{ group.cities.join(', ') }}</span>
+                        </span>
+                    </template>
+                    <span v-else class="text-sm text-[var(--vyamap-text-muted)]">No destinations yet. Add a city to the itinerary.</span>
+                </div>
+            </section>
+
+            <!-- MAPA Y FOTOS -->
+            <section class="grid grid-cols-1 gap-4" :class="showPhotosPanel ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''">
+                <div class="vyamap-map-card h-[340px] sm:h-[460px]">
+                    <TripVisitedMap :phase="trip.phase" :visits="visits" />
+                </div>
+
+                <div v-if="showPhotosPanel" class="vyamap-panel flex flex-col">
+                    <div class="vyamap-panel-header">
+                        <h2 class="vyamap-h2">Photos</h2>
+                        <div class="flex items-center gap-2">
+                            <Link v-if="photos.length" :href="`/trips/${trip.id}/photos`" class="vyamap-link text-sm">View all</Link>
+                            <button
+                                v-if="uploadsEnabled"
+                                type="button"
+                                class="vyamap-icon-button"
+                                :disabled="isUploadingPhotos"
+                                aria-label="Add photos"
+                                title="Add photos"
+                                @click="openPhotoPicker"
+                            >
+                                <span v-if="isUploadingPhotos" class="h-4 w-4 animate-spin rounded-full border-2 border-[var(--vyamap-border-strong)] border-t-[var(--vyamap-cyan)]" />
+                                <Icon v-else name="image-plus" :size="18" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <p
+                        v-if="photoUploadMessage"
+                        role="status"
+                        class="mb-3 flex items-center gap-3 rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)] px-3 py-2.5 text-sm"
+                    >
+                        <span v-if="isUploadingPhotos" class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--vyamap-border-strong)] border-t-[var(--vyamap-cyan)]" />
+                        <Icon v-else-if="photoUploadSuccess" name="check" :size="16" class="text-[var(--vyamap-success)]" />
+                        {{ photoUploadMessage }}
+                    </p>
+
+                    <p
+                        v-if="processing_photos_count > 0"
+                        role="status"
+                        class="mb-3 flex items-center gap-3 rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)] px-3 py-2.5 text-sm text-[var(--vyamap-text-muted)]"
+                    >
+                        <span class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--vyamap-border-strong)] border-t-[var(--vyamap-cyan)]" />
+                        {{ processing_photos_count === 1 ? '1 photo is being processed' : `${processing_photos_count} photos are being processed` }}
+                        and will appear here when ready.
+                    </p>
+
+                    <!-- Mismos formatos que valida el servidor (HEIC no es compatible). -->
+                    <input
+                        v-if="uploadsEnabled"
+                        ref="photoInput"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        class="hidden"
+                        @change="handlePhotoSelection"
+                    />
+
+                    <ul v-if="photos.length" class="grid grid-cols-3 gap-2">
+                        <li v-for="photo in photos.slice(0, 6)" :key="photo.id">
+                            <Link
+                                :href="`/trips/${trip.id}/photos`"
+                                class="block aspect-square overflow-hidden rounded-[var(--vyamap-radius-sm)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]"
+                            >
+                                <img :src="photo.thumbnail_url" :alt="photo.original_filename" class="h-full w-full object-cover" loading="lazy" />
+                            </Link>
+                        </li>
+                    </ul>
+
+                    <EmptyState
+                        v-else-if="!processing_photos_count"
+                        compact
+                        icon="photo"
+                        title="No photos yet"
+                        text="Photos are private. Their date and location are read from the file."
+                        class="flex-1"
+                    >
+                        <template v-if="uploadsEnabled" #actions>
+                            <button type="button" class="vyamap-button-secondary vyamap-button-sm" :disabled="isUploadingPhotos" @click="openPhotoPicker">
+                                <Icon name="image-plus" :size="16" />
+                                Add photos
+                            </button>
+                        </template>
+                    </EmptyState>
+                </div>
+            </section>
+
+            <!-- ITINERARIO Y VUELOS -->
+            <section class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
+                <!-- ITINERARIO -->
+                <div class="vyamap-panel z-20">
+                    <div class="vyamap-panel-header !mb-3">
+                        <h2 class="vyamap-h2">Itinerary</h2>
+                        <span class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">{{ timeline.length }} {{ timeline.length === 1 ? 'city' : 'cities' }}</span>
+                    </div>
+
+                    <!-- Buscador de ciudades -->
+                    <div class="relative mb-4">
+                        <label for="city-search" class="sr-only">Add a city</label>
+                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--vyamap-text-subtle)]">
+                            <Icon name="search" :size="18" />
+                        </span>
+                        <input
+                            id="city-search"
+                            v-model="citySearch"
+                            type="search"
+                            autocomplete="off"
+                            placeholder="Add a city to the itinerary…"
+                            class="vyamap-input !pl-10"
+                            aria-controls="city-search-results"
+                            @input="searchCities"
+                        />
+
+                        <p v-if="cityError" role="alert" class="vyamap-error">{{ cityError }}</p>
+                        <p
+                            v-for="(message, field) in visitForm.errors"
+                            :key="field"
+                            role="alert"
+                            class="vyamap-error"
+                        >
+                            {{ message }}
+                        </p>
+
+                        <div
+                            v-if="citySearchDone && citySearch.trim().length >= 2"
+                            id="city-search-results"
+                            class="vyamap-popover absolute inset-x-0 top-full z-40 mt-2 max-h-80 overflow-y-auto rounded-[var(--vyamap-radius-md)] p-1"
+                        >
+                            <p v-if="!cityResults.length" class="px-3 py-2.5 text-sm text-[var(--vyamap-text-muted)]">
+                                {{ cityExternalUnavailable ? 'No cities found here and worldwide search is unavailable right now.' : 'No cities found.' }}
+                            </p>
+
+                            <button
+                                v-for="city in cityResults"
+                                :key="`${city.source}-${city.id ?? city.external_id ?? city.name}`"
+                                type="button"
+                                class="vyamap-row flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--vyamap-surface-raised)]"
+                                @click="addCityToTrip(city)"
+                            >
+                                <Icon name="pin" :size="18" class="text-[var(--vyamap-cyan-soft)]" />
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium">{{ city.name }}</span>
+                                    <span class="block truncate text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ cityResultLabel(city) }}</span>
+                                </span>
+                            </button>
+
+                            <button
+                                v-if="!cityExternalSearched"
+                                type="button"
+                                :disabled="isSearchingWorldwide"
+                                class="vyamap-row mt-1 flex w-full items-center gap-2 border-t border-[var(--vyamap-border)] px-3 py-2.5 text-left text-sm text-[var(--vyamap-cyan-soft)] hover:bg-[var(--vyamap-surface-raised)]"
+                                @click="searchCitiesWorldwide"
+                            >
+                                <Icon name="globe" :size="16" />
+                                {{ isSearchingWorldwide ? 'Searching worldwide…' : 'Not the one? Search worldwide' }}
+                            </button>
+
+                            <p
+                                v-else-if="cityExternalUnavailable && cityResults.length"
+                                class="mt-1 border-t border-[var(--vyamap-border)] px-3 py-2.5 text-sm text-[var(--vyamap-text-muted)]"
+                            >
+                                Worldwide search is unavailable right now.
+                            </p>
+                        </div>
+                    </div>
+
+                    <ol v-if="timeline.length" class="flex flex-col">
+                        <li
+                            v-for="(visit, index) in timeline"
+                            :key="visit.id"
+                            class="relative pb-5 pl-12 last:pb-0"
+                        >
+                            <span class="vyamap-timeline-node">{{ index + 1 }}</span>
+                            <span v-if="index < timeline.length - 1" class="vyamap-timeline-line" aria-hidden="true" />
+
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0 pt-0.5">
+                                    <h3 class="flex items-center gap-2 text-base font-semibold">
+                                        {{ visit.city.name }}
+                                        <span aria-hidden="true" class="text-[0.9375rem] leading-none">{{ flagEmoji(visit.city.iso_code) }}</span>
+                                    </h3>
+                                    <p class="text-[0.8125rem] text-[var(--vyamap-text-muted)]">
+                                        {{ visit.city.country }} ·
+                                        <span class="vyamap-number">{{ formatDateShort(visit.visited_from) }} – {{ formatDateShort(visit.visited_until) }}</span>
+                                    </p>
+                                </div>
+
+                                <div v-if="editingVisitId !== visit.id" class="flex shrink-0 gap-1">
+                                    <button
+                                        type="button"
+                                        class="vyamap-button-ghost vyamap-button-sm !px-2"
+                                        :aria-label="`Edit ${visit.city.name}`"
+                                        title="Edit"
+                                        @click="startEditingVisit(visit)"
+                                    >
+                                        <Icon name="edit" :size="16" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="vyamap-button-ghost vyamap-button-sm !px-2 hover:!text-[var(--vyamap-danger)]"
+                                        :aria-label="`Remove ${visit.city.name}`"
+                                        title="Remove"
+                                        @click="deleteVisit(visit)"
+                                    >
+                                        <Icon name="trash" :size="16" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p v-if="editingVisitId !== visit.id && visit.notes" class="mt-2 text-sm text-[var(--vyamap-text-muted)]">
+                                {{ visit.notes }}
+                            </p>
+
+                            <form
+                                v-if="editingVisitId === visit.id"
+                                class="mt-3 rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-muted)] p-4"
+                                @submit.prevent="saveVisit(visit)"
+                            >
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label :for="`visit-from-${visit.id}`" class="vyamap-label">From</label>
+                                        <input
+                                            :id="`visit-from-${visit.id}`"
+                                            v-model="editVisitForm.visited_from"
+                                            type="date"
+                                            :min="trip.start_date ?? undefined"
+                                            :max="trip.end_date ?? undefined"
+                                            class="vyamap-input"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label :for="`visit-until-${visit.id}`" class="vyamap-label">Until</label>
+                                        <input
+                                            :id="`visit-until-${visit.id}`"
+                                            v-model="editVisitForm.visited_until"
+                                            type="date"
+                                            :min="editVisitForm.visited_from || trip.start_date || undefined"
+                                            :max="trip.end_date ?? undefined"
+                                            class="vyamap-input"
+                                        />
+                                    </div>
+                                </div>
+                                <p v-if="editVisitForm.errors.visited_from" class="vyamap-error">{{ editVisitForm.errors.visited_from }}</p>
+                                <p v-if="editVisitForm.errors.visited_until" class="vyamap-error">{{ editVisitForm.errors.visited_until }}</p>
+
+                                <label :for="`visit-notes-${visit.id}`" class="vyamap-label mt-3">Notes</label>
+                                <textarea
+                                    :id="`visit-notes-${visit.id}`"
+                                    v-model="editVisitForm.notes"
+                                    rows="3"
+                                    placeholder="What did you see?"
+                                    class="vyamap-textarea"
+                                />
+                                <p v-if="editVisitForm.errors.notes" class="vyamap-error">{{ editVisitForm.errors.notes }}</p>
+
+                                <div class="mt-3 flex gap-2">
+                                    <button type="submit" :disabled="editVisitForm.processing" class="vyamap-button vyamap-button-sm">Save</button>
+                                    <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="cancelEditingVisit">Cancel</button>
+                                </div>
+                            </form>
+                        </li>
+                    </ol>
+
+                    <EmptyState
+                        v-else
+                        compact
+                        icon="pin"
+                        title="No cities yet"
+                        text="Search above for each city you visited. Completed trips count their cities and countries as visited."
+                    />
+                </div>
+
+                <!-- VUELOS -->
+                <div class="vyamap-panel">
+                    <div class="vyamap-panel-header">
+                        <h2 class="vyamap-h2">Flights</h2>
+                        <button
+                            v-if="!showFlightForm"
+                            type="button"
+                            class="vyamap-button-secondary vyamap-button-sm"
+                            @click="openFlightForm()"
+                        >
+                            <Icon name="plus" :size="16" />
+                            Add flight
+                        </button>
+                    </div>
+
+                    <div v-if="flights.length" class="vyamap-map-card mb-4 h-[240px] !rounded-[var(--vyamap-radius-lg)] sm:h-[280px]">
+                        <TripFlightMap :flights="flights" />
+                    </div>
+
+                    <!-- FORMULARIO DE VUELO (componente compartido con Flight History) -->
+                    <div
+                        v-if="showFlightForm"
+                        class="mb-4 rounded-[var(--vyamap-radius-lg)] border border-[rgba(34,211,238,0.3)] bg-[var(--vyamap-surface-muted)] p-4 sm:p-5"
+                    >
+                        <h3 class="vyamap-h3 mb-4">{{ editingFlight ? 'Edit flight' : 'Add flight' }}</h3>
+                        <FlightForm
+                            :key="flightFormKey"
+                            :flight="editingFlight"
+                            :trip-id="trip.id"
+                            :default-date="trip.start_date"
+                            @close="closeFlightForm"
+                        />
+                    </div>
+
+                    <ul v-if="flights.length" class="flex flex-col gap-2.5">
+                        <li v-for="flight in flights" :key="flight.id" class="vyamap-flight">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span class="flex items-center gap-2">
+                                    <span class="vyamap-code text-sm">{{ flight.flight_number || 'Flight' }}</span>
+                                    <span v-if="flight.airline" class="text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ flight.airline }}</span>
+                                </span>
+                                <span v-if="flight.status !== 'flown'" class="vyamap-badge" :class="flightStatusBadge[flight.status]">
+                                    {{ flightStatusLabel[flight.status] }}
+                                </span>
+                            </div>
+
+                            <div class="mt-2 flex items-center gap-3 text-sm">
+                                <span class="truncate font-medium">{{ flight.origin.city }}</span>
+                                <span class="vyamap-route-line" aria-hidden="true" />
+                                <span class="truncate font-medium">{{ flight.destination.city }}</span>
+                            </div>
+
+                            <div class="mt-2 flex flex-wrap items-end justify-between gap-3">
+                                <dl class="flex gap-5 text-[0.8125rem]">
+                                    <div>
+                                        <dt class="text-[var(--vyamap-text-subtle)]">Departure</dt>
+                                        <dd class="vyamap-number text-[var(--vyamap-text-muted)]">{{ flightDepartureLabel(flight, false) }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[var(--vyamap-text-subtle)]">Arrival</dt>
+                                        <dd class="vyamap-number text-[var(--vyamap-text-muted)]">{{ flight.arrival ? flightTimeWithZone(flight.arrival, flight.destination.timezone) : '—' }}</dd>
+                                    </div>
+                                </dl>
+                                <div class="flex gap-1">
+                                    <button type="button" class="vyamap-button-ghost vyamap-button-sm" @click="openFlightForm(flight)">
+                                        <Icon name="edit" :size="16" />
+                                        Edit
+                                    </button>
+                                    <button type="button" class="vyamap-button-ghost vyamap-button-sm hover:!text-[var(--vyamap-danger)]" @click="deleteFlight(flight)">
+                                        <Icon name="trash" :size="16" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <EmptyState
+                        v-else-if="!showFlightForm"
+                        compact
+                        icon="flight"
+                        title="No flights yet"
+                        text="Add the flights of this trip to see their routes and distance."
+                    >
+                        <template #actions>
+                            <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="openFlightForm()">
+                                <Icon name="plus" :size="16" />
+                                Add flight
+                            </button>
+                        </template>
+                    </EmptyState>
+                </div>
+            </section>
+
+            <!-- GOOGLE MAPS -->
+            <section class="vyamap-panel">
+                <div class="vyamap-panel-header">
+                    <div>
+                        <h2 class="vyamap-h2">Google Maps lists</h2>
+                        <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Maps and lists used while planning the trip.</p>
+                    </div>
+                    <button
+                        v-if="!showGoogleMapForm"
+                        type="button"
+                        class="vyamap-button-secondary vyamap-button-sm"
+                        @click="showGoogleMapForm = true; googleMapMode = 'create'"
+                    >
+                        <Icon name="plus" :size="16" />
+                        Add map
+                    </button>
+                </div>
+
+                <div
+                    v-if="showGoogleMapForm"
+                    class="mb-4 rounded-[var(--vyamap-radius-lg)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-muted)] p-4 sm:p-5"
+                >
+                    <div class="vyamap-segmented" role="group" aria-label="How to add the list">
+                        <button type="button" class="vyamap-segment" :aria-pressed="googleMapMode === 'create'" @click="googleMapMode = 'create'">
+                            Create new list
+                        </button>
+                        <button type="button" class="vyamap-segment" :aria-pressed="googleMapMode === 'existing'" @click="googleMapMode = 'existing'">
+                            Use existing list
+                        </button>
+                    </div>
+
+                    <form v-if="googleMapMode === 'create'" class="mt-4" @submit.prevent="submitGoogleMap">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="google-map-name" class="vyamap-label">List name</label>
+                                <input id="google-map-name" v-model="googleMapForm.name" type="text" placeholder="Italy" class="vyamap-input" />
+                                <p v-if="googleMapForm.errors.name" class="vyamap-error">{{ googleMapForm.errors.name }}</p>
+                            </div>
+                            <div>
+                                <label for="google-map-url" class="vyamap-label">Google Maps URL</label>
+                                <input id="google-map-url" v-model="googleMapForm.url" type="url" placeholder="https://maps.app.goo.gl/..." class="vyamap-input" />
+                                <p v-if="googleMapForm.errors.url" class="vyamap-error">{{ googleMapForm.errors.url }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex gap-2">
+                            <button type="submit" class="vyamap-button vyamap-button-sm" :disabled="googleMapForm.processing">Add list</button>
+                            <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="cancelGoogleMapForm">Cancel</button>
+                        </div>
+                    </form>
+
+                    <div v-else class="mt-4">
+                        <div v-if="availableGoogleMapLists.length">
+                            <label for="google-map-existing" class="vyamap-label">Select a Google Maps list</label>
+                            <select id="google-map-existing" v-model="selectedGoogleMapListId" class="vyamap-input">
+                                <option :value="null">Select a list...</option>
+                                <option v-for="mapList in availableGoogleMapLists" :key="mapList.id" :value="mapList.id">
+                                    {{ mapList.name }}
+                                </option>
+                            </select>
+                            <div class="mt-4 flex gap-2">
+                                <button type="button" class="vyamap-button vyamap-button-sm" :disabled="!selectedGoogleMapListId" @click="attachExistingGoogleMap">Add list</button>
+                                <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="cancelGoogleMapForm">Cancel</button>
+                            </div>
+                        </div>
+
+                        <div v-else class="text-sm text-[var(--vyamap-text-muted)]">
+                            You don't have any other Google Maps lists available.
+                            <button type="button" class="vyamap-link ml-1" @click="googleMapMode = 'create'">Create a new list</button>
+                        </div>
+                    </div>
+                </div>
+
+                <ul v-if="props.google_map_lists.length" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <li
+                        v-for="mapList in props.google_map_lists"
+                        :key="mapList.id"
+                        class="vyamap-flight flex items-center gap-3"
+                    >
+                        <span class="vyamap-empty-icon !h-10 !w-10 shrink-0">
+                            <Icon name="map" :size="18" />
+                        </span>
+                        <a :href="mapList.url" target="_blank" rel="noopener noreferrer" class="min-w-0 flex-1 group">
+                            <span class="block truncate text-sm font-semibold group-hover:text-[var(--vyamap-cyan-soft)]">{{ mapList.name }}</span>
+                            <span class="flex items-center gap-1 text-[0.8125rem] text-[var(--vyamap-text-muted)]">
+                                Open in Google Maps
+                                <Icon name="external" :size="14" />
+                            </span>
+                        </a>
+                        <button
+                            type="button"
+                            class="vyamap-button-ghost vyamap-button-sm !px-2 hover:!text-[var(--vyamap-danger)]"
+                            :aria-label="`Remove ${mapList.name}`"
+                            title="Remove"
+                            @click="router.delete(`/trips/${props.trip.id}/google-maps/${mapList.id}`, { preserveScroll: true })"
+                        >
+                            <Icon name="trash" :size="16" />
+                        </button>
+                    </li>
+                </ul>
+
+                <EmptyState
+                    v-else-if="!showGoogleMapForm"
+                    compact
+                    icon="map"
+                    title="No Google Maps lists linked to this trip yet"
+                    text="Link the saved places you used to plan it, so they are one click away."
+                />
+            </section>
         </div>
-
     </AppLayout>
-
 </template>

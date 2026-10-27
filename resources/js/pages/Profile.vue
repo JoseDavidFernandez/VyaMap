@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
+import Icon from '../components/ui/Icon.vue';
 import { Link } from '@inertiajs/vue3';
 import { countCountries, type CountryStatus } from '../utils/countryStatus';
 
@@ -71,112 +72,62 @@ const countryTotals = computed(() => countCountries(props.countries));
 
 <template>
     <AppLayout title="Profile">
-        <div class="min-h-screen bg-[var(--vyamap-background)]">
-            <main class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10">
-
-                <!-- ACCOUNT -->
-                <section class="mb-7">
-                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
-                        <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
-                        <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
-
-                        <div class="relative z-10">
-                            <div class="text-[11px] uppercase tracking-[0.24em] text-white/40">
-                                Account
-                            </div>
-
-                            <div class="mt-5 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                                <div class="flex min-w-0 flex-col gap-6 sm:flex-row sm:items-center">
-                                    <div class="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-[#0d1119] bg-white/[0.04] shadow-xl sm:h-36 sm:w-36">
-                                        <img
-                                            v-if="avatarUrl"
-                                            :src="avatarUrl"
-                                            :alt="props.user.name"
-                                            class="h-full w-full object-cover"
-                                        />
-
-                                        <div
-                                            v-else
-                                            class="flex h-full w-full items-center justify-center text-3xl font-semibold text-white"
-                                        >
-                                            {{ initials(props.user.name) }}
-                                        </div>
-                                    </div>
-
-                                    <div class="min-w-0">
-                                        <h1 class="truncate text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl">
-                                            {{ props.user.name }}
-                                        </h1>
-
-                                        <p class="mt-3 truncate text-sm text-white/55">
-                                            {{ props.user.email }}
-                                        </p>
-
-                                        <p
-                                            v-if="memberSince"
-                                            class="mt-1 text-sm text-white/40"
-                                        >
-                                            Member since {{ memberSince }}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div class="shrink-0">
-                                    <Link
-                                        href="/profile/edit"
-                                        class="inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-medium text-[#0d1119] transition hover:bg-white/90"
-                                    >
-                                        Edit profile
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- TRAVEL FOOTPRINT -->
-                <section class="overflow-hidden rounded-[28px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)]">
-                    <div class="px-6 pt-7 sm:px-8">
-                        <div class="flex items-end justify-between gap-6">
-                            <div>
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--vyamap-text-muted)]">
-                                    Your travel world
-                                </p>
-
-                                <h2 class="mt-2 text-3xl font-semibold tracking-[-0.05em]">
-                                    Travel footprint
-                                </h2>
-
-                                <p class="mt-2 text-sm text-[var(--vyamap-text-muted)]">
-                                    Progress by country lives in
-                                    <Link href="/passport" class="text-white/80 underline-offset-4 hover:underline">Passport</Link>,
-                                    and every country, city and visit in
-                                    <Link href="/countries" class="text-white/80 underline-offset-4 hover:underline">Countries</Link>.
-                                </p>
-                            </div>
-
-                            <div class="hidden text-right sm:block">
-                                <div class="text-xl font-semibold">
-                                    {{ countryTotals.countries }}
-                                </div>
-
-                                <div class="text-xs text-[var(--vyamap-text-muted)]">
-                                    {{ countryTotals.countries === 1 ? 'country' : 'countries' }}
-                                    <template v-if="countryTotals.territories">
-                                        · {{ countryTotals.territories }}
-                                        {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
-                                    </template>
-                                </div>
-                            </div>
+        <div class="vyamap-container vyamap-stack">
+            <!-- CUENTA -->
+            <section class="vyamap-card flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+                <div class="flex min-w-0 items-center gap-5">
+                    <div class="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-[rgba(34,211,238,0.45)] bg-[var(--vyamap-surface-raised)] sm:h-24 sm:w-24">
+                        <img v-if="avatarUrl" :src="avatarUrl" :alt="props.user.name" class="h-full w-full object-cover" />
+                        <div v-else class="flex h-full w-full items-center justify-center text-2xl font-semibold">
+                            {{ initials(props.user.name) }}
                         </div>
                     </div>
 
-                    <ProfileTravelGlobe
-                        :countries="props.countries"
-                    />
-                </section>
+                    <div class="min-w-0">
+                        <h1 class="vyamap-page-title truncate !text-[clamp(1.75rem,1.3rem+1.8vw,2.5rem)]">{{ props.user.name }}</h1>
+                        <p class="mt-1 flex items-center gap-2 truncate text-sm text-[var(--vyamap-text-muted)]">
+                            <Icon name="mail" :size="16" />
+                            {{ props.user.email }}
+                        </p>
+                        <p v-if="memberSince" class="mt-0.5 text-sm text-[var(--vyamap-text-subtle)]">Member since {{ memberSince }}</p>
+                    </div>
+                </div>
 
-            </main>
+                <Link href="/profile/edit" class="vyamap-button-secondary shrink-0">
+                    <Icon name="edit" :size="16" />
+                    Edit profile
+                </Link>
+            </section>
+
+            <!-- HUELLA -->
+            <section class="vyamap-card overflow-hidden">
+                <div class="flex flex-wrap items-end justify-between gap-4 p-5 sm:p-7">
+                    <div>
+                        <h2 class="vyamap-h2">Travel footprint</h2>
+                        <p class="mt-1 max-w-[60ch] text-sm text-[var(--vyamap-text-muted)]">
+                            Progress by country lives in
+                            <Link href="/passport" class="vyamap-link">Passport</Link>,
+                            and every country, city and visit in
+                            <Link href="/countries" class="vyamap-link">Countries</Link>.
+                        </p>
+                    </div>
+
+                    <div class="vyamap-stat items-end text-right">
+                        <span class="vyamap-stat-value">{{ countryTotals.countries }}</span>
+                        <span class="vyamap-stat-label">
+                            {{ countryTotals.countries === 1 ? 'country' : 'countries' }}
+                            <template v-if="countryTotals.territories">
+                                · {{ countryTotals.territories }} {{ countryTotals.territories === 1 ? 'territory' : 'territories' }}
+                            </template>
+                        </span>
+                    </div>
+                </div>
+
+                <ProfileTravelGlobe :countries="props.countries" />
+                <p class="border-t border-[var(--vyamap-border)] px-5 py-3 text-[0.8125rem] text-[var(--vyamap-text-subtle)] sm:px-7">
+                    Drag to rotate the globe. Visited countries are raised in cyan.
+                </p>
+            </section>
         </div>
     </AppLayout>
 </template>

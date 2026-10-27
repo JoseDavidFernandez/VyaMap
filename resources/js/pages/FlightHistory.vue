@@ -4,6 +4,8 @@ import { computed, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 
 import AppLayout from '../layouts/AppLayout.vue';
+import Icon from '../components/ui/Icon.vue';
+import EmptyState from '../components/ui/EmptyState.vue';
 import FlightHistoryMap from '../components/flight-history/FlightHistoryMap.vue';
 import FlightForm from '../components/flights/FlightForm.vue';
 import { calendarDate, flightDepartureLabel } from '../utils/flightTime';
@@ -147,11 +149,21 @@ const setConfirmed = (flight: Flight, confirmed: boolean) => {
 };
 
 const statusBadge = (flight: Flight) => ({
-    upcoming: { label: 'Upcoming', class: 'border-lime-300/40 text-lime-300' },
-    pending: { label: 'Unconfirmed', class: 'border-white/20 text-white/50' },
-    flown: { label: 'Flown', class: 'border-cyan-300/30 text-cyan-200' },
-    cancelled: { label: 'Cancelled', class: 'border-white/15 text-white/40' },
+    upcoming: { label: 'Upcoming', class: 'vyamap-badge-violet' },
+    pending: { label: 'Unconfirmed', class: 'vyamap-badge-amber' },
+    flown: { label: 'Flown', class: 'vyamap-badge-cyan' },
+    cancelled: { label: 'Cancelled', class: '' },
 })[flight.status];
+
+const filtersActive = computed(() =>
+    selectedPeriod.value !== 'all' || selectedStatus.value !== 'all' || selectedLink.value !== 'all',
+);
+
+const clearFilters = () => {
+    selectedPeriod.value = 'all';
+    selectedStatus.value = 'all';
+    selectedLink.value = 'all';
+};
 
 const formatDistance = (distance: number | null) => {
     if (distance === null) {
@@ -243,82 +255,58 @@ const formattedAverageDuration = computed(() => {
 
 <template>
     <AppLayout title="Flight History">
-        <div class="vyamap-page">
+        <div class="vyamap-container vyamap-stack">
+            <header class="vyamap-page-header !mb-0">
+                <div>
+                    <h1 class="vyamap-page-title">Flight History</h1>
+                    <p class="vyamap-page-description">A complete record of every flight you have added to VyaMap.</p>
+                </div>
+                <button v-if="!showForm" type="button" class="vyamap-button" @click="openForm()">
+                    <Icon name="plus" :size="16" />
+                    Add flight
+                </button>
+            </header>
 
-            <main
-                class="mx-auto max-w-[var(--vyamap-content-width)] px-5 pb-20 pt-8 sm:px-8 lg:px-10"
+            <!-- FORMULARIO (compartido con el detalle del viaje) -->
+            <section v-if="showForm" class="vyamap-panel border-[rgba(34,211,238,0.35)]">
+                <h2 class="vyamap-h2 mb-5">{{ editingFlight ? 'Edit flight' : 'Add flight' }}</h2>
+                <FlightForm :key="formKey" :flight="editingFlight" :trips="trips" @close="closeForm" />
+            </section>
+
+            <EmptyState
+                v-if="!flights.length && !showForm"
+                icon="flight"
+                title="No flights yet"
+                text="Add a flight with its airports and date. Times are optional; with them VyaMap calculates time in the air. Flights can belong to a trip or stand alone."
             >
-                <!-- =====================================================
-                     HEADER
-                ====================================================== -->
-
-                <section class="mb-7">
-                    <div class="relative overflow-hidden rounded-[30px] border border-white/[0.08] bg-gradient-to-br from-cyan-300/[0.08] via-[#171b28] to-[#0d1119] px-5 py-7 sm:px-10 sm:py-11 lg:px-12 lg:py-12">
-                        <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/[0.05] blur-3xl"></div>
-                        <div class="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-violet-400/[0.05] blur-3xl"></div>
-
-                        <div class="relative z-10">
-                            <div class="text-[9px] uppercase tracking-[0.24em] text-white/25">
-                                Travel history
-                            </div>
-
-                            <div class="mt-3 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-                                <div class="min-w-0">
-                                    <h1 class="text-4xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
-                                        Flight History
-                                    </h1>
-
-                                    <p class="mt-3 max-w-2xl text-xs leading-5 text-white/35 sm:mt-4 sm:text-base sm:leading-6">
-                                        A complete record of every flight you have added to VyaMap.
-                                    </p>
-                                </div>
-
-                                <div class="shrink-0">
-                                    <div class="grid grid-cols-2 gap-2 sm:flex sm:overflow-x-auto sm:pb-1 lg:justify-end lg:pb-0">
-                                        <button
-                                            type="button"
-                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
-                                            :class="selectedPeriod === 'all'
-                                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
-                                            @click="selectedPeriod = 'all'"
-                                        >
-                                            All-Time
-                                        </button>
-
-                                        <button
-                                            v-for="year in years"
-                                            :key="year"
-                                            type="button"
-                                            class="shrink-0 rounded-full border px-3 py-2 text-[11px] font-medium transition sm:px-4 sm:text-xs"
-                                            :class="selectedPeriod === year
-                                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                                : 'border-white/[0.06] bg-white/[0.02] text-white/40 hover:bg-white/[0.05] hover:text-white/70'"
-                                            @click="selectedPeriod = year"
-                                        >
-                                            {{ year }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- =====================================================
-                     MANAGEMENT: añadir vuelos y filtros por estado y viaje
-                ====================================================== -->
-
-                <section class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <button
-                        type="button"
-                        class="vyamap-button w-full sm:w-auto"
-                        @click="openForm()"
-                    >
-                        + Add flight
+                <template #actions>
+                    <button type="button" class="vyamap-button" @click="openForm()">
+                        <Icon name="plus" :size="16" />
+                        Add your first flight
                     </button>
+                </template>
+            </EmptyState>
 
-                    <div class="flex flex-wrap gap-2">
+            <template v-if="flights.length">
+                <!-- FILTROS -->
+                <section class="flex flex-wrap items-center gap-2" aria-label="Filters">
+                    <div class="vyamap-segmented" role="group" aria-label="Period">
+                        <button type="button" class="vyamap-segment" :aria-pressed="selectedPeriod === 'all'" @click="selectedPeriod = 'all'">
+                            All-Time
+                        </button>
+                        <button
+                            v-for="year in years"
+                            :key="year"
+                            type="button"
+                            class="vyamap-segment vyamap-number"
+                            :aria-pressed="selectedPeriod === year"
+                            @click="selectedPeriod = year"
+                        >
+                            {{ year }}
+                        </button>
+                    </div>
+
+                    <div class="vyamap-segmented" role="group" aria-label="Status">
                         <button
                             v-for="option in ([
                                 { value: 'all', label: 'All' },
@@ -328,18 +316,15 @@ const formattedAverageDuration = computed(() => {
                             ] as const)"
                             :key="option.value"
                             type="button"
-                            class="rounded-full border px-3 py-1.5 text-xs font-medium transition"
-                            :class="selectedStatus === option.value
-                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                : 'border-white/[0.06] text-white/45 hover:text-white/80'"
+                            class="vyamap-segment"
                             :aria-pressed="selectedStatus === option.value"
                             @click="selectedStatus = option.value"
                         >
                             {{ option.label }}
                         </button>
+                    </div>
 
-                        <span class="mx-1 hidden h-7 w-px bg-white/[0.08] sm:block" />
-
+                    <div class="vyamap-segmented" role="group" aria-label="Trip">
                         <button
                             v-for="option in ([
                                 { value: 'all', label: 'All flights' },
@@ -348,907 +333,216 @@ const formattedAverageDuration = computed(() => {
                             ] as const)"
                             :key="option.value"
                             type="button"
-                            class="rounded-full border px-3 py-1.5 text-xs font-medium transition"
-                            :class="selectedLink === option.value
-                                ? 'border-white/20 bg-white/[0.08] text-white'
-                                : 'border-white/[0.06] text-white/45 hover:text-white/80'"
+                            class="vyamap-segment"
                             :aria-pressed="selectedLink === option.value"
                             @click="selectedLink = option.value"
                         >
                             {{ option.label }}
                         </button>
                     </div>
+
+                    <button v-if="filtersActive" type="button" class="vyamap-button-ghost vyamap-button-sm" @click="clearFilters">
+                        <Icon name="close" :size="16" />
+                        Clear filters
+                    </button>
                 </section>
 
-                <section
-                    v-if="showForm"
-                    class="vyamap-card-lg mb-7 p-6 sm:p-8"
-                >
-                    <h2 class="mb-6 text-xl font-semibold tracking-[-0.04em]">
-                        {{ editingFlight ? 'Edit flight' : 'Add flight' }}
-                    </h2>
-
-                    <FlightForm
-                        :key="formKey"
-                        :flight="editingFlight"
-                        :trips="trips"
-                        @close="closeForm"
-                    />
+                <!-- CIFRAS (solo vuelos realizados) -->
+                <section class="vyamap-card overflow-hidden" aria-label="Flight statistics">
+                    <dl class="grid grid-cols-2 lg:grid-cols-4">
+                        <div class="vyamap-stat p-4 sm:p-5">
+                            <dt class="vyamap-stat-label order-2">Flights flown</dt>
+                            <dd class="vyamap-stat-value order-1">{{ flownCount }}</dd>
+                            <dd class="vyamap-stat-hint order-3">{{ periodLabel }}</dd>
+                        </div>
+                        <div class="vyamap-stat border-l border-[var(--vyamap-border)] p-4 sm:p-5">
+                            <dt class="vyamap-stat-label order-2">Distance</dt>
+                            <dd class="vyamap-stat-value order-1">{{ formattedTotalDistance }}<span v-if="totalDistance !== null && totalDistance >= 1000" class="vyamap-stat-unit">km</span></dd>
+                            <dd v-if="longestFlight" class="vyamap-stat-hint order-3 vyamap-number">
+                                Longest: {{ longestFlight.origin || '—' }} → {{ longestFlight.destination || '—' }} · {{ longestFlight.distance_km.toLocaleString('en-GB') }} km
+                            </dd>
+                        </div>
+                        <div class="vyamap-stat border-t border-[var(--vyamap-border)] p-4 sm:p-5 lg:border-l lg:border-t-0">
+                            <dt class="vyamap-stat-label order-2">Time in air</dt>
+                            <dd class="vyamap-stat-value order-1">{{ formattedTotalDuration }}</dd>
+                            <dd v-if="durationCoverage" class="vyamap-stat-hint order-3">{{ durationCoverage }}</dd>
+                        </div>
+                        <div class="vyamap-stat border-l border-t border-[var(--vyamap-border)] p-4 sm:p-5 lg:border-t-0">
+                            <dt class="vyamap-stat-label order-2">Airports</dt>
+                            <dd class="vyamap-stat-value order-1">{{ uniqueAirports }}</dd>
+                            <dd class="vyamap-stat-hint order-3">{{ uniqueCities }} {{ uniqueCities === 1 ? 'city' : 'cities' }} connected</dd>
+                        </div>
+                    </dl>
+                    <div class="flex flex-wrap gap-x-6 gap-y-1 border-t border-[var(--vyamap-border)] bg-[var(--vyamap-surface-muted)] px-5 py-3 text-sm text-[var(--vyamap-text-muted)]">
+                        <span>Average flight</span>
+                        <span><strong class="vyamap-number font-semibold text-[var(--vyamap-text)]">{{ formattedAverageDistance }}</strong> per flight</span>
+                        <span><strong class="vyamap-number font-semibold text-[var(--vyamap-text)]">{{ formattedAverageDuration }}</strong> in the air</span>
+                    </div>
                 </section>
 
-                <!-- =====================================================
-                     STATISTICS
-                ====================================================== -->
+                <!-- MAPA -->
+                <section class="vyamap-map-card h-[340px] sm:h-[480px]">
+                    <div class="vyamap-map-overlay left-4 top-4">
+                        <h2 class="text-sm font-semibold">Flights map</h2>
+                        <p class="vyamap-number text-xs text-[var(--vyamap-text-muted)]">
+                            {{ filteredFlights.length }} {{ filteredFlights.length === 1 ? 'flight' : 'flights' }} shown
+                        </p>
+                    </div>
+                    <div class="vyamap-map-overlay bottom-4 left-4 hidden gap-4 text-xs sm:flex">
+                        <span class="flex items-center gap-1.5"><span class="h-0.5 w-4 rounded bg-[var(--vyamap-cyan-soft)]" />Flown</span>
+                        <span class="flex items-center gap-1.5"><span class="h-0.5 w-4 rounded bg-[var(--vyamap-violet)]" />Upcoming</span>
+                        <span class="flex items-center gap-1.5"><span class="h-0.5 w-4 rounded bg-[var(--vyamap-text-subtle)]" />Unconfirmed</span>
+                    </div>
+                    <FlightHistoryMap :flights="mapFlights" />
+                </section>
 
-                <section class="mb-7">
-                    <div
-                        class="grid grid-cols-2 overflow-hidden rounded-[28px] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface)] md:grid-cols-4"
-                    >
-                        <div
-                            class="border-b border-r border-[var(--vyamap-border)] p-4 sm:p-6 md:border-b-0"
-                        >
+                <!-- ÚLTIMO VUELO Y AEROPUERTOS -->
+                <section class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                    <div class="vyamap-panel flex flex-col">
+                        <h2 class="vyamap-h2">Most recent flight</h2>
 
-                            <p class="vyamap-section-title">
-                                Flights
+                        <div v-if="lastFlight" class="flex flex-1 flex-col justify-center py-6">
+                            <div class="flex items-center gap-4 sm:gap-6">
+                                <div class="min-w-0 text-center">
+                                    <p class="vyamap-code text-[clamp(2rem,1.4rem+3vw,3.5rem)] leading-none">{{ lastFlight.origin.code || '—' }}</p>
+                                    <p class="mt-2 truncate text-sm text-[var(--vyamap-text-muted)]">{{ lastFlight.origin.city }}</p>
+                                </div>
+                                <span class="vyamap-route-line" aria-hidden="true" />
+                                <div class="min-w-0 text-center">
+                                    <p class="vyamap-code text-[clamp(2rem,1.4rem+3vw,3.5rem)] leading-none">{{ lastFlight.destination.code || '—' }}</p>
+                                    <p class="mt-2 truncate text-sm text-[var(--vyamap-text-muted)]">{{ lastFlight.destination.city }}</p>
+                                </div>
+                            </div>
+                            <p class="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm text-[var(--vyamap-text-muted)]">
+                                <span class="vyamap-code text-[var(--vyamap-text)]">{{ lastFlight.flight_number || 'Flight' }}</span>
+                                <span v-if="lastFlight.airline">· {{ lastFlight.airline }}</span>
+                                <span class="vyamap-number">· {{ flightDepartureLabel(lastFlight) }}</span>
+                                <span v-if="lastFlight.duration_minutes" class="vyamap-number">· {{ formatDuration(lastFlight.duration_minutes) }}</span>
                             </p>
-
-                            <p
-                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
-                            >
-                                {{ flownCount }}
-                            </p>
-
-                            <p
-                                class="mt-1 text-xs vyamap-text-subtle"
-                            >
-                                {{ periodLabel }}
-                            </p>
-
                         </div>
 
-
-                        <div
-                            class="border-b border-[var(--vyamap-border)] p-4 sm:p-6 md:border-b-0 md:border-r"
-                        >
-
-                            <p class="vyamap-section-title">
-                                Distance
-                            </p>
-
-                            <p
-                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
-                            >
-                                {{ formattedTotalDistance }}
-                            </p>
-
-                            <p
-                                class="mt-1 text-xs vyamap-text-subtle"
-                            >
-                                total flown
-                            </p>
-
-                            <p
-                                v-if="longestFlight"
-                                class="mt-1 text-xs vyamap-text-subtle"
-                            >
-                                Longest: {{ longestFlight.origin || '—' }} → {{ longestFlight.destination || '—' }}
-                                · {{ longestFlight.distance_km.toLocaleString('en-GB') }} km
-                            </p>
-
-                        </div>
-
-
-                        <div
-                            class="border-r border-[var(--vyamap-border)] p-4 sm:p-6"
-                        >
-
-                            <p class="vyamap-section-title">
-                                Time in air
-                            </p>
-
-                            <p
-                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
-                            >
-                                {{ formattedTotalDuration }}
-                            </p>
-
-                            <p
-                                class="mt-1 text-xs vyamap-text-subtle"
-                            >
-                                {{ durationCoverage || 'total duration' }}
-                            </p>
-
-                        </div>
-
-
-                        <div class="p-4 sm:p-6">
-
-                            <p class="vyamap-section-title">
-                                Airports
-                            </p>
-
-                            <p
-                                class="mt-2 text-2xl font-semibold tracking-[-0.05em] sm:mt-3 sm:text-3xl"
-                            >
-                                {{ uniqueAirports }}
-                            </p>
-
-                            <p
-                                class="mt-1 text-xs vyamap-text-subtle"
-                            >
-                                {{ uniqueCities }} cities
-                            </p>
-
-                        </div>
-
+                        <p v-else class="py-6 text-sm text-[var(--vyamap-text-muted)]">No flights flown in this period.</p>
                     </div>
 
+                    <div class="vyamap-panel">
+                        <h2 class="vyamap-h2 mb-3">Most used airports</h2>
+                        <ol v-if="mostVisitedAirports.length" class="flex flex-col divide-y divide-[var(--vyamap-border)]">
+                            <li v-for="airport in mostVisitedAirports" :key="airport.id" class="flex items-center gap-3 py-2.5">
+                                <span class="vyamap-code w-12 shrink-0 text-sm text-[var(--vyamap-cyan-soft)]">{{ airport.code || '—' }}</span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-sm font-medium">{{ airport.city }}</span>
+                                    <span class="block truncate text-[0.8125rem] text-[var(--vyamap-text-subtle)]">{{ airport.airport }}</span>
+                                </span>
+                                <span class="vyamap-number shrink-0 text-sm text-[var(--vyamap-text-muted)]">{{ airport.count }}</span>
+                            </li>
+                        </ol>
+                        <p v-else class="text-sm text-[var(--vyamap-text-muted)]">No airport data for this period.</p>
+                    </div>
                 </section>
 
-                <!-- =====================================================
-                     SECONDARY STATISTICS
-                ====================================================== -->
-
-                <section class="mb-7">
-
-                    <div
-                        class="grid gap-7 md:grid-cols-2"
-                    >
-
-                        <div
-                            class="vyamap-card-lg p-5 sm:p-7"
-                        >
-
-                            <p class="vyamap-section-title">
-                                Average flight
-                            </p>
-
-                            <div
-                                class="mt-5 flex items-end justify-between gap-6"
-                            >
-
-                                <div>
-
-                                    <p
-                                        class="text-3xl font-semibold tracking-[-0.05em]"
-                                    >
-                                        {{ formattedAverageDistance }}
-                                    </p>
-
-                                    <p
-                                        class="mt-1 text-xs vyamap-text-subtle"
-                                    >
-                                        distance per flight
-                                    </p>
-
-                                </div>
-
-
-                                <div class="text-right">
-
-                                    <p
-                                        class="text-3xl font-semibold tracking-[-0.05em]"
-                                    >
-                                        {{ formattedAverageDuration }}
-                                    </p>
-
-                                    <p
-                                        class="mt-1 text-xs vyamap-text-subtle"
-                                    >
-                                        duration per flight
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            class="vyamap-card-lg p-5 sm:p-7"
-                        >
-
-                            <p class="vyamap-section-title">
-                                Coverage
-                            </p>
-
-                            <div
-                                class="mt-5 flex items-end justify-between gap-6"
-                            >
-
-                                <div>
-
-                                    <p
-                                        class="text-3xl font-semibold tracking-[-0.05em]"
-                                    >
-                                        {{ uniqueCities }}
-                                    </p>
-
-                                    <p
-                                        class="mt-1 text-xs vyamap-text-subtle"
-                                    >
-                                        cities connected
-                                    </p>
-
-                                </div>
-
-
-                                <div class="text-right">
-
-                                    <p
-                                        class="text-3xl font-semibold tracking-[-0.05em]"
-                                    >
-                                        {{ uniqueAirports }}
-                                    </p>
-
-                                    <p
-                                        class="mt-1 text-xs vyamap-text-subtle"
-                                    >
-                                        airports used
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
+                <!-- LISTADO -->
+                <section class="vyamap-card overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 px-5 py-4">
+                        <h2 class="vyamap-h2">Flights</h2>
+                        <span class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">
+                            {{ filteredFlights.length }} {{ filteredFlights.length === 1 ? 'flight' : 'flights' }}
+                        </span>
                     </div>
 
-                </section>
-
-                <!-- =====================================================
-                     GEOGRAPHY
-                ====================================================== -->
-
-                <section class="mb-7">
                     <div
-                        class="vyamap-card-lg overflow-hidden"
+                        v-if="filteredFlights.length"
+                        class="hidden border-y border-[var(--vyamap-border)] bg-[var(--vyamap-surface-muted)] px-5 py-2.5 text-[0.75rem] font-semibold uppercase tracking-[0.05em] text-[var(--vyamap-text-subtle)] md:grid md:grid-cols-[1fr_1.7fr_1fr_1.2fr_0.7fr] md:gap-4"
+                        aria-hidden="true"
                     >
-                        <div
-                            class="flex flex-col gap-2 px-6 pt-6 sm:px-7 sm:pt-7"
-                        >
-                            <div
-                                class="flex items-end justify-between gap-4"
-                            >
-                                <div>
+                        <span>Flight</span>
+                        <span>Route</span>
+                        <span>Airline</span>
+                        <span>Date</span>
+                        <span class="text-right">Distance</span>
+                    </div>
 
-                                    <p class="vyamap-section-title">
-                                        GEOGRAPHY
+                    <ul v-if="filteredFlights.length" class="divide-y divide-[var(--vyamap-border)]">
+                        <li v-for="flight in filteredFlights" :key="flight.id" class="px-5 py-4 transition-colors hover:bg-[var(--vyamap-surface-muted)]">
+                            <!-- Escritorio -->
+                            <div class="hidden items-center md:grid md:grid-cols-[1fr_1.7fr_1fr_1.2fr_0.7fr] md:gap-4">
+                                <div class="min-w-0">
+                                    <p class="vyamap-code truncate text-sm">{{ flight.flight_number || 'Flight' }}</p>
+                                    <p v-if="flight.origin.code || flight.destination.code" class="vyamap-code text-[0.75rem] !font-medium text-[var(--vyamap-text-subtle)]">
+                                        {{ flight.origin.code || '—' }} – {{ flight.destination.code || '—' }}
                                     </p>
-
-                                    <h2
-                                        class="mt-1 text-2xl font-semibold tracking-[-0.05em] sm:mt-2 sm:text-3xl"
-                                    >
-                                        Flights map
-                                    </h2>
                                 </div>
-
-                                <div
-                                    class="text-right text-xs vyamap-muted"
-                                >
-                                    {{ flownCount }}
-                                    {{ flightCountLabel }}
+                                <div class="flex min-w-0 items-center gap-3 text-sm">
+                                    <span class="truncate">{{ flight.origin.city }}</span>
+                                    <span class="vyamap-route-line max-w-16" aria-hidden="true" />
+                                    <span class="truncate">{{ flight.destination.city }}</span>
                                 </div>
-
+                                <p class="truncate text-sm text-[var(--vyamap-text-muted)]">{{ flight.airline || '—' }}</p>
+                                <p class="vyamap-number text-sm text-[var(--vyamap-text-muted)]">{{ flightDepartureLabel(flight) }}</p>
+                                <p class="vyamap-number text-right text-sm text-[var(--vyamap-text-muted)]">{{ formatDistance(flight.distance_km) }}</p>
                             </div>
 
-                        </div>
-
-
-                        <div
-                            class="mt-5 h-[520px] overflow-hidden"
-                        >
-
-                            <FlightHistoryMap
-                                :flights="mapFlights"
-                            />
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-                <!-- =====================================================
-                     LAST FLIGHT + MOST VISITED
-                ====================================================== -->
-
-                <section
-                    class="mb-7 grid gap-7 lg:grid-cols-[1.6fr_0.9fr]"
-                >
-
-                    <!-- LAST FLIGHT -->
-
-                    <div
-                        class="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#090b0d]"
-                    >
-
-                        <div
-                            class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_42%)]"
-                        ></div>
-
-
-                        <div
-                            class="relative flex min-h-[240px] flex-col items-center justify-center px-4 py-7 sm:min-h-[290px] sm:px-10 sm:py-10"
-                        >
-
-                            <p
-                                class="text-[9px] uppercase tracking-[0.28em] text-white/25"
-                            >
-                                Most recent flight
-                            </p>
-
-
-                            <div
-                                v-if="lastFlight"
-                                class="mt-6 w-full sm:mt-8"
-                            >
-
-                                <div
-                                    class="flex items-center justify-center gap-4 sm:gap-12"
-                                >
-
-                                    <div
-                                        class="min-w-0 text-center"
-                                    >
-
-                                        <div
-                                            class="text-3xl font-semibold tracking-[-0.06em] sm:text-6xl"
-                                        >
-                                            {{
-                                                lastFlight.origin.code ||
-                                                '—'
-                                            }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-xs text-white/30"
-                                        >
-                                            {{
-                                                lastFlight.origin.city
-                                            }}
-                                        </div>
-
-                                    </div>
-
-
-                                    <div
-                                        class="flex min-w-[50px] items-center gap-2 sm:min-w-[80px] sm:gap-3"
-                                    >
-
-                                        <div
-                                            class="h-px flex-1 bg-white/[0.12]"
-                                        ></div>
-
-                                        <span
-                                            class="text-sm text-white/25"
-                                        >
-                                            →
-                                        </span>
-
-                                        <div
-                                            class="h-px flex-1 bg-white/[0.12]"
-                                        ></div>
-
-                                    </div>
-
-
-                                    <div
-                                        class="min-w-0 text-center"
-                                    >
-
-                                        <div
-                                            class="text-3xl font-semibold tracking-[-0.06em] sm:text-6xl"
-                                        >
-                                            {{
-                                                lastFlight.destination.code ||
-                                                '—'
-                                            }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 text-xs text-white/30"
-                                        >
-                                            {{
-                                                lastFlight.destination.city
-                                            }}
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div
-                                    class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-white/30 sm:mt-8 sm:gap-x-5 sm:text-[11px]"
-                                >
-
-                                    <span>
-                                        {{
-                                            lastFlight.flight_number || 'Flight'
-                                        }}
-                                    </span>
-
-                                    <span
-                                        class="h-1 w-1 rounded-full bg-white/15"
-                                    ></span>
-
-                                    <span>
-                                        {{
-                                            lastFlight.airline ||
-                                            'Flight'
-                                        }}
-                                    </span>
-
-                                    <span
-                                        class="h-1 w-1 rounded-full bg-white/15"
-                                    ></span>
-
-                                    <span>
-                                        {{
-                                            flightDepartureLabel(lastFlight)
-                                        }}
-                                    </span>
-
-                                    <span
-                                        class="h-1 w-1 rounded-full bg-white/15"
-                                    ></span>
-
-                                    <span>
-                                        {{
-                                            formatDuration(
-                                                lastFlight.duration_minutes,
-                                            )
-                                        }}
-                                    </span>
-
-                                </div>
-
-                            </div>
-
-
-                            <div
-                                v-else
-                                class="mt-8 text-sm text-white/25"
-                            >
-                                No flights recorded in this period.
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- MOST VISITED -->
-
-                    <div
-                        class="vyamap-card-lg p-5 sm:p-7"
-                    >
-
-                        <div class="mb-4 sm:mb-5">
-
-                            <p class="vyamap-section-title">
-                                Airports
-                            </p>
-
-                            <h2
-                                class="mt-1 text-2xl font-semibold tracking-[-0.05em] sm:mt-2 sm:text-3xl"
-                            >
-                                Most visited
-                            </h2>
-
-                        </div>
-
-
-                        <div
-                            v-if="mostVisitedAirports.length"
-                            class="divide-y divide-[var(--vyamap-border)]"
-                        >
-
-                            <div
-                                v-for="airport in mostVisitedAirports"
-                                :key="airport.id"
-                                class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 sm:gap-4 sm:py-4"
-                            >
-
-                                <div
-                                    class="flex min-w-0 items-center gap-3 sm:gap-4"
-                                >
-
-                                    <div
-                                        class="w-10 shrink-0 text-xs font-semibold sm:w-12 sm:text-sm"
-                                    >
-                                        {{ airport.code || '—' }}
-                                    </div>
-
+                            <!-- Móvil -->
+                            <div class="md:hidden">
+                                <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
-
-                                        <div
-                                            class="truncate text-sm"
-                                        >
-                                            {{ airport.city }}
-                                        </div>
-
-                                        <div
-                                            class="mt-1 truncate text-[10px] text-white/25"
-                                        >
-                                            {{ airport.airport }}
-                                        </div>
-
+                                        <p class="flex items-center gap-2">
+                                            <span class="vyamap-code text-sm">{{ flight.flight_number || 'Flight' }}</span>
+                                            <span v-if="flight.airline" class="truncate text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ flight.airline }}</span>
+                                        </p>
+                                        <p class="mt-1 flex items-center gap-2 text-sm">
+                                            <span class="truncate">{{ flight.origin.city }}</span>
+                                            <span class="vyamap-route-line max-w-10" aria-hidden="true" />
+                                            <span class="truncate">{{ flight.destination.city }}</span>
+                                        </p>
                                     </div>
-
+                                    <div class="shrink-0 text-right text-[0.8125rem] text-[var(--vyamap-text-muted)]">
+                                        <p class="vyamap-number">{{ flightDepartureLabel(flight) }}</p>
+                                        <p class="vyamap-number">{{ formatDistance(flight.distance_km) }}<template v-if="flight.duration_minutes"> · {{ formatDuration(flight.duration_minutes) }}</template></p>
+                                    </div>
                                 </div>
-
-
-                                <div
-                                    class="shrink-0 text-sm text-white/35"
-                                >
-                                    {{ airport.count }}
-                                </div>
-
                             </div>
 
-                        </div>
+                            <!-- Estado, viaje y acciones -->
+                            <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex flex-wrap items-center gap-2 text-[0.8125rem]">
+                                    <span class="vyamap-badge" :class="statusBadge(flight).class">{{ statusBadge(flight).label }}</span>
+                                    <Link v-if="flight.trip" :href="`/trips/${flight.trip.id}`" class="vyamap-link inline-flex items-center gap-1">
+                                        <Icon name="trips" :size="14" />
+                                        {{ flight.trip.name }}
+                                    </Link>
+                                    <span v-else class="text-[var(--vyamap-text-subtle)]">Standalone</span>
+                                </div>
 
+                                <div class="flex flex-wrap gap-1">
+                                    <button v-if="flight.status === 'pending'" type="button" class="vyamap-button vyamap-button-sm" @click="setConfirmed(flight, true)">
+                                        <Icon name="check" :size="16" />
+                                        Confirm flown
+                                    </button>
+                                    <button v-if="flight.confirmed" type="button" class="vyamap-button-ghost vyamap-button-sm" @click="setConfirmed(flight, false)">
+                                        Undo confirmation
+                                    </button>
+                                    <button type="button" class="vyamap-button-ghost vyamap-button-sm" @click="openForm(flight)">
+                                        <Icon name="edit" :size="16" />
+                                        Edit
+                                    </button>
+                                    <button type="button" class="vyamap-button-ghost vyamap-button-sm hover:!text-[var(--vyamap-danger)]" @click="deleteFlight(flight)">
+                                        <Icon name="trash" :size="16" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
 
-                        <div
-                            v-else
-                            class="py-6 text-sm text-white/25"
-                        >
-                            No airport data available.
-                        </div>
-
+                    <div v-else class="border-t border-[var(--vyamap-border)] p-5">
+                        <EmptyState compact icon="search" title="No flights match these filters" text="Try another year, status or trip filter.">
+                            <template #actions>
+                                <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="clearFilters">Clear filters</button>
+                            </template>
+                        </EmptyState>
                     </div>
-
                 </section>
-
-                <!-- =====================================================
-                     FLIGHT TIMELINE
-                ====================================================== -->
-
-                <section>
-                    <div
-                        class="vyamap-card-lg overflow-hidden"
-                    >
-
-                        <div
-                            class="flex items-end justify-between gap-4 px-6 py-6 sm:px-7"
-                        >
-                            <div>
-
-                                <p class="vyamap-section-title">
-                                    Timeline
-                                </p>
-
-                                <h2
-                                    class="mt-1 text-2xl font-semibold tracking-[-0.05em] sm:mt-2 sm:text-3xl"
-                                >
-                                    Flights
-                                </h2>
-
-                            </div>
-
-
-                            <div
-                                class="text-right text-xs vyamap-muted"
-                            >
-                                {{ flownCount }}
-                                {{ flightCountLabel }}
-                            </div>
-
-                        </div>
-
-                        <div
-                            v-if="filteredFlights.length"
-                            class="hidden border-y border-[var(--vyamap-border)] px-6 py-3 text-[10px] uppercase tracking-[0.16em] vyamap-text-subtle sm:grid sm:grid-cols-[1.1fr_1.8fr_1.1fr_0.9fr_0.8fr] sm:gap-5 sm:px-7"
-                        >
-                            <span>
-                                Flight
-                            </span>
-
-                            <span>
-                                Route
-                            </span>
-
-                            <span>
-                                Airline
-                            </span>
-
-                            <span>
-                                Date
-                            </span>
-
-                            <span class="text-right">
-                                Distance
-                            </span>
-                        </div>
-
-
-                        <div
-                            v-if="filteredFlights.length"
-                            class="divide-y divide-[var(--vyamap-border)]"
-                        >
-
-                            <div
-                                v-for="flight in filteredFlights"
-                                :key="flight.id"
-                                class="px-6 py-5 transition hover:bg-[var(--vyamap-surface-muted)] sm:px-7"
-                            >
-
-                                <div
-                                    class="hidden items-center sm:grid sm:grid-cols-[1.1fr_1.8fr_1.1fr_0.9fr_0.8fr] sm:gap-5"
-                                >
-
-                                    <div class="min-w-0">
-
-                                        <div class="truncate text-sm font-semibold" >
-                                            {{ flight.flight_number || 'Flight' }}
-                                        </div>
-
-                                        <div
-                                            v-if="
-                                                flight.origin.code ||
-                                                flight.destination.code
-                                            "
-                                            class="mt-1 text-[11px] vyamap-text-subtle"
-                                        >
-                                            {{
-                                                flight.origin.code ||
-                                                '—'
-                                            }}
-                                            →
-                                            {{
-                                                flight.destination.code ||
-                                                '—'
-                                            }}
-                                        </div>
-
-                                    </div>
-
-
-                                    <div class="min-w-0">
-
-                                        <div
-                                            class="truncate text-sm"
-                                        >
-                                            {{
-                                                flight.origin.city
-                                            }}
-
-                                            <span
-                                                class="mx-2 vyamap-text-subtle"
-                                            >
-                                                →
-                                            </span>
-
-                                            {{
-                                                flight.destination.city
-                                            }}
-                                        </div>
-
-                                    </div>
-
-
-                                    <div
-                                        class="truncate text-sm vyamap-muted"
-                                    >
-                                        {{
-                                            flight.airline ||
-                                            '—'
-                                        }}
-                                    </div>
-
-
-                                    <div
-                                        class="text-xs vyamap-muted"
-                                    >
-                                        {{
-                                            flightDepartureLabel(flight)
-                                        }}
-                                    </div>
-
-
-                                    <div
-                                        class="text-right text-xs vyamap-muted"
-                                    >
-                                        {{
-                                            formatDistance(
-                                                flight.distance_km,
-                                            )
-                                        }}
-                                    </div>
-
-                                </div>
-
-
-                                <div class="sm:hidden">
-
-                                    <div
-                                        class="flex items-start justify-between gap-4"
-                                    >
-
-                                        <div class="min-w-0">
-
-                                            <div
-                                                class="flex flex-wrap items-center gap-2"
-                                            >
-
-                                                <span
-                                                    class="text-sm font-semibold"
-                                                >
-                                                    {{ flight.flight_number || 'Flight' }}
-                                                </span>
-
-                                                <span
-                                                    class="text-xs vyamap-text-subtle"
-                                                >
-                                                    {{
-                                                        flight.airline ||
-                                                        '—'
-                                                    }}
-                                                </span>
-
-                                            </div>
-
-
-                                            <div
-                                                class="mt-2 text-sm"
-                                            >
-                                                {{
-                                                    flight.origin.city
-                                                }}
-
-                                                <span
-                                                    class="mx-2 vyamap-text-subtle"
-                                                >
-                                                    →
-                                                </span>
-
-                                                {{
-                                                    flight.destination.city
-                                                }}
-                                            </div>
-
-
-                                            <div
-                                                class="mt-1 text-[11px] vyamap-text-subtle"
-                                            >
-                                                {{
-                                                    flight.origin.code ||
-                                                    '—'
-                                                }}
-                                                →
-                                                {{
-                                                    flight.destination.code ||
-                                                    '—'
-                                                }}
-                                            </div>
-
-                                        </div>
-
-
-                                        <div
-                                            class="shrink-0 text-right"
-                                        >
-
-                                            <div
-                                                class="text-xs vyamap-muted"
-                                            >
-                                                {{
-                                                    flightDepartureLabel(flight)
-                                                }}
-                                            </div>
-
-                                            <div
-                                                class="mt-1 text-xs vyamap-text-subtle"
-                                            >
-                                                {{
-                                                    formatDistance(
-                                                        flight.distance_km,
-                                                    )
-                                                }}
-                                            </div>
-
-                                            <div
-                                                class="mt-1 text-xs vyamap-text-subtle"
-                                            >
-                                                {{
-                                                    formatDuration(
-                                                        flight.duration_minutes,
-                                                    )
-                                                }}
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <!-- Estado, viaje y acciones -->
-                                <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                                    <div class="flex flex-wrap items-center gap-2 text-[11px]">
-                                        <span
-                                            class="rounded-full border px-2 py-0.5 font-medium"
-                                            :class="statusBadge(flight).class"
-                                        >
-                                            {{ statusBadge(flight).label }}
-                                        </span>
-
-                                        <Link
-                                            v-if="flight.trip"
-                                            :href="`/trips/${flight.trip.id}`"
-                                            class="text-white/55 underline-offset-4 hover:text-white hover:underline"
-                                        >
-                                            {{ flight.trip.name }}
-                                        </Link>
-
-                                        <span v-else class="text-white/40">Standalone</span>
-                                    </div>
-
-                                    <div class="flex flex-wrap gap-2">
-                                        <button
-                                            v-if="flight.status === 'pending'"
-                                            type="button"
-                                            class="rounded-full bg-cyan-300 px-3 py-1 text-[11px] font-semibold text-[#0d1119] transition hover:bg-cyan-200"
-                                            @click="setConfirmed(flight, true)"
-                                        >
-                                            Confirm flown
-                                        </button>
-
-                                        <button
-                                            v-if="flight.confirmed"
-                                            type="button"
-                                            class="rounded-full border border-white/[0.08] px-3 py-1 text-[11px] text-white/50 transition hover:text-white"
-                                            @click="setConfirmed(flight, false)"
-                                        >
-                                            Undo confirmation
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="rounded-full border border-white/[0.08] px-3 py-1 text-[11px] text-white/50 transition hover:text-white"
-                                            @click="openForm(flight)"
-                                        >
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="rounded-full border border-red-400/[0.15] px-3 py-1 text-[11px] text-red-200/60 transition hover:text-red-100"
-                                            @click="deleteFlight(flight)"
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            v-else
-                            class="border-t border-[var(--vyamap-border)] px-6 py-8 sm:px-7"
-                        >
-
-                            <p
-                                class="text-sm vyamap-text-subtle"
-                            >
-                                No flights recorded in this period.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-            </main>
-
+            </template>
         </div>
-
     </AppLayout>
 </template>

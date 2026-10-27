@@ -7,7 +7,7 @@ import { escapeHtml } from '../../utils/escapeHtml';
 interface MapFlight {
     id: number;
 
-    // flown o upcoming (los próximos se dibujan en lima).
+    // flown o upcoming (los próximos se dibujan en violeta).
     status?: 'flown' | 'upcoming' | 'pending';
 
     flight_number: string | null;
@@ -45,18 +45,19 @@ let map: L.Map | null = null;
  * Misma representación que el mapa de /flight-history (FlightHistoryMap):
  * arcos de círculo máximo, líneas finas y el mismo marcador de aeropuerto.
  */
-const LIME = '#BEF264';
+const UPCOMING = '#A78BFA';
 
 const airportMarker = (point: Point, city: string, upcoming = false) =>
     L.circleMarker(point, {
         radius: 4,
-        color: upcoming ? LIME : '#ffffff',
+        color: upcoming ? UPCOMING : '#5EE7F7',
         weight: 1.5,
-        fillColor: '#111827',
+        fillColor: '#070B14',
         fillOpacity: 1,
     }).bindTooltip(escapeHtml(city), {
         direction: 'top',
         offset: [0, -4],
+        className: 'vyamap-tooltip',
     });
 
 onMounted(() => {
@@ -105,7 +106,7 @@ onMounted(() => {
         const upcoming = flight.status === 'upcoming';
 
         L.polyline(route, {
-            color: upcoming ? LIME : '#ffffff',
+            color: upcoming ? UPCOMING : '#5EE7F7',
             weight: 1,
             opacity: upcoming ? 0.7 : 0.35,
             dashArray: '5 7',
@@ -113,7 +114,7 @@ onMounted(() => {
             .addTo(map!)
             .bindTooltip(
                 `${flight.flight_number ? `${escapeHtml(flight.flight_number)} · ` : ''}${escapeHtml(flight.origin.city)} → ${escapeHtml(flight.destination.city)}${upcoming ? ' · upcoming' : ''}`,
-                { sticky: true },
+                { sticky: true, className: 'vyamap-tooltip' },
             );
 
         /*
@@ -157,6 +158,6 @@ onBeforeUnmount(() => {
 .travel-map {
     width: 100%;
     height: 100%;
-    background: #111827;
+    background: #0A0F1B;
 }
 </style>

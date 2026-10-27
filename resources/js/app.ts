@@ -12,6 +12,8 @@ const pages = import.meta.glob<{
 });
 
 createInertiaApp({
+    title: (title) => (title ? `${title} · VyaMap` : 'VyaMap'),
+
     resolve: (name) => {
         const page = pages[`./pages/${name}.vue`];
 

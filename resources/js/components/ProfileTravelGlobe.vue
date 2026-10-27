@@ -133,7 +133,7 @@ const initGlobe = async () => {
     scene = new THREE.Scene();
 
     scene.background = new THREE.Color(
-        '#111719',
+        '#0E1525',
     );
 
     /*
@@ -240,7 +240,7 @@ const initGlobe = async () => {
         .showGlobe(true)
         .showAtmosphere(true)
         .atmosphereColor(
-            '#6b8589',
+            '#22D3EE',
         )
         .atmosphereAltitude(
             0.075,
@@ -259,15 +259,15 @@ const initGlobe = async () => {
                     visitedCodes.has(
                         code,
                     )
-                    ? '#789a96'
-                    : '#263337';
+                    ? '#2BC4DA'
+                    : '#1A2540';
             },
         )
         .polygonSideColor(
-            () => '#151d1f',
+            () => '#0E1525',
         )
         .polygonStrokeColor(
-            () => '#4a5b5f',
+            () => '#2E3E60',
         )
         .polygonAltitude(
             (feature: any) => {
@@ -297,7 +297,7 @@ const initGlobe = async () => {
 
     globeMaterial.color =
         new THREE.Color(
-            '#172124',
+            '#0B1222',
         );
 
     globeMaterial.roughness = 1;
@@ -479,11 +479,11 @@ onBeforeUnmount(() => {
             class="flex h-full items-center justify-center p-8 text-center"
         >
             <div>
-                <p class="text-sm font-semibold text-red-400">
-                    Error inicializando el globo
+                <p class="text-sm font-semibold text-[var(--vyamap-danger)]">
+                    The globe could not be loaded
                 </p>
 
-                <p class="mt-3 max-w-xl font-mono text-xs leading-6 text-slate-400">
+                <p class="mt-2 max-w-xl text-sm text-[var(--vyamap-text-muted)]">
                     {{ errorMessage }}
                 </p>
             </div>
@@ -494,8 +494,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .profile-travel-globe {
     width: 100%;
-    height: 560px;
-    min-height: 420px;
+    height: 520px;
+    min-height: 380px;
     overflow: hidden;
     cursor: grab;
 }
@@ -512,8 +512,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
     .profile-travel-globe {
-        height: 460px;
-        min-height: 380px;
+        height: 380px;
+        min-height: 320px;
     }
 }
 </style>

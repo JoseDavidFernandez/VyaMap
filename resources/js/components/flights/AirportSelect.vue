@@ -125,13 +125,13 @@ onBeforeUnmount(() => {
 
         <ul
             v-if="results.length"
-            class="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-white/10 bg-[#0d1119] py-1 shadow-2xl"
+            class="vyamap-popover absolute z-40 mt-2 max-h-64 w-full overflow-y-auto rounded-[var(--vyamap-radius-md)] p-1"
             role="listbox"
         >
             <li v-for="airport in results" :key="airport.id">
                 <button
                     type="button"
-                    class="block w-full px-3 py-2 text-left text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+                    class="vyamap-row block w-full px-3 py-2 text-left text-sm text-[var(--vyamap-text)] hover:bg-[var(--vyamap-surface-raised)]"
                     @click="select(airport)"
                 >
                     {{ describe(airport) }}
@@ -139,9 +139,9 @@ onBeforeUnmount(() => {
             </li>
         </ul>
 
-        <p v-if="searching" class="mt-1 text-[11px] text-white/40">Searching…</p>
+        <p v-if="searching" class="vyamap-help">Searching…</p>
         <p v-else-if="searchError" class="vyamap-error">{{ searchError }}</p>
-        <p v-else-if="query.trim().length >= 2 && model === null && !results.length" class="mt-1 text-[11px] text-white/40">
+        <p v-else-if="query.trim().length >= 2 && model === null && !results.length" class="vyamap-help">
             Choose an airport from the list.
         </p>
         <p v-if="error" class="vyamap-error">{{ error }}</p>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '../ui/Icon.vue';
 import { computed, reactive, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AirportSelect from './AirportSelect.vue';
@@ -211,11 +212,11 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
 
 <template>
     <form class="space-y-5" novalidate @submit.prevent="submit('close')">
-        <p v-if="notice" class="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] px-4 py-2 text-sm text-cyan-100">
+        <p v-if="notice" role="status" class="rounded-[var(--vyamap-radius-md)] border border-[rgba(34,211,238,0.35)] bg-[rgba(34,211,238,0.08)] px-4 py-2.5 text-sm text-[var(--vyamap-text)]">
             {{ notice }}
         </p>
 
-        <div class="grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-start">
             <AirportSelect
                 id="flight-origin"
                 ref="originSelect"
@@ -227,12 +228,12 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
 
             <button
                 type="button"
-                class="mx-auto mt-0 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:mt-7"
+                class="vyamap-icon-button mx-auto !h-10 !w-10 sm:mt-7"
                 title="Swap origin and destination"
                 aria-label="Swap origin and destination"
                 @click="swapAirports"
             >
-                ⇄
+                <Icon name="swap" :size="18" />
             </button>
 
             <AirportSelect
@@ -245,16 +246,16 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
             />
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
                 <label for="flight-date" class="vyamap-label">Date</label>
                 <input id="flight-date" v-model="form.departure_date" type="date" class="vyamap-input" required />
-                <p class="mt-1 text-[11px] text-white/40">Local date at the origin airport.</p>
+                <p class="vyamap-help">Local date at the origin airport.</p>
                 <p v-if="form.errors.departure_date" class="vyamap-error">{{ form.errors.departure_date }}</p>
             </div>
 
             <div>
-                <label for="flight-departure-time" class="vyamap-label">Departure time <span class="text-white/35">(optional)</span></label>
+                <label for="flight-departure-time" class="vyamap-label">Departure time <span class="text-[var(--vyamap-text-subtle)]">(optional)</span></label>
                 <input
                     id="flight-departure-time"
                     v-model="form.departure_time"
@@ -268,15 +269,15 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
                     @input="clearTimeError('departure_time')"
                     @blur="checkTime('departure_time')"
                 />
-                <p class="mt-1 text-[11px] text-white/40">24-hour local time at the origin airport.</p>
+                <p class="vyamap-help">24-hour local time at the origin airport.</p>
                 <p v-if="invalidTimes.departure_time" class="vyamap-error">{{ invalidTimeMessage }}</p>
                 <p v-else-if="form.errors.departure_time" class="vyamap-error">{{ form.errors.departure_time }}</p>
             </div>
 
             <div class="@container">
-                <label for="flight-arrival-time" class="vyamap-label">Arrival time <span class="text-white/35">(optional)</span></label>
+                <label for="flight-arrival-time" class="vyamap-label">Arrival time <span class="text-[var(--vyamap-text-subtle)]">(optional)</span></label>
                 <!-- Hora y día juntos solo si la columna tiene sitio para ambos; si no, uno bajo el otro. -->
-                <div class="grid gap-2 @2xs:grid-cols-[minmax(0,1fr)_7rem]">
+                <div class="grid grid-cols-1 gap-2 @2xs:grid-cols-[minmax(0,1fr)_8.5rem]">
                     <input
                         id="flight-arrival-time"
                         v-model="form.arrival_time"
@@ -293,7 +294,7 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
                     <select
                         id="flight-arrival-day"
                         v-model="form.arrival_offset"
-                        class="vyamap-input"
+                        class="vyamap-input !pl-3 !pr-8"
                         aria-label="Arrival day"
                     >
                         <option :value="-1">−1 day</option>
@@ -302,29 +303,29 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
                         <option :value="2">+2 days</option>
                     </select>
                 </div>
-                <p class="mt-1 text-[11px] text-white/40">24-hour local time at the destination airport.</p>
+                <p class="vyamap-help">24-hour local time at the destination airport.</p>
                 <p v-if="invalidTimes.arrival_time" class="vyamap-error">{{ invalidTimeMessage }}</p>
                 <p v-else-if="form.errors.arrival_time" class="vyamap-error">{{ form.errors.arrival_time }}</p>
-                <p v-else-if="arrivalNeedsDeparture" class="mt-1 text-[11px] text-amber-200/80">Add the departure time too: an arrival time needs one.</p>
+                <p v-else-if="arrivalNeedsDeparture" class="mt-1.5 text-[0.8125rem] text-[var(--vyamap-warning)]">Add the departure time too: an arrival time needs one.</p>
                 <p v-if="arrivalDateError" class="vyamap-error">{{ arrivalDateError }}</p>
             </div>
         </div>
 
-        <div class="grid gap-4" :class="tripId ? 'sm:grid-cols-2' : 'sm:grid-cols-3'">
+        <div class="grid grid-cols-1 gap-4" :class="tripId ? 'sm:grid-cols-2' : 'sm:grid-cols-3'">
             <div>
-                <label for="flight-number" class="vyamap-label">Flight number <span class="text-white/35">(optional)</span></label>
+                <label for="flight-number" class="vyamap-label">Flight number <span class="text-[var(--vyamap-text-subtle)]">(optional)</span></label>
                 <input id="flight-number" v-model="form.flight_number" type="text" maxlength="20" class="vyamap-input uppercase" placeholder="IB3456" />
                 <p v-if="form.errors.flight_number" class="vyamap-error">{{ form.errors.flight_number }}</p>
             </div>
 
             <div>
-                <label for="flight-airline" class="vyamap-label">Airline <span class="text-white/35">(optional)</span></label>
+                <label for="flight-airline" class="vyamap-label">Airline <span class="text-[var(--vyamap-text-subtle)]">(optional)</span></label>
                 <input id="flight-airline" v-model="form.airline" type="text" maxlength="100" class="vyamap-input" placeholder="Iberia" />
                 <p v-if="form.errors.airline" class="vyamap-error">{{ form.errors.airline }}</p>
             </div>
 
             <div v-if="!tripId">
-                <label for="flight-trip" class="vyamap-label">Trip <span class="text-white/35">(optional)</span></label>
+                <label for="flight-trip" class="vyamap-label">Trip <span class="text-[var(--vyamap-text-subtle)]">(optional)</span></label>
                 <select id="flight-trip" v-model="form.trip_id" class="vyamap-input">
                     <option :value="null">No trip</option>
                     <option v-for="trip in selectableTrips" :key="trip.id" :value="trip.id">
