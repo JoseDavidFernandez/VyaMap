@@ -19,7 +19,7 @@ Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones
 - **Flight History**: lista, mapa de rutas con arcos de círculo máximo, filtros y gestión de vuelos.
 - **Países**: listado y detalle, distinguiendo Estados soberanos (porcentaje sobre los 193 miembros de la ONU) y territorios.
 - **Dashboard y Passport**: resúmenes, mapas, viajes recientes, viajes por año y vuelos.
-- **Fotos privadas**: subida con procesamiento en cola (variantes y fecha y ubicación EXIF), servidas solo a su propietario; álbumes y listas de Google Maps asociadas a viajes.
+- **Fotos privadas**: las ya subidas se sirven solo a su propietario, con álbumes; listas de Google Maps asociadas a viajes. La subida de fotos y avatares está desactivada (`UPLOADS_ENABLED`); el procesado en cola (variantes, fecha y ubicación EXIF) sigue en el código.
 - **Cuentas**: autenticación con Laravel Fortify, límites de frecuencia en el acceso y registro público solo en entorno local salvo que se active, con un máximo de cuentas configurable (en el resto, las cuentas se crean con `php artisan users:create`; `php artisan users:list` las lista). La subida de fotos y avatares se puede desactivar (`UPLOADS_ENABLED`).
 
 ## Stack

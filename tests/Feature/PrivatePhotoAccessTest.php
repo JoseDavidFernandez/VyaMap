@@ -200,6 +200,9 @@ class PrivatePhotoAccessTest extends TestCase
 
     public function test_new_uploads_are_processed_into_the_private_disk_only(): void
     {
+        // Subidas desactivadas por defecto: se activan para probar el procesado.
+        config(['uploads.enabled' => true]);
+
         config(['queue.default' => 'sync']);
 
         $this->actingAs($this->owner)

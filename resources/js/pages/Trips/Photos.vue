@@ -5,6 +5,7 @@ import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { tripPath } from '../../utils/routes';
+import { stockImage } from '../../data/stockImages';
 
 interface Trip {
     id: number;
@@ -150,8 +151,9 @@ const formatDate = (date: string | null) => {
             <EmptyState
                 v-else
                 icon="photo"
-                title="No photos yet"
-                text="Your travel memories will appear here once you start adding photos to this trip."
+                :image="stockImage('conifer-forest')"
+                title="No photos in this trip"
+                text="Photo uploads are turned off in VyaMap. The trip keeps its map, cities and flights."
             >
                 <template #actions>
                     <Link :href="tripPath(trip)" class="vyamap-button-secondary vyamap-button-sm">Back to the trip</Link>

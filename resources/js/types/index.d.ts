@@ -15,6 +15,8 @@ interface AuthProps {
 interface FeatureFlags {
     // Solo oculta los campos de archivo: el servidor aplica la restricción.
     uploads: boolean;
+    // Si la cuenta tiene fotos ya subidas (muestra el apartado Photos).
+    photos: boolean;
 }
 
 declare module '@inertiajs/core' {

@@ -4,6 +4,7 @@ import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
+import { stockImage } from '../../data/stockImages';
 
 interface Photo {
     id: number;
@@ -506,9 +507,12 @@ const formatDate = (date: string | null | undefined) => {
                 <div>
                     <h1 class="vyamap-page-title">Photos</h1>
                     <p class="vyamap-page-description">
-                        Every place you've visited, captured in one place.
-                        <span class="vyamap-number font-semibold text-[var(--vyamap-text)]">{{ photos.length }}</span>
-                        {{ photos.length === 1 ? 'photo' : 'photos' }}, private to you.
+                        <template v-if="photos.length">
+                            The photos already added to your trips,
+                            <span class="vyamap-number font-semibold text-[var(--vyamap-text)]">{{ photos.length }}</span>
+                            in total, private to you. New uploads are turned off.
+                        </template>
+                        <template v-else>Photos added to your trips would appear here.</template>
                     </p>
                 </div>
 
@@ -561,8 +565,9 @@ const formatDate = (date: string | null | undefined) => {
             <EmptyState
                 v-if="!photos.length"
                 icon="photo"
+                :image="stockImage('snowy-peaks')"
                 title="No photos yet"
-                text="Your travel memories will appear here once you start adding photos to your trips. They stay private: only you can see them."
+                text="Photo uploads are turned off in VyaMap. Your trips keep their maps, cities and flights."
             >
                 <template #actions>
                     <Link href="/trips" class="vyamap-button-secondary">Go to my trips</Link>

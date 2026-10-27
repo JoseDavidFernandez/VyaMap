@@ -7,6 +7,7 @@ import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { countCountries, isTerritoryStatus, type CountryStatus } from '../../utils/countryStatus';
 import { countryPath } from '../../utils/routes';
+import { stockImage } from '../../data/stockImages';
 
 interface Country {
     id: number;
@@ -107,6 +108,7 @@ const filteredCountries = computed(() => {
             <EmptyState
                 v-else
                 icon="globe"
+                :image="stockImage('shoreline-sunset')"
                 title="No countries yet"
                 text="Your visited countries will appear here once you start adding trips. A country counts when a completed trip has a city in it."
             >

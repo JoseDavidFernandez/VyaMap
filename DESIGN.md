@@ -54,6 +54,10 @@ Sin etiquetas pequeñas en mayúsculas encima de los títulos, sin texto con deg
 - Iconos: `components/ui/Icon.vue`, SVG propios en rejilla de 24 y trazo 1.75. Nunca caracteres Unicode como iconos.
 - Estados vacíos: `components/ui/EmptyState.vue` (icono, qué falta, por qué importa y la acción que lo resuelve; `compact` dentro de paneles). Cada lista, mapa o panel que puede quedar vacío tiene el suyo.
 
+## Imágenes genéricas
+
+Paisajes CC0 (Unsplash vía Wikimedia Commons) en `public/images/stock/`, en WebP de 800 y 1600 px sin metadatos; créditos en `public/images/stock/CREDITS.md`. Se usan en las tarjetas de viaje sin foto propia, en la tarjeta del próximo viaje y en los estados vacíos grandes (`EmptyState` con `image`). Siempre a través de `components/ui/StockImage.vue`: velo de la paleta, saturación algo reducida y la etiqueta visible «Illustrative image», con el crédito en el tooltip; nunca pasan por fotos de los viajes del usuario. Las miniaturas pequeñas (menos de 64 px) usan un icono en lugar de imagen. Un mismo viaje muestra siempre la misma (`stockImageFor(id)`).
+
 ## Pasaporte
 
 Librillo abierto en `pages/Passport.vue`: papel de seguridad azul tinta con guilloché cian y violeta muy tenue y un grano fino, lomo con sombra hacia el centro y, en móvil, páginas apiladas. Página de datos con emblema holográfico, foto con sello, campos en mayúsculas espaciadas, anillo del mundo explorado y zona MRZ generada con datos reales. Página de sellos con tinta cian o violeta, doble anillo, rotación ligera y nombre en hasta dos líneas. Las microetiquetas del documento son la única excepción al mínimo de 12 px: 11 px, siempre con contraste ≥5:1.

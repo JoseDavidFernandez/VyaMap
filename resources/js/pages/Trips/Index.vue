@@ -10,6 +10,8 @@ import { calendarYear, tripDays as calendarTripDays } from '../../utils/tripDate
 import type { CountryStatus } from '../../utils/countryStatus';
 import { emptyYear, type PlaceCounts, type YearPlaceStats } from '../../types/statistics';
 import { tripPath } from '../../utils/routes';
+import StockImage from '../../components/ui/StockImage.vue';
+import { stockImage, stockImageFor } from '../../data/stockImages';
 
 interface Country {
     name: string;
@@ -108,12 +110,6 @@ const flagEmoji = (isoCode: string) => {
         .join('');
 };
 
-// Portada sin foto: un fondo de la paleta que varía por posición.
-const placeholderTones = [
-    'radial-gradient(circle at 25% 20%, rgba(34, 211, 238, 0.32), transparent 55%), radial-gradient(circle at 85% 90%, rgba(124, 92, 255, 0.28), transparent 55%)',
-    'radial-gradient(circle at 75% 15%, rgba(167, 139, 250, 0.32), transparent 55%), radial-gradient(circle at 15% 90%, rgba(34, 211, 238, 0.22), transparent 55%)',
-    'radial-gradient(circle at 50% 0%, rgba(124, 155, 255, 0.3), transparent 60%), radial-gradient(circle at 90% 100%, rgba(34, 211, 238, 0.18), transparent 55%)',
-];
 
 </script>
 
@@ -194,7 +190,7 @@ const placeholderTones = [
 
                 <!-- VIAJES -->
                 <ul v-if="filteredTrips.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <li v-for="(trip, index) in filteredTrips" :key="trip.id">
+                    <li v-for="trip in filteredTrips" :key="trip.id">
                         <Link :href="tripPath(trip)" class="vyamap-trip-card group flex h-full flex-col overflow-hidden">
                             <div class="relative aspect-[16/9] overflow-hidden border-b border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]">
                                 <img
@@ -204,13 +200,11 @@ const placeholderTones = [
                                     class="h-full w-full object-cover"
                                     loading="lazy"
                                 />
-                                <div
+                                <StockImage
                                     v-else
-                                    class="flex h-full w-full items-center justify-center text-[var(--vyamap-text-muted)]"
-                                    :style="{ background: placeholderTones[index % placeholderTones.length] }"
-                                >
-                                    <Icon name="map" :size="32" />
-                                </div>
+                                    :image="stockImageFor(trip.id)"
+                                    sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
+                                />
 
                                 <span
                                     v-if="trip.phase !== 'completed'"
@@ -259,6 +253,7 @@ const placeholderTones = [
             <EmptyState
                 v-else
                 icon="trips"
+                :image="stockImage('mountain-lake')"
                 title="No trips yet"
                 text="Create a trip with its dates, then add the cities you visited and the flights you took. Each trip keeps its own map and statistics."
             >

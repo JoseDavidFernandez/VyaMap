@@ -13,6 +13,7 @@ import { calendarYear } from '../utils/tripDates';
 import type { FlightRecord as Flight, FlightStatus, TripOption } from '../types/flights';
 import type { FlightStats } from '../types/statistics';
 import { tripPath } from '../utils/routes';
+import { stockImage } from '../data/stockImages';
 
 const props = defineProps<{
     flights: Flight[];
@@ -277,6 +278,7 @@ const formattedAverageDuration = computed(() => {
             <EmptyState
                 v-if="!flights.length && !showForm"
                 icon="flight"
+                :image="stockImage('wing-above-clouds')"
                 title="No flights yet"
                 text="Add a flight with its airports and date. Times are optional; with them VyaMap calculates time in the air. Flights can belong to a trip or stand alone."
             >

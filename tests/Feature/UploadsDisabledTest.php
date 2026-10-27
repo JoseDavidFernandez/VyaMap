@@ -104,6 +104,40 @@ class UploadsDisabledTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('features.uploads', true));
     }
 
+    public function test_an_account_that_already_has_photos_cannot_add_more_but_keeps_its_own(): void
+    {
+        $user = User::factory()->create(['avatar' => 'avatars/existing.webp']);
+        $trip = Trip::create(['user_id' => $user->id, 'name' => 'Trip', 'start_date' => '2026-01-01', 'end_date' => '2026-01-02']);
+        $photo = Photo::create(['user_id' => $user->id, 'trip_id' => $trip->id, 'path' => 'photos/1/p.webp', 'original_filename' => 'p.jpg', 'processing_status' => 'ready']);
+
+        $this->actingAs($user)
+            ->postJson('/photos', ['trip_id' => $trip->id, 'photo' => UploadedFile::fake()->image('more.jpg')])
+            ->assertForbidden();
+        $this->actingAs($user)
+            ->put('/profile', ['name' => $user->name, 'avatar' => UploadedFile::fake()->image('new.jpg')])
+            ->assertSessionHasErrors('avatar');
+
+        $this->assertSame([$photo->id], Photo::pluck('id')->all());
+        $this->assertSame('avatars/existing.webp', $user->fresh()->avatar);
+        $this->actingAs($user)->get('/photos')->assertOk()->assertInertia(fn ($page) => $page->has('photos', 1));
+
+        // Borrar lo propio sigue permitido: no es una subida.
+        $this->actingAs($user)->delete("/photos/{$photo->id}")->assertRedirect();
+        $this->assertDatabaseCount('photos', 0);
+    }
+
+    public function test_the_photos_section_is_offered_only_to_accounts_with_photos(): void
+    {
+        $withPhotos = User::factory()->create();
+        Photo::create(['user_id' => $withPhotos->id, 'path' => 'photos/1/p.webp', 'original_filename' => 'p.jpg', 'processing_status' => 'ready']);
+        $withoutPhotos = User::factory()->create();
+
+        $this->actingAs($withPhotos)->get('/')->assertInertia(fn ($page) => $page->where('features.photos', true));
+        $this->actingAs($withoutPhotos)->get('/')->assertInertia(fn ($page) => $page->where('features.photos', false));
+        auth()->logout();
+        $this->get('/login')->assertInertia(fn ($page) => $page->where('features.photos', false));
+    }
+
     /**
      * @return array<string, array{string, ?string, bool}>
      */
@@ -111,15 +145,16 @@ class UploadsDisabledTest extends TestCase
     {
         return [
             'producción sin definir' => ['production', null, false],
-            'local sin definir' => ['local', null, true],
-            'testing sin definir' => ['testing', null, true],
-            'producción activada' => ['production', 'true', true],
-            'local desactivada' => ['local', 'false', false],
+            'local sin definir' => ['local', null, false],
+            'manual sin definir' => ['manual', null, false],
+            'testing sin definir' => ['testing', null, false],
+            'activadas de forma explícita' => ['production', 'true', true],
+            'desactivadas de forma explícita' => ['local', 'false', false],
         ];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('defaults')]
-    public function test_uploads_are_disabled_by_default_in_production(string $environment, ?string $flag, bool $expected): void
+    public function test_uploads_are_disabled_by_default_in_every_environment(string $environment, ?string $flag, bool $expected): void
     {
         $keys = ['APP_ENV' => $environment, 'UPLOADS_ENABLED' => $flag];
         $backup = [];

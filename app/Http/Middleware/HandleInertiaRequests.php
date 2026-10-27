@@ -49,6 +49,9 @@ class HandleInertiaRequests extends Middleware
             // Solo para ocultar los campos: el servidor aplica la restricción.
             'features' => [
                 'uploads' => (bool) config('uploads.enabled'),
+                // El apartado Photos solo tiene sentido para quien ya tiene
+                // fotos: las subidas están desactivadas (config/uploads.php).
+                'photos' => (bool) $request->user()?->photos()->exists(),
             ],
         ];
     }

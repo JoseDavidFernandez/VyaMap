@@ -370,7 +370,7 @@ Sin `includeSubDomains`, porque afectaría a todos los subdominios de `josedavid
 | Abrir el registro | `REGISTRATION_ENABLED=true` en `shared/.env` y después `sudo -u vyamap php artisan config:cache` |
 | Cerrar el registro | `REGISTRATION_ENABLED=false` y `config:cache`. `/register` devuelve 404 y el enlace desaparece del login. Las cuentas ya creadas siguen funcionando. |
 | Limitar el número de cuentas | `REGISTRATION_MAX_USERS=100` (se cambia en `shared/.env` y `config:cache`). Al llegar al límite, el registro se cierra solo, igual que con `REGISTRATION_ENABLED=false`; las altas simultáneas se vuelven a contar con bloqueo. `users:create` no está sujeto al límite. |
-| Desactivar subidas (fotos y avatares) | `UPLOADS_ENABLED=false`, que también es el valor por defecto en producción. El servidor rechaza `POST /photos` (403) y el avatar en el registro y en el perfil; la interfaz oculta los campos. |
+| Desactivar subidas (fotos y avatares) | `UPLOADS_ENABLED=false`, que es el valor por defecto en todos los entornos. El servidor rechaza `POST /photos` (403) y el avatar en el registro y en el perfil; la interfaz oculta los campos. |
 | Revisar las altas | `sudo -u vyamap php artisan users:list` (o `--limit=200`): id, nombre, correo, fecha de alta y número de viajes, vuelos y fotos. Solo lectura, sin credenciales. Muestra también cuántas cuentas hay y si el registro está abierto. |
 | Frecuencia | Ya limitada en la aplicación: 5 registros por minuto y 20 por hora por IP |
 | Crear una cuenta a mano | `sudo -u vyamap php artisan users:create "Nombre" correo@example.com` (pide la contraseña) |

@@ -22,20 +22,23 @@ const moreOpen = ref(false);
 
 const path = computed(() => page.url.split('?')[0]);
 
-const items: NavItem[] = [
+// Photos solo aparece si la cuenta ya tiene fotos: no se pueden subir nuevas.
+const items = computed<NavItem[]>(() => [
     { label: 'Home', href: '/', icon: 'home', match: (url) => url === '/' },
     { label: 'Trips', href: '/trips', icon: 'trips', match: (url) => url.startsWith('/trips') },
     { label: 'Flights', href: '/flight-history', icon: 'flight', match: (url) => url.startsWith('/flight-history') },
     { label: 'Passport', href: '/passport', icon: 'passport', match: (url) => url.startsWith('/passport') },
     { label: 'Countries', href: '/countries', icon: 'globe', match: (url) => url.startsWith('/countries') },
-    { label: 'Photos', href: '/photos', icon: 'photo', match: (url) => url.startsWith('/photos') },
-];
+    ...(page.props.features?.photos
+        ? [{ label: 'Photos', href: '/photos', icon: 'photo' as IconName, match: (url: string) => url.startsWith('/photos') }]
+        : []),
+]);
 
-const primaryMobile = items.slice(0, 4);
-const secondaryMobile = items.slice(4);
+const primaryMobile = computed(() => items.value.slice(0, 4));
+const secondaryMobile = computed(() => items.value.slice(4));
 
 const isActive = (item: NavItem) => item.match(path.value);
-const moreActive = computed(() => secondaryMobile.some(isActive) || path.value.startsWith('/profile'));
+const moreActive = computed(() => secondaryMobile.value.some(isActive) || path.value.startsWith('/profile'));
 
 const user = computed(() => page.props.auth?.user);
 const avatar = computed(() => user.value?.avatar ?? null);

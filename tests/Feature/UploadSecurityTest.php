@@ -21,6 +21,11 @@ class UploadSecurityTest extends TestCase
     {
         parent::setUp();
 
+        // Las subidas están desactivadas en todos los entornos (config/uploads.php).
+        // Estos tests protegen el código de subida, que sigue existiendo detrás de
+        // UPLOADS_ENABLED: lo activan solo aquí.
+        config(['uploads.enabled' => true]);
+
         Storage::fake('public');
         Storage::fake('local');
     }

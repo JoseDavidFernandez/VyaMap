@@ -11,6 +11,8 @@ import EmptyState from '../components/ui/EmptyState.vue';
 import { flightDate, flightDepartureLabel, flightTimeWithZone } from '../utils/flightTime';
 import type { CountryStatus } from '../utils/countryStatus';
 import { countryPath, tripPath } from '../utils/routes';
+import StockImage from '../components/ui/StockImage.vue';
+import { stockImage, stockImageFor } from '../data/stockImages';
 
 interface User {
     name: string;
@@ -358,6 +360,9 @@ const uploadsEnabled = usePage().props.features.uploads;
                     :href="tripPath(nextTrip)"
                     class="vyamap-card group flex flex-col gap-4 overflow-hidden p-5 transition-colors hover:border-[rgba(167,139,250,0.5)]"
                 >
+                    <div class="-mx-5 -mt-5 h-24">
+                        <StockImage :image="stockImageFor(nextTrip.id)" sizes="24rem" />
+                    </div>
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-sm font-medium text-[var(--vyamap-text-muted)]">Next trip</span>
                         <span class="vyamap-badge vyamap-badge-violet">{{ nextTripLabel }}</span>
@@ -394,6 +399,7 @@ const uploadsEnabled = usePage().props.features.uploads;
             <EmptyState
                 v-if="isFirstRun"
                 icon="route"
+                :image="stockImage('open-road')"
                 title="Start your map"
                 text="Add a trip with the cities you visited and the flights you took. Your countries, distances and statistics build themselves from there."
             >
@@ -714,12 +720,8 @@ const uploadsEnabled = usePage().props.features.uploads;
                     compact
                     icon="photo"
                     title="No photos yet"
-                    text="Add photos from a trip page; they are private and only you can see them."
-                >
-                    <template #actions>
-                        <Link href="/trips" class="vyamap-button-secondary vyamap-button-sm">Go to my trips</Link>
-                    </template>
-                </EmptyState>
+                    text="Photos added to your trips appear here. They are private and only you can see them."
+                />
             </section>
         </div>
     </AppLayout>
