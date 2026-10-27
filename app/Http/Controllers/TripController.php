@@ -11,6 +11,7 @@ use App\Models\Trip;
 use App\Services\PhotoFileManager;
 use App\Services\TravelStatistics;
 use App\Support\FlightPresenter;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Support\SovereignCountries;
@@ -32,9 +33,13 @@ class TripController extends Controller
         return redirect()->route('trips.show', $trip);
     }
 
-    public function edit(Request $request, Trip $trip): Response
+    public function edit(Request $request, Trip $trip): Response|RedirectResponse
     {
         $this->authorize('update', $trip);
+
+        if ($redirect = $this->canonicalRedirect($request, 'trip', $trip)) {
+            return $redirect;
+        }
 
         return Inertia::render('Trips/Edit', [
             'trip' => [
@@ -114,9 +119,13 @@ class TripController extends Controller
         return redirect()->route('trips.index');
     }
 
-    public function show(Request $request, Trip $trip): Response
+    public function show(Request $request, Trip $trip): Response|RedirectResponse
     {
         $this->authorize('view', $trip);
+
+        if ($redirect = $this->canonicalRedirect($request, 'trip', $trip)) {
+            return $redirect;
+        }
 
         // Orden cronológico (y por id ante empates) para que la lista y los mapas
         // no dependan del orden en que se crearon los registros.
@@ -199,9 +208,13 @@ class TripController extends Controller
         ]);
     }
 
-    public function photos(Trip $trip): Response
+    public function photos(Request $request, Trip $trip): Response|RedirectResponse
     {
         $this->authorize('view', $trip);
+
+        if ($redirect = $this->canonicalRedirect($request, 'trip', $trip)) {
+            return $redirect;
+        }
 
         $trip->load([
             'photos',

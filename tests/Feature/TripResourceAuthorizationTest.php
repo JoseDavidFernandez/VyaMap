@@ -166,13 +166,13 @@ class TripResourceAuthorizationTest extends TestCase
                 'departure_date' => '2026-09-11', 'departure_time' => '10:00',
                 'arrival_date' => '2026-09-11', 'arrival_time' => '11:10',
             ])
-            ->assertRedirect("/trips/{$this->trip->id}");
+            ->assertRedirect(route('trips.show', $this->trip));
 
         $this->assertSame('VY2000', $flight->fresh()->flight_number);
 
         $this->actingAs($this->owner)
             ->delete("/trips/{$this->trip->id}/flights/{$flight->id}")
-            ->assertRedirect("/trips/{$this->trip->id}");
+            ->assertRedirect(route('trips.show', $this->trip));
 
         $this->assertDatabaseMissing('flights', ['id' => $flight->id]);
     }
@@ -183,7 +183,7 @@ class TripResourceAuthorizationTest extends TestCase
 
         $this->actingAs($this->owner)
             ->delete("/trips/{$this->trip->id}/visits/{$visit->id}")
-            ->assertRedirect("/trips/{$this->trip->id}");
+            ->assertRedirect(route('trips.show', $this->trip));
 
         $this->assertDatabaseMissing('visits', ['id' => $visit->id]);
     }

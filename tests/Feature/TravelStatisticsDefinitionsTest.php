@@ -103,7 +103,7 @@ class TravelStatisticsDefinitionsTest extends TestCase
         $this->visit($trip, $nuuk, '2025-07-01');
 
         $this->actingAs($this->user)
-            ->get("/trips/{$trip->id}")
+            ->get(route('trips.show', $trip))
             ->assertInertia(fn ($page) => $page->where('visits.0.city.country_status', 'territory'));
 
         $this->actingAs($this->user)

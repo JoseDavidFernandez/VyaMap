@@ -6,9 +6,11 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { countCountries, isTerritoryStatus, type CountryStatus } from '../../utils/countryStatus';
+import { countryPath } from '../../utils/routes';
 
 interface Country {
     id: number;
+    slug: string;
     name: string;
     iso_code: string;
     country_status: CountryStatus;
@@ -19,7 +21,7 @@ interface Country {
 const props = defineProps<{
     countries: Country[];
     // Países solo planificados: se listan aparte y no cuentan.
-    plannedCountries: { id: number; name: string; iso_code: string; country_status: CountryStatus }[];
+    plannedCountries: { id: number; slug: string; name: string; iso_code: string; country_status: CountryStatus }[];
 }>();
 
 // Estados soberanos y territorios por separado; la lista muestra ambos.
@@ -77,7 +79,7 @@ const filteredCountries = computed(() => {
 
             <ul v-if="filteredCountries.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <li v-for="country in filteredCountries" :key="country.id">
-                    <Link :href="`/countries/${country.id}`" class="vyamap-trip-card group flex items-center gap-4 p-4">
+                    <Link :href="countryPath(country)" class="vyamap-trip-card group flex items-center gap-4 p-4">
                         <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)] text-2xl" aria-hidden="true">
                             {{ flagEmoji(country.iso_code) }}
                         </span>
@@ -126,7 +128,7 @@ const filteredCountries = computed(() => {
                     <Link
                         v-for="country in props.plannedCountries"
                         :key="country.id"
-                        :href="`/countries/${country.id}`"
+                        :href="countryPath(country)"
                         class="vyamap-badge vyamap-badge-violet vyamap-badge-plain !min-h-8 !px-3 !text-[0.8125rem] hover:bg-[rgba(167,139,250,0.22)]"
                     >
                         <span aria-hidden="true">{{ flagEmoji(country.iso_code) }}</span>

@@ -365,6 +365,7 @@ class DashboardController extends Controller
                             'name' => $visit->city->name,
                             'country' => $visit->city->country->name,
                             'country_id' => $visit->city->country->id,
+                            'country_slug' => $visit->city->country->getRouteKey(),
                             'iso_code' => $visit->city->country->iso_code,
                             'country_status' => SovereignCountries::classify($visit->city->country->iso_code),
                             'latitude' => $visit->city->latitude,

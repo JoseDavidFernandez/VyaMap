@@ -9,6 +9,7 @@ import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
 import { calendarYear, tripDays as calendarTripDays } from '../../utils/tripDates';
 import type { CountryStatus } from '../../utils/countryStatus';
 import { emptyYear, type PlaceCounts, type YearPlaceStats } from '../../types/statistics';
+import { tripPath } from '../../utils/routes';
 
 interface Country {
     name: string;
@@ -194,7 +195,7 @@ const placeholderTones = [
                 <!-- VIAJES -->
                 <ul v-if="filteredTrips.length" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <li v-for="(trip, index) in filteredTrips" :key="trip.id">
-                        <Link :href="`/trips/${trip.id}`" class="vyamap-trip-card group flex h-full flex-col overflow-hidden">
+                        <Link :href="tripPath(trip)" class="vyamap-trip-card group flex h-full flex-col overflow-hidden">
                             <div class="relative aspect-[16/9] overflow-hidden border-b border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]">
                                 <img
                                     v-if="trip.cover"

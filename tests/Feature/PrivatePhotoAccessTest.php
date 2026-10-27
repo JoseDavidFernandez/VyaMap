@@ -252,7 +252,7 @@ class PrivatePhotoAccessTest extends TestCase
         Album::create(['user_id' => $this->owner->id, 'name' => 'A', 'cover_photo_id' => $photo->id])->photos()->attach($photo->id);
 
         $response = $this->actingAs($this->owner)
-            ->get(strtr($uri, ['{trip}' => $this->trip->id, '{country}' => $country->id]))
+            ->get(strtr($uri, ['{trip}' => $this->trip->getRouteKey(), '{country}' => $country->getRouteKey()]))
             ->assertOk();
 
         $props = json_encode($response->viewData('page')['props'], JSON_UNESCAPED_SLASHES);

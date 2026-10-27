@@ -10,6 +10,7 @@ import Icon from '../components/ui/Icon.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import { flightDate, flightDepartureLabel, flightTimeWithZone } from '../utils/flightTime';
 import type { CountryStatus } from '../utils/countryStatus';
+import { countryPath, tripPath } from '../utils/routes';
 
 interface User {
     name: string;
@@ -64,6 +65,7 @@ interface Visit {
         name: string;
         country: string;
         country_id: number;
+        country_slug: string;
         iso_code: string;
         country_status: CountryStatus;
         latitude: number | null;
@@ -231,6 +233,7 @@ const topCountries = computed(() => {
         string,
         {
             id: number;
+            slug: string;
             name: string;
             iso_code: string;
             cities: string[];
@@ -245,6 +248,7 @@ const topCountries = computed(() => {
         if (!countryMap.has(iso)) {
             countryMap.set(iso, {
                 id: visit.city.country_id,
+                slug: visit.city.country_slug,
                 name: visit.city.country,
                 iso_code: iso,
                 cities: [],
@@ -331,7 +335,7 @@ const uploadsEnabled = usePage().props.features.uploads;
                     <Link
                         v-for="trip in pendingTrips"
                         :key="trip.id"
-                        :href="`/trips/${trip.id}`"
+                        :href="tripPath(trip)"
                         class="vyamap-badge vyamap-badge-amber vyamap-badge-plain hover:bg-[rgba(251,191,36,0.18)]"
                     >
                         {{ trip.name }}
@@ -351,7 +355,7 @@ const uploadsEnabled = usePage().props.features.uploads;
 
                 <Link
                     v-if="nextTrip"
-                    :href="`/trips/${nextTrip.id}`"
+                    :href="tripPath(nextTrip)"
                     class="vyamap-card group flex flex-col gap-4 overflow-hidden p-5 transition-colors hover:border-[rgba(167,139,250,0.5)]"
                 >
                     <div class="flex items-center justify-between gap-3">
@@ -487,7 +491,7 @@ const uploadsEnabled = usePage().props.features.uploads;
                     <ul v-if="topCountries.length" class="-mx-2 flex flex-col">
                         <li v-for="country in topCountries" :key="country.iso_code">
                             <Link
-                                :href="`/countries/${country.id}`"
+                                :href="countryPath(country)"
                                 class="vyamap-row vyamap-row-link group flex items-center gap-3 px-2 py-2.5"
                             >
                                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--vyamap-radius-sm)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)] text-lg" aria-hidden="true">
@@ -544,7 +548,7 @@ const uploadsEnabled = usePage().props.features.uploads;
                     <ul v-if="recentTrips.length" class="-mx-2 flex flex-col">
                         <li v-for="trip in recentTrips.slice(0, 4)" :key="trip.id">
                             <Link
-                                :href="`/trips/${trip.id}`"
+                                :href="tripPath(trip)"
                                 class="vyamap-row vyamap-row-link group flex items-center gap-4 px-2 py-3"
                             >
                                 <span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]">

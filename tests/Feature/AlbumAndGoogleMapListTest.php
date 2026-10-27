@@ -155,9 +155,9 @@ class AlbumAndGoogleMapListTest extends TestCase
         $trip = $this->trip($this->user);
 
         $this->actingAs($this->user)
-            ->from("/trips/{$trip->id}")
+            ->from(route('trips.show', $trip))
             ->post("/trips/{$trip->id}/google-maps", ['name' => 'Restaurantes', 'url' => 'https://maps.app.goo.gl/abc123'])
-            ->assertRedirect("/trips/{$trip->id}")
+            ->assertRedirect(route('trips.show', $trip))
             ->assertSessionHasNoErrors();
 
         $list = GoogleMapList::sole();
@@ -167,7 +167,7 @@ class AlbumAndGoogleMapListTest extends TestCase
         $this->assertSame([$trip->id], $list->trips()->pluck('trips.id')->all());
 
         $this->actingAs($this->user)
-            ->get("/trips/{$trip->id}")
+            ->get(route('trips.show', $trip))
             ->assertInertia(fn ($page) => $page
                 ->component('Trips/Show')
                 ->has('google_map_lists', 1, fn ($item) => $item
@@ -213,16 +213,16 @@ class AlbumAndGoogleMapListTest extends TestCase
         $first->googleMapLists()->attach($list->id);
 
         $this->actingAs($this->user)
-            ->from("/trips/{$second->id}")
+            ->from(route('trips.show', $second))
             ->post("/trips/{$second->id}/google-maps/{$list->id}")
-            ->assertRedirect("/trips/{$second->id}");
+            ->assertRedirect(route('trips.show', $second));
 
         // Lista reutilizable: queda en los dos viajes, sin duplicarse.
         $this->assertSame([$first->id, $second->id], $list->trips()->orderBy('trips.id')->pluck('trips.id')->all());
         $this->assertSame(1, GoogleMapList::count());
 
         $this->actingAs($this->user)
-            ->get("/trips/{$second->id}")
+            ->get(route('trips.show', $second))
             ->assertInertia(fn ($page) => $page
                 ->has('google_map_lists', 1)
                 ->where('google_map_lists.0.id', $list->id)
@@ -255,7 +255,7 @@ class AlbumAndGoogleMapListTest extends TestCase
         $trip->googleMapLists()->attach($museums->id);
 
         $this->actingAs($this->user)
-            ->get("/trips/{$trip->id}")
+            ->get(route('trips.show', $trip))
             ->assertInertia(fn ($page) => $page
                 ->component('Trips/Show')
                 ->has('available_google_map_lists', 3)
@@ -284,7 +284,7 @@ class AlbumAndGoogleMapListTest extends TestCase
         $this->list(User::factory()->create(), 'Ajena');
 
         $this->actingAs($this->user)
-            ->get("/trips/{$trip->id}")
+            ->get(route('trips.show', $trip))
             ->assertInertia(fn ($page) => $page
                 ->has('available_google_map_lists', 0)
                 ->has('google_map_lists', 0)

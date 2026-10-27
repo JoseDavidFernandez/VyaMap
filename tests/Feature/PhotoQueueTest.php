@@ -159,7 +159,7 @@ class PhotoQueueTest extends TestCase
         }
 
         $this->actingAs($user)
-            ->get("/trips/{$trip->id}")
+            ->get(route('trips.show', $trip))
             ->assertInertia(fn ($page) => $page
                 ->where('processing_photos_count', 2)
                 ->has('photos', 1)

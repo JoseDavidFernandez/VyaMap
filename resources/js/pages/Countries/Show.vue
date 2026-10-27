@@ -5,6 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
+import { tripPath } from '../../utils/routes';
 
 interface Country {
     id: number;
@@ -126,7 +127,7 @@ const formatDate = (date: string | null) => {
 
                 <ul v-if="trips.length" class="-mx-2 flex flex-col">
                     <li v-for="trip in trips" :key="trip.id">
-                        <Link :href="`/trips/${trip.id}`" class="vyamap-row vyamap-row-link group flex items-center gap-4 px-2 py-3">
+                        <Link :href="tripPath(trip)" class="vyamap-row vyamap-row-link group flex items-center gap-4 px-2 py-3">
                             <span class="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--vyamap-radius-md)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]">
                                 <img v-if="trip.cover" :src="trip.cover" alt="" class="h-full w-full object-cover" loading="lazy" />
                                 <span v-else class="flex h-full w-full items-center justify-center text-[var(--vyamap-text-muted)]">

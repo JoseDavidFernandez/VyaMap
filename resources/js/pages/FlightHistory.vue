@@ -12,6 +12,7 @@ import { calendarDate, flightDepartureLabel } from '../utils/flightTime';
 import { calendarYear } from '../utils/tripDates';
 import type { FlightRecord as Flight, FlightStatus, TripOption } from '../types/flights';
 import type { FlightStats } from '../types/statistics';
+import { tripPath } from '../utils/routes';
 
 const props = defineProps<{
     flights: Flight[];
@@ -506,7 +507,7 @@ const formattedAverageDuration = computed(() => {
                             <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
                                 <div class="flex flex-wrap items-center gap-2 text-[0.8125rem]">
                                     <span class="vyamap-badge" :class="statusBadge(flight).class">{{ statusBadge(flight).label }}</span>
-                                    <Link v-if="flight.trip" :href="`/trips/${flight.trip.id}`" class="vyamap-link inline-flex items-center gap-1">
+                                    <Link v-if="flight.trip" :href="tripPath(flight.trip)" class="vyamap-link inline-flex items-center gap-1">
                                         <Icon name="trips" :size="14" />
                                         {{ flight.trip.name }}
                                     </Link>

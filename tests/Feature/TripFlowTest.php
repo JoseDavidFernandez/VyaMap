@@ -214,7 +214,7 @@ class TripFlowTest extends TestCase
         $outbound = $this->createFlight($this->trip, '2026-09-10 06:00:00', '2026-09-10 07:10:00', 'VY1000');
 
         $this->actingAs($this->owner)
-            ->get("/trips/{$this->trip->id}")
+            ->get(route('trips.show', $this->trip))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('flights.0.id', $outbound->id)
@@ -229,7 +229,7 @@ class TripFlowTest extends TestCase
         $first = $this->createVisit($this->trip, '2026-09-10', '2026-09-11');
 
         $this->actingAs($this->owner)
-            ->get("/trips/{$this->trip->id}")
+            ->get(route('trips.show', $this->trip))
             ->assertInertia(fn ($page) => $page
                 ->where('visits.0.id', $first->id)
                 ->where('visits.1.id', $second->id)
@@ -268,7 +268,7 @@ class TripFlowTest extends TestCase
                 'departure_date' => '2026-09-11', 'departure_time' => '21:00',
                 'arrival_date' => '2026-09-11', 'arrival_time' => '09:00',
             ])
-            ->assertRedirect("/trips/{$this->trip->id}")
+            ->assertRedirect(route('trips.show', $this->trip))
             ->assertSessionHasNoErrors();
 
         $flight = Flight::where('flight_number', 'NH186')->firstOrFail();

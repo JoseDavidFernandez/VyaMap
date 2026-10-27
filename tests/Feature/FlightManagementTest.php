@@ -491,7 +491,7 @@ class FlightManagementTest extends TestCase
         $this->flight(null, '2026-10-12', '08:00');
 
         $this->actingAs($this->user)
-            ->get("/trips/{$trip->id}")
+            ->get(route('trips.show', $trip))
             ->assertInertia(fn ($page) => $page->where('flights', fn ($flights) => collect($flights)->pluck('status')->all() === ['flown', 'pending']));
     }
 
@@ -501,13 +501,13 @@ class FlightManagementTest extends TestCase
 
         $this->actingAs($this->user)
             ->post("/trips/{$trip->id}/flights", ['origin_airport_id' => $this->mad->id, 'destination_airport_id' => $this->bcn->id, 'departure_date' => '2026-09-10'])
-            ->assertRedirect("/trips/{$trip->id}");
+            ->assertRedirect(route('trips.show', $trip));
 
         // En las rutas del viaje, el viaje lo fija la URL (se ignora trip_id).
         $flight = Flight::sole();
         $this->assertSame($trip->id, $flight->trip_id);
 
-        $this->actingAs($this->user)->delete("/trips/{$trip->id}/flights/{$flight->id}")->assertRedirect("/trips/{$trip->id}");
+        $this->actingAs($this->user)->delete("/trips/{$trip->id}/flights/{$flight->id}")->assertRedirect(route('trips.show', $trip));
         $this->assertModelMissing($flight);
     }
 

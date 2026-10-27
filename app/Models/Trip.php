@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
 /**
  * Estados guardados: planned, completed, cancelled. Fases que se deducen de
@@ -54,6 +55,34 @@ class Trip extends Model
         static::creating(function (Trip $trip) {
             $trip->status ??= self::initialStatusFor($trip->end_date);
         });
+    }
+
+    /*
+     * URL legible: /trips/386-new-york. El id identifica el viaje; el slug,
+     * derivado del nombre, solo se lee y nunca se guarda, así que renombrar un
+     * viaje no rompe enlaces. Se aceptan también "386" (URL anterior) y slugs
+     * desactualizados: las páginas GET redirigen a la canónica después de
+     * autorizar (Controller::canonicalRedirect), para no revelar el nombre de
+     * un viaje ajeno.
+     */
+    public function getRouteKey(): string
+    {
+        $slug = Str::slug((string) $this->name);
+
+        return $slug === '' ? (string) $this->getKey() : $this->getKey() . '-' . $slug;
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        if (! preg_match('/^(\d+)(?:-[a-z0-9-]*)?$/', (string) $value, $matches)) {
+            return null;
+        }
+
+        return $this->newQuery()->whereKey((int) $matches[1])->first();
     }
 
     // "Hoy" es el día del calendario del usuario, no el de UTC.

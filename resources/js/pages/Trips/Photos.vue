@@ -4,6 +4,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { tripPath } from '../../utils/routes';
 
 interface Trip {
     id: number;
@@ -91,7 +92,7 @@ const formatDate = (date: string | null) => {
 <template>
     <AppLayout :title="`Photos · ${trip.name}`">
         <div class="vyamap-container">
-            <Link :href="`/trips/${trip.id}`" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-3">
+            <Link :href="tripPath(trip)" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-3">
                 <Icon name="arrow-left" :size="16" />
                 {{ trip.name }}
             </Link>
@@ -153,7 +154,7 @@ const formatDate = (date: string | null) => {
                 text="Your travel memories will appear here once you start adding photos to this trip."
             >
                 <template #actions>
-                    <Link :href="`/trips/${trip.id}`" class="vyamap-button-secondary vyamap-button-sm">Back to the trip</Link>
+                    <Link :href="tripPath(trip)" class="vyamap-button-secondary vyamap-button-sm">Back to the trip</Link>
                 </template>
             </EmptyState>
         </div>

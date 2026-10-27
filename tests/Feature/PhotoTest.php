@@ -709,7 +709,7 @@ class PhotoTest extends TestCase
 
         $this
             ->actingAs($user)
-            ->get('/trips/' . $trip->id)
+            ->get(route('trips.show', $trip))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Trips/Show')

@@ -812,6 +812,15 @@ Reglas de aislamiento:
 
 La suite debe mantenerse pasando antes de avanzar a cambios estructurales importantes.
 
+## URLs legibles
+
+- **Viajes:** `/trips/{id}-{slug}` (`/trips/386-new-york`, `/trips/386-new-york/edit`, `/trips/386-new-york/photos`). El id identifica el viaje y el slug se deriva del nombre con `Str::slug`; no se guarda, así que renombrar un viaje no rompe enlaces (`Trip::getRouteKey` y `resolveRouteBinding`). Sin slug posible (un nombre solo con emojis), la clave es el id.
+- **Países:** `/countries/{slug}` (`/countries/italy`), derivado del nombre. Si dos países dieran el mismo slug, ambos llevan su código ISO (`congo-cg`). El mapa de slugs se calcula una vez por petición y se invalida al guardar o borrar un país (`Country::slugMap`).
+- **Compatibilidad:** las URL anteriores (`/trips/386`, `/countries/1147`) y los slugs desactualizados siguen funcionando: las páginas GET redirigen con 301 a la canónica, conservando la query (`Controller::canonicalRedirect`).
+- **Autorización primero:** la redirección se hace después de `authorize`; un intruso recibe 403 sin `Location`, así que la URL canónica nunca revela el nombre de un viaje ajeno (`tests/Feature/ReadableUrlTest.php`).
+- **Escrituras:** `PUT`, `PATCH`, `POST` y `DELETE` aceptan el id solo o la clave completa; el frontend usa el id, que no depende del nombre.
+- **Frontend:** `resources/js/utils/routes.ts` (`tripPath`, `countryPath`). Su `slugify` coincide con `Str::slug` en nombres latinos; en otros alfabetos, la página redirige a la canónica. Los países usan el `slug` que envía el servidor.
+
 ## Seguridad
 
 ### Cuentas y contraseñas

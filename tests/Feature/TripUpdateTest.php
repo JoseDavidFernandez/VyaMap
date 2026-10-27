@@ -45,7 +45,7 @@ class TripUpdateTest extends TestCase
 
         $this->actingAs($this->user)
             ->put("/trips/{$this->trip->id}", $this->payload('2026-09-11', '2026-09-15'))
-            ->assertRedirect("/trips/{$this->trip->id}")
+            ->assertRedirect(route('trips.show', $this->trip))
             ->assertSessionHasNoErrors();
 
         $this->assertSame('2026-09-11', $this->trip->fresh()->start_date->format('Y-m-d'));
@@ -117,7 +117,7 @@ class TripUpdateTest extends TestCase
         $this->createVisit('2026-09-12', '2026-09-14');
 
         $this->actingAs($this->user)
-            ->get("/trips/{$this->trip->id}")
+            ->get(route('trips.show', $this->trip))
             ->assertInertia(fn ($page) => $page
                 ->where('visits.0.visited_from', '2026-09-12')
                 ->where('visits.0.visited_until', '2026-09-14')

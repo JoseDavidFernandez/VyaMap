@@ -32,7 +32,7 @@ class SecurityIsolationTest extends TestCase
 
     private User $intruder;
 
-    /** @var array<string, int> */
+    /** @var array<string, int|string> */
     private array $ids = [];
 
     protected function setUp(): void
@@ -68,7 +68,7 @@ class SecurityIsolationTest extends TestCase
             'trip' => $trip->id, 'visit' => $visit->id, 'flight' => $flight->id, 'standaloneFlight' => $standaloneFlight->id, 'photo' => $photo->id,
             'album' => $album->id, 'list' => $list->id, 'day' => $day->id, 'city' => $city->id,
             'country' => $country->id, 'origin' => $origin->id, 'destination' => $destination->id,
-            'ownTrip' => $ownTrip->id, 'ownAlbum' => $ownAlbum->id,
+            'ownTrip' => $ownTrip->id, 'ownAlbum' => $ownAlbum->id, 'countrySlug' => $country->getRouteKey(),
         ];
     }
 
@@ -141,7 +141,7 @@ class SecurityIsolationTest extends TestCase
             'viajes' => ['/trips', null],
             'fotos' => ['/photos', 'photos'],
             'países' => ['/countries', null],
-            'país' => ['/countries/{country}', 'trips'],
+            'país' => ['/countries/{countrySlug}', 'trips'],
             'pasaporte' => ['/passport', 'visits'],
             'vuelos' => ['/flight-history', 'flights'],
             'perfil' => ['/profile', null],
@@ -169,7 +169,7 @@ class SecurityIsolationTest extends TestCase
     public function test_country_page_only_shows_the_users_own_trips_and_cities(): void
     {
         $this->actingAs($this->intruder)
-            ->get("/countries/{$this->ids['country']}")
+            ->get(route('countries.show', Country::find($this->ids['country'])))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->has('trips', 0)->has('cities', 0));
     }
@@ -246,7 +246,7 @@ class SecurityIsolationTest extends TestCase
         $this->actingAs($this->intruder)->post("/trips/{$trip->id}/google-maps", ['name' => 'n', 'url' => 'https://example.com'])->assertForbidden();
         $this->actingAs($this->intruder)->post("/trips/{$trip->id}/google-maps/{$list->id}")->assertForbidden();
         $this->actingAs($this->intruder)->delete("/trips/{$trip->id}/google-maps/{$list->id}")->assertForbidden();
-        $this->actingAs($this->intruder)->get("/trips/{$trip->id}")->assertOk();
+        $this->actingAs($this->intruder)->get(route('trips.show', $trip))->assertOk();
     }
 
     public function test_removing_a_photo_that_is_not_in_the_album_returns_not_found(): void

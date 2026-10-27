@@ -76,7 +76,7 @@ class TripStatusTest extends TestCase
 
         $this->travelTo(Carbon::parse('2027-06-01 12:00:00', 'UTC'));
         $this->actingAs($this->user)->get('/')->assertOk();
-        $this->actingAs($this->user)->get("/trips/{$pending->id}")->assertOk();
+        $this->actingAs($this->user)->get(route('trips.show', $pending))->assertOk();
 
         $this->assertSame(Trip::PLANNED, $pending->fresh()->status);
         $this->assertSame('pending', $pending->fresh()->phase());
@@ -205,7 +205,7 @@ class TripStatusTest extends TestCase
 
         $spain = Country::where('iso_code', 'ES')->first();
         $this->actingAs($this->user)
-            ->get("/countries/{$spain->id}")
+            ->get(route('countries.show', $spain))
             ->assertInertia(fn ($page) => $page
                 ->where('cities', [['id' => $madrid->id, 'name' => 'Madrid', 'visits_count' => 1, 'planned' => true]])
                 ->where('trips', fn ($trips) => collect($trips)->pluck('phase', 'name')->all() === ['Upcoming' => 'upcoming', 'Completed' => 'completed'])
@@ -228,7 +228,7 @@ class TripStatusTest extends TestCase
             );
 
         $this->actingAs($this->user)
-            ->get("/trips/{$pending->id}")
+            ->get(route('trips.show', $pending))
             ->assertInertia(fn ($page) => $page
                 ->where('trip.status', 'planned')
                 ->where('trip.phase', 'pending')
@@ -236,7 +236,7 @@ class TripStatusTest extends TestCase
             );
 
         $this->actingAs($this->user)
-            ->get("/trips/{$upcoming->id}")
+            ->get(route('trips.show', $upcoming))
             ->assertInertia(fn ($page) => $page->where('trip.can_complete', false));
     }
 
@@ -318,7 +318,7 @@ class TripStatusTest extends TestCase
             );
 
         $this->actingAs($this->user)
-            ->get("/trips/{$ongoing->id}")
+            ->get(route('trips.show', $ongoing))
             ->assertInertia(fn ($page) => $page->where('flights', fn ($flights) => collect($flights)->pluck('status')->all() === ['flown', 'upcoming']));
     }
 
@@ -351,11 +351,11 @@ class TripStatusTest extends TestCase
         $started = $this->trip('2026-10-10', '2026-10-20');
 
         $this->actingAs($this->user)
-            ->get("/trips/{$cancelled->id}")
+            ->get(route('trips.show', $cancelled))
             ->assertInertia(fn ($page) => $page->where('trip.phase', 'cancelled')->where('trip.can_complete', false));
 
         $this->actingAs($this->user)
-            ->get("/trips/{$started->id}")
+            ->get(route('trips.show', $started))
             ->assertInertia(fn ($page) => $page->where('trip.can_complete', true));
     }
 
@@ -398,7 +398,7 @@ class TripStatusTest extends TestCase
         $this->actingAs($this->user)->get('/passport')->assertInertia(fn ($page) => $page->where('flights', [])->where('years', []));
 
         // En la ficha de su propio viaje sigue visible, marcado como cancelado (gris en el mapa).
-        $this->actingAs($this->user)->get("/trips/{$trip->id}")->assertInertia(fn ($page) => $page->where('flights.0.status', 'cancelled'));
+        $this->actingAs($this->user)->get(route('trips.show', $trip))->assertInertia(fn ($page) => $page->where('flights.0.status', 'cancelled'));
     }
 
     public function test_t5_a_past_standalone_flight_stays_pending_until_confirmed(): void

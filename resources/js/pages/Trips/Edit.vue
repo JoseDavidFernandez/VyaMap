@@ -3,6 +3,7 @@ import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
 import TripFormFields from '../../components/trips/TripFormFields.vue';
+import { tripPath } from '../../utils/routes';
 
 interface Trip {
     id: number;
@@ -31,7 +32,7 @@ const submit = () => {
 <template>
     <AppLayout :title="`Edit ${trip.name}`">
         <div class="vyamap-container max-w-3xl">
-            <Link :href="`/trips/${trip.id}`" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-4">
+            <Link :href="tripPath(trip)" class="vyamap-button-ghost vyamap-button-sm -ml-3 mb-4">
                 <Icon name="arrow-left" :size="16" />
                 {{ trip.name }}
             </Link>
@@ -47,7 +48,7 @@ const submit = () => {
                 <TripFormFields :form="form" name-placeholder="e.g. Italy 2026" />
 
                 <div class="mt-7 flex flex-col-reverse gap-3 border-t border-[var(--vyamap-border)] pt-5 sm:flex-row sm:justify-end">
-                    <Link :href="`/trips/${trip.id}`" class="vyamap-button-secondary">Cancel</Link>
+                    <Link :href="tripPath(trip)" class="vyamap-button-secondary">Cancel</Link>
                     <button type="submit" :disabled="form.processing" class="vyamap-button">
                         {{ form.processing ? 'Saving...' : 'Save changes' }}
                     </button>

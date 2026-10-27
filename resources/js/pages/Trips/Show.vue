@@ -16,6 +16,7 @@ import type { FlightRecord as Flight } from '../../types/flights';
 import { countCountries, type CountryStatus } from '../../utils/countryStatus';
 
 import type { TripPhase } from '../../utils/tripPhase';
+import { tripPath } from '../../utils/routes';
 
 interface Trip {
     id: number;
@@ -825,7 +826,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                     </div>
 
                     <div class="flex shrink-0 flex-wrap gap-2">
-                        <Link :href="`/trips/${trip.id}/edit`" class="vyamap-button-secondary">
+                        <Link :href="tripPath(trip, 'edit')" class="vyamap-button-secondary">
                             <Icon name="edit" :size="16" />
                             Edit trip
                         </Link>
@@ -894,7 +895,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                     <div class="vyamap-panel-header">
                         <h2 class="vyamap-h2">Photos</h2>
                         <div class="flex items-center gap-2">
-                            <Link v-if="photos.length" :href="`/trips/${trip.id}/photos`" class="vyamap-link text-sm">View all</Link>
+                            <Link v-if="photos.length" :href="tripPath(trip, 'photos')" class="vyamap-link text-sm">View all</Link>
                             <button
                                 v-if="uploadsEnabled"
                                 type="button"
@@ -944,7 +945,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                     <ul v-if="photos.length" class="grid grid-cols-3 gap-2">
                         <li v-for="photo in photos.slice(0, 6)" :key="photo.id">
                             <Link
-                                :href="`/trips/${trip.id}/photos`"
+                                :href="tripPath(trip, 'photos')"
                                 class="block aspect-square overflow-hidden rounded-[var(--vyamap-radius-sm)] border border-[var(--vyamap-border)] bg-[var(--vyamap-surface-strong)]"
                             >
                                 <img :src="photo.thumbnail_url" :alt="photo.original_filename" class="h-full w-full object-cover" loading="lazy" />

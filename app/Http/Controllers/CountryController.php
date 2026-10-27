@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Country;
 use App\Models\Trip;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Support\SovereignCountries;
@@ -45,6 +46,7 @@ class CountryController extends Controller
 
         $countries = $countries->map(fn ($country) => [
             'id' => $country->id,
+            'slug' => $country->getRouteKey(),
             'name' => $country->name,
             'iso_code' => $country->iso_code,
             'country_status' => SovereignCountries::classify($country->iso_code),
@@ -56,6 +58,7 @@ class CountryController extends Controller
             'countries' => $countries->values(),
             'plannedCountries' => $plannedCountries->map(fn ($country) => [
                 'id' => $country->id,
+                'slug' => $country->getRouteKey(),
                 'name' => $country->name,
                 'iso_code' => $country->iso_code,
                 'country_status' => SovereignCountries::classify($country->iso_code),
@@ -63,8 +66,12 @@ class CountryController extends Controller
         ]);
     }
 
-    public function show(Request $request, Country $country): Response
+    public function show(Request $request, Country $country): Response|RedirectResponse
     {
+        if ($redirect = $this->canonicalRedirect($request, 'country', $country)) {
+            return $redirect;
+        }
+
         $user = $request->user();
 
         // Ciudades con visitas realizadas o planificadas; visits_count solo cuenta
