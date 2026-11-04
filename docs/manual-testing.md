@@ -25,7 +25,7 @@ EMAIL_VERIFICATION=false SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan se
 
 Abre `http://127.0.0.1:8010` e inicia sesión con tu usuario de pruebas. La sesión se guarda en una cookie, sin dejar archivos en `storage/framework/sessions`. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
 
-**Verificación del correo:** fuera de `local` es obligatoria por defecto (`EMAIL_VERIFICATION`), y las cuentas de `vyamap_manual` se crearon antes de que existiera, sin el correo verificado: al entrar, la aplicación las mandaría a `/email/verify`. Por eso el comando del servidor lleva `EMAIL_VERIFICATION=false` (no cambia ningún dato); quítalo solo para probar la verificación (casos R). La otra opción es verificar esa cuenta con `php artisan users:verify <correo> --env=manual`, que escribe en `vyamap_manual` (solo `email_verified_at` de esa cuenta).
+**Verificación del correo:** fuera de `local` es obligatoria por defecto (`EMAIL_VERIFICATION`). La cuenta de pruebas de `vyamap_manual` (id 468) se verificó el 27-10-2026 con `php artisan users:verify <correo> --env=manual`, que solo escribe su `email_verified_at`; una cuenta sin verificar iría a `/email/verify`. El `EMAIL_VERIFICATION=false` del comando del servidor ya no es imprescindible, pero evita esa pantalla con cuentas nuevas; quítalo para probar la verificación (casos R).
 
 **`APP_ENV` dentro de `.env.manual` debe ser `manual`:** el servidor que lanza `artisan serve` no recibe `--env` y elige su archivo de entorno por `APP_ENV`. **No exportes `APP_ENV=manual` en la terminal:** se aplicaría a cualquier otro comando que ejecutes en ella.
 
