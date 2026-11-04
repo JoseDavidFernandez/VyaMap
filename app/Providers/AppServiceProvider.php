@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -34,6 +35,13 @@ class AppServiceProvider extends ServiceProvider
         // uncompromised() consulta Have I Been Pwned (k-anonimato: solo se envía
         // el prefijo del hash); si el servicio no responde, no bloquea.
         Password::defaults(fn () => Password::min(10)->uncompromised());
+
+        // Los enlaces de los correos (recuperación, verificación) se generan
+        // con APP_URL y nunca con la cabecera Host de la petición, que la
+        // controla quien la envía.
+        if (! $this->app->environment('local')) {
+            URL::forceRootUrl(config('app.url'));
+        }
 
         $this->configureAuthRateLimiting();
     }
