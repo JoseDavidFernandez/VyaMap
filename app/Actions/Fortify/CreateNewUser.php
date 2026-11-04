@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Rules\ImageWithinPixelLimit;
 use App\Services\AvatarImageService;
 use App\Support\Registration;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -47,6 +48,19 @@ class CreateNewUser implements CreatesNewUsers
             ] : ['prohibited'],
         ])->validate();
 
+        try {
+            return $this->store($input, $enforceLimit);
+        } catch (UniqueConstraintViolationException) {
+            // Otra alta con el mismo correo se adelantó entre la validación y
+            // el insert: mismo error que la regla unique, no un 500.
+            throw ValidationException::withMessages([
+                'email' => __('validation.unique', ['attribute' => 'email']),
+            ]);
+        }
+    }
+
+    private function store(array $input, bool $enforceLimit): User
+    {
         return DB::transaction(function () use ($input, $enforceLimit) {
             // El middleware ya cierra el registro al llegar al máximo; aquí se
             // vuelve a contar con bloqueo para que dos altas simultáneas no lo

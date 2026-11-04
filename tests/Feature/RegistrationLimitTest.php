@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Actions\Fortify\CreateNewUser;
 use App\Models\Trip;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -67,6 +69,27 @@ class RegistrationLimitTest extends TestCase
         }
 
         $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_a_concurrent_registration_with_the_same_email_is_a_validation_error(): void
+    {
+        // Simula la otra alta: se guarda justo después de que la regla unique
+        // haya comprobado que el correo estaba libre.
+        $raced = false;
+        DB::listen(function (QueryExecuted $query) use (&$raced) {
+            if (! $raced && str_contains($query->sql, 'count(*)') && in_array('new@example.test', $query->bindings, true)) {
+                $raced = true;
+                User::factory()->create(['email' => 'new@example.test']);
+            }
+        });
+
+        $this->from('/register')
+            ->post('/register', $this->registration())
+            ->assertRedirect('/register')
+            ->assertSessionHasErrors(['email' => 'The email has already been taken.']);
+
+        $this->assertDatabaseCount('users', 1);
+        $this->assertGuest();
     }
 
     public function test_a_maximum_of_zero_closes_registration(): void
