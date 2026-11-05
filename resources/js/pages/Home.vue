@@ -7,12 +7,15 @@ import TravelMap from '../components/dashboard/TravelMap.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import Icon from '../components/ui/Icon.vue';
+import { useReadOnly } from '../composables/useReadOnly';
 import EmptyState from '../components/ui/EmptyState.vue';
 import { flightDate, flightDepartureLabel, flightTimeWithZone } from '../utils/flightTime';
 import type { CountryStatus } from '../utils/countryStatus';
 import { countryPath, tripPath } from '../utils/routes';
 import StockImage from '../components/ui/StockImage.vue';
 import { stockImage, stockImageFor } from '../data/stockImages';
+
+const readOnly = useReadOnly();
 
 interface User {
     name: string;
@@ -388,7 +391,7 @@ const uploadsEnabled = usePage().props.features.uploads;
                     <span class="text-sm font-medium text-[var(--vyamap-text-muted)]">Next trip</span>
                     <p class="text-xl font-semibold tracking-[-0.02em]">Nothing planned yet</p>
                     <p class="text-sm text-[var(--vyamap-text-muted)]">Your next adventure will appear here.</p>
-                    <Link href="/trips/create" class="vyamap-button-secondary mt-auto w-fit">
+                    <Link v-if="!readOnly" href="/trips/create" class="vyamap-button-secondary mt-auto w-fit">
                         <Icon name="plus" :size="16" />
                         Plan a trip
                     </Link>
@@ -404,7 +407,7 @@ const uploadsEnabled = usePage().props.features.uploads;
                 text="Add a trip with the cities you visited and the flights you took. Your countries, distances and statistics build themselves from there."
             >
                 <template #actions>
-                    <Link href="/trips/create" class="vyamap-button">
+                    <Link v-if="!readOnly" href="/trips/create" class="vyamap-button">
                         <Icon name="plus" :size="16" />
                         New trip
                     </Link>
@@ -603,7 +606,7 @@ const uploadsEnabled = usePage().props.features.uploads;
                         text="Completed trips show up here with their dates and cities."
                     >
                         <template #actions>
-                            <Link href="/trips/create" class="vyamap-button vyamap-button-sm">
+                            <Link v-if="!readOnly" href="/trips/create" class="vyamap-button vyamap-button-sm">
                                 <Icon name="plus" :size="16" />
                                 New trip
                             </Link>

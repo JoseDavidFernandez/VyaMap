@@ -13,6 +13,7 @@ use App\Models\Photo;
 use App\Models\Trip;
 use App\Models\Visit;
 use App\Models\Album;
+use App\Support\DemoAccount;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -61,6 +62,12 @@ class User extends Authenticatable implements MustVerifyEmail
         if (config('auth.email_verification')) {
             parent::sendEmailVerificationNotification();
         }
+    }
+
+    /** Cuenta de demostración de solo lectura (config/demo.php). */
+    public function isDemo(): bool
+    {
+        return DemoAccount::matches($this->email);
     }
 
     public function trips(): HasMany

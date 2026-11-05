@@ -14,6 +14,9 @@ import type { FlightRecord as Flight, FlightStatus, TripOption } from '../types/
 import type { FlightStats } from '../types/statistics';
 import { tripPath } from '../utils/routes';
 import { stockImage } from '../data/stockImages';
+import { useReadOnly } from '../composables/useReadOnly';
+
+const readOnly = useReadOnly();
 
 const props = defineProps<{
     flights: Flight[];
@@ -263,7 +266,7 @@ const formattedAverageDuration = computed(() => {
                     <h1 class="vyamap-page-title">Flight History</h1>
                     <p class="vyamap-page-description">A complete record of every flight you have added to VyaMap.</p>
                 </div>
-                <button v-if="!showForm" type="button" class="vyamap-button" @click="openForm()">
+                <button v-if="!readOnly && !showForm" type="button" class="vyamap-button" @click="openForm()">
                     <Icon name="plus" :size="16" />
                     Add flight
                 </button>
@@ -282,7 +285,7 @@ const formattedAverageDuration = computed(() => {
                 title="No flights yet"
                 text="Add a flight with its airports and date. Times are optional; with them VyaMap calculates time in the air. Flights can belong to a trip or stand alone."
             >
-                <template #actions>
+                <template v-if="!readOnly" #actions>
                     <button type="button" class="vyamap-button" @click="openForm()">
                         <Icon name="plus" :size="16" />
                         Add your first flight
@@ -511,7 +514,7 @@ const formattedAverageDuration = computed(() => {
                                     <span v-else class="text-[var(--vyamap-text-subtle)]">Standalone</span>
                                 </div>
 
-                                <div class="flex flex-wrap gap-1">
+                                <div v-if="!readOnly" class="flex flex-wrap gap-1">
                                     <button v-if="flight.status === 'pending'" type="button" class="vyamap-button vyamap-button-sm" @click="setConfirmed(flight, true)">
                                         <Icon name="check" :size="16" />
                                         Confirm flown

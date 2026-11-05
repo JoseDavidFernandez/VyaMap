@@ -23,6 +23,7 @@ class SharedInertiaDataTest extends TestCase
                     'name' => $user->name,
                     'email' => $user->email,
                     'avatar' => null,
+                    'is_demo' => false,
                 ])
             );
     }

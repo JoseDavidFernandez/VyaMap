@@ -40,6 +40,8 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             HandleInertiaRequests::class,
+            // Después de Inertia: sus redirecciones de PUT, PATCH y DELETE pasan a 303.
+            \App\Http\Middleware\DemoReadOnly::class,
 
         ],
 

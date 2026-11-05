@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import AuthShell from '../../components/ui/AuthShell.vue';
 
 defineProps<{
     status?: string | null;
     canRegister?: boolean;
+    // Solo si DEMO_USER_EMAIL está configurado y la cuenta existe.
+    canTryDemo?: boolean;
 }>();
 
 const form = useForm({
@@ -15,6 +18,15 @@ const form = useForm({
 
 const submit = () => {
     form.post('/login');
+};
+
+// El servidor inicia la sesión de la cuenta de demostración: no se envía ninguna credencial.
+const demoForm = useForm({});
+// Error del límite de frecuencia (el formulario no tiene campos propios).
+const demoError = computed(() => (demoForm.errors as Record<string, string | undefined>).demo);
+
+const tryDemo = () => {
+    demoForm.post('/demo-login');
 };
 </script>
 
@@ -76,6 +88,25 @@ const submit = () => {
                 {{ form.processing ? 'Signing in...' : 'Sign in' }}
             </button>
         </form>
+
+        <div v-if="canTryDemo" class="mt-6">
+            <div class="mb-5 flex items-center gap-3 text-[0.8125rem] text-[var(--vyamap-text-subtle)]" aria-hidden="true">
+                <span class="h-px flex-1 bg-[var(--vyamap-border)]" />
+                or
+                <span class="h-px flex-1 bg-[var(--vyamap-border)]" />
+            </div>
+            <button
+                type="button"
+                class="vyamap-button-secondary w-full !min-h-11"
+                :disabled="demoForm.processing"
+                aria-describedby="demo-help"
+                @click="tryDemo"
+            >
+                {{ demoForm.processing ? 'Opening the demo...' : 'Try the demo' }}
+            </button>
+            <p v-if="demoError" role="alert" class="vyamap-error">{{ demoError }}</p>
+            <p v-else id="demo-help" class="vyamap-help mt-2 text-center">Explore a sample account. It is read-only.</p>
+        </div>
 
         <template v-if="canRegister" #footer>
             Don't have an account?

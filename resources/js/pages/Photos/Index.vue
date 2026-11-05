@@ -5,6 +5,10 @@ import EmptyState from '../../components/ui/EmptyState.vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { stockImage } from '../../data/stockImages';
+import { useReadOnly } from '../../composables/useReadOnly';
+
+// Cuenta de demostración: sin álbumes, selección ni borrado (el servidor también lo impide).
+const readOnly = useReadOnly();
 
 interface Photo {
     id: number;
@@ -222,6 +226,10 @@ const hasActiveFilters = computed(() => {
 });
 
 const openCreateAlbum = () => {
+    if (readOnly.value) {
+        return;
+    }
+
     newAlbumName.value = '';
     newAlbumDescription.value = '';
     showCreateAlbum.value = true;
@@ -236,6 +244,10 @@ const closeCreateAlbum = () => {
 };
 
 const createAlbum = () => {
+    if (readOnly.value) {
+        return;
+    }
+
     if (!newAlbumName.value.trim()) {
         return;
     }
@@ -263,6 +275,10 @@ const createAlbum = () => {
 };
 
 const addPhotosToAlbum = (albumId: number, photoIds: number[]) => {
+    if (readOnly.value) {
+        return;
+    }
+
     if (!photoIds.length || isAddingToAlbum.value) {
         return;
     }
@@ -291,6 +307,10 @@ const addSelectedToAlbum = (albumId: number) => {
 };
 
 const removeSelectedFromAlbum = () => {
+    if (readOnly.value) {
+        return;
+    }
+
     if (
         activeAlbumId.value === null ||
         !selectedPhotos.value.length ||
@@ -326,6 +346,10 @@ const removeSelectedFromAlbum = () => {
 };
 
 const openDeleteConfirmation = () => {
+    if (readOnly.value) {
+        return;
+    }
+
     if (!selectedPhotos.value.length || isDeletingPhotos.value) {
         return;
     }
@@ -346,6 +370,10 @@ const closeDeleteConfirmation = () => {
 };
 
 const deleteSelectedPhotos = () => {
+    if (readOnly.value) {
+        return;
+    }
+
     if (!photosToDelete.value.length || isDeletingPhotos.value) {
         return;
     }
@@ -585,7 +613,7 @@ const formatDate = (date: string | null | undefined) => {
                                 {{ album.name }} · {{ album.photos_count ?? 0 }} {{ (album.photos_count ?? 0) === 1 ? 'photo' : 'photos' }}
                             </option>
                         </select>
-                        <button type="button" class="vyamap-icon-button !h-11 !w-11" aria-label="New album" @click="openCreateAlbum">
+                        <button v-if="!readOnly" type="button" class="vyamap-icon-button !h-11 !w-11" aria-label="New album" @click="openCreateAlbum">
                             <Icon name="plus" :size="18" />
                         </button>
                     </div>
@@ -596,7 +624,7 @@ const formatDate = (date: string | null | undefined) => {
                     <div class="lg:sticky lg:top-6">
                         <div class="mb-2 flex items-center justify-between">
                             <h2 class="text-sm font-semibold">Albums</h2>
-                            <button type="button" class="vyamap-button-ghost vyamap-button-sm !px-2" aria-label="New album" title="New album" @click="openCreateAlbum">
+                            <button v-if="!readOnly" type="button" class="vyamap-button-ghost vyamap-button-sm !px-2" aria-label="New album" title="New album" @click="openCreateAlbum">
                                 <Icon name="plus" :size="16" />
                             </button>
                         </div>
@@ -645,7 +673,7 @@ const formatDate = (date: string | null | undefined) => {
                                 </button>
                             </div>
 
-                            <button type="button" class="vyamap-album-item border-dashed" @click="openCreateAlbum">
+                            <button v-if="!readOnly" type="button" class="vyamap-album-item border-dashed" @click="openCreateAlbum">
                                 <span class="vyamap-album-thumb"><Icon name="plus" :size="18" /></span>
                                 <span class="text-sm text-[var(--vyamap-text-muted)]">New album</span>
                             </button>
@@ -664,14 +692,14 @@ const formatDate = (date: string | null | undefined) => {
                             {{ activeAlbum ? activeAlbum.name : 'All photos' }}
                             <span class="vyamap-number ml-1 font-normal text-[var(--vyamap-text-muted)]">{{ filteredPhotos.length }}</span>
                         </h2>
-                        <button v-if="filteredPhotos.length" type="button" class="vyamap-button-ghost vyamap-button-sm" @click="selectAll">
+                        <button v-if="!readOnly && filteredPhotos.length" type="button" class="vyamap-button-ghost vyamap-button-sm" @click="selectAll">
                             {{ selectedPhotos.length === filteredPhotos.length ? 'Clear selection' : 'Select all' }}
                         </button>
                     </div>
 
                     <!-- BARRA DE SELECCIÓN -->
                     <div
-                        v-if="selectedPhotos.length"
+                        v-if="!readOnly && selectedPhotos.length"
                         class="vyamap-glass sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-30 mb-4 flex flex-col gap-3 rounded-[var(--vyamap-radius-lg)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between lg:top-4"
                         role="region"
                         aria-label="Selection"

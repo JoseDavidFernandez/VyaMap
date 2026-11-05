@@ -6,6 +6,7 @@ use App\Http\Controllers\CitySearchController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemoLoginController;
 use App\Http\Controllers\FlightController;
 use App\Http\Controllers\FlightHistoryController;
 use App\Http\Controllers\GoogleMapListController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\VisitController;
 use App\Http\Middleware\GuardAuthEndpoints;
 use App\Models\Photo;
+use App\Support\DemoAccount;
 use App\Support\Registration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -41,7 +43,13 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', fn () => Inertia::render('Auth/Login', [
         'status' => session('status'),
         'canRegister' => Registration::isOpen(),
+        'canTryDemo' => DemoAccount::user() !== null,
     ]))->name('login');
+
+    // «Try the demo»: sesión de la cuenta de demostración sin credenciales en
+    // el navegador (límite de frecuencia propio en el controlador).
+    Route::post('/demo-login', DemoLoginController::class)
+        ->name('demo.login');
 
     // REGISTER (desactivado fuera de local o con el máximo de cuentas: ver App\Support\Registration)
     Route::get('/register', fn () => Inertia::render('Auth/Register'))

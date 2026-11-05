@@ -2,8 +2,11 @@
 import { computed, defineAsyncComponent } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import Icon from '../components/ui/Icon.vue';
+import { useReadOnly } from '../composables/useReadOnly';
 import { Link } from '@inertiajs/vue3';
 import { countCountries, type CountryStatus } from '../utils/countryStatus';
+
+const readOnly = useReadOnly();
 
 // El globo (three.js) se carga solo al abrir el perfil: no pesa en el resto de páginas.
 const ProfileTravelGlobe = defineAsyncComponent(
@@ -93,7 +96,7 @@ const countryTotals = computed(() => countCountries(props.countries));
                     </div>
                 </div>
 
-                <Link href="/profile/edit" class="vyamap-button-secondary shrink-0">
+                <Link v-if="!readOnly" href="/profile/edit" class="vyamap-button-secondary shrink-0">
                     <Icon name="edit" :size="16" />
                     Edit profile
                 </Link>

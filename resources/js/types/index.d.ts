@@ -5,11 +5,17 @@ interface AuthUser {
     name: string;
     email: string;
     avatar: string | null;
-
+    // Cuenta de demostración de solo lectura: la interfaz oculta las escrituras.
+    is_demo: boolean;
 }
 
 interface AuthProps {
     user: AuthUser | null;
+}
+
+interface FlashProps {
+    // Aviso del servidor al rechazar una escritura de la cuenta de demostración.
+    demoNotice: string | null;
 }
 
 interface FeatureFlags {
@@ -23,5 +29,6 @@ declare module '@inertiajs/core' {
     interface PageProps extends InertiaPageProps {
         auth: AuthProps;
         features: FeatureFlags;
+        flash: FlashProps;
     }
 }

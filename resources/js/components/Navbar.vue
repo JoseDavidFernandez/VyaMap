@@ -2,6 +2,7 @@
 import { router, Link, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import Icon, { type IconName } from './ui/Icon.vue';
+import { useReadOnly } from '../composables/useReadOnly';
 
 /**
  * Navegación principal.
@@ -18,6 +19,7 @@ interface NavItem {
 }
 
 const page = usePage();
+const readOnly = useReadOnly();
 const moreOpen = ref(false);
 
 const path = computed(() => page.url.split('?')[0]);
@@ -94,6 +96,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             </Link>
 
             <Link
+                v-if="!readOnly"
                 href="/trips/create"
                 class="vyamap-button mt-6 !h-11 !px-0 xl:!px-4"
                 aria-label="New trip"
@@ -160,7 +163,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
             </Link>
 
             <div class="flex items-center gap-2">
-                <Link href="/trips/create" class="vyamap-button vyamap-button-sm" aria-label="New trip">
+                <Link v-if="!readOnly" href="/trips/create" class="vyamap-button vyamap-button-sm" aria-label="New trip">
                     <Icon name="plus" :size="16" />
                     <span>New trip</span>
                 </Link>

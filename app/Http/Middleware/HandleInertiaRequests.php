@@ -42,8 +42,14 @@ class HandleInertiaRequests extends Middleware
             // el modelo completo incluiría columnas de 2FA y marcas internas.
             'auth' => [
                 'user' => fn () => $request->user()
-                    ? $request->user()->only(['id', 'name', 'email', 'avatar'])
+                    ? [...$request->user()->only(['id', 'name', 'email', 'avatar']), 'is_demo' => $request->user()->isDemo()]
                     : null,
+            ],
+
+            // Aviso de la cuenta de demostración cuando el servidor rechaza una
+            // escritura (App\Http\Middleware\DemoReadOnly).
+            'flash' => [
+                'demoNotice' => fn () => $request->session()->get('demo_notice'),
             ],
 
             // Solo para ocultar los campos: el servidor aplica la restricción.

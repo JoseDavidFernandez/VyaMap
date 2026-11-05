@@ -2,10 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Responses\PasswordResetLinkRequestedResponse;
+use App\Support\DemoAccount;
 use App\Support\Registration;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -19,6 +22,9 @@ use Symfony\Component\HttpFoundation\Response;
  *   (App\Support\Registration).
  * - Registro, enlace de recuperación, restablecimiento y reenvío del enlace
  *   de verificación: limitadores definidos en AppServiceProvider.
+ * - Cuenta de demostración (App\Support\DemoAccount): no puede pedir el
+ *   enlace de recuperación (misma respuesta que cualquier correo, sin envío)
+ *   ni restablecer la contraseña.
  */
 class GuardAuthEndpoints
 {
@@ -39,6 +45,16 @@ class GuardAuthEndpoints
 
         if (in_array($name, ['register', 'register.store'], true) && ! Registration::isOpen()) {
             abort(404);
+        }
+
+        // Cuenta de demostración: no se envía el enlace, pero la respuesta (y el
+        // limitador) son los de cualquier otro correo, para no revelar cuál es.
+        if (DemoAccount::matches((string) $request->input('email'))) {
+            if ($name === 'password.email') {
+                $next = fn (Request $request) => (new PasswordResetLinkRequestedResponse)->toResponse($request);
+            } elseif ($name === 'password.update') {
+                throw ValidationException::withMessages(['email' => DemoAccount::NOTICE]);
+            }
         }
 
         if (isset(self::LIMITERS[$name])) {

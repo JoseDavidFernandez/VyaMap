@@ -3,6 +3,7 @@
 import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
 import EmptyState from '../../components/ui/EmptyState.vue';
+import { useReadOnly } from '../../composables/useReadOnly';
 import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
 import TripVisitedMap from '../../components/trips/TripVisitedMap.vue';
 import TripFlightMap from '../../components/trips/TripFlightMap.vue';
@@ -17,6 +18,8 @@ import { countCountries, type CountryStatus } from '../../utils/countryStatus';
 
 import type { TripPhase } from '../../utils/tripPhase';
 import { tripPath } from '../../utils/routes';
+
+const readOnly = useReadOnly();
 
 interface Trip {
     id: number;
@@ -775,7 +778,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             <span class="vyamap-badge" :class="phaseBadgeClass">{{ phaseLabel }}</span>
 
                             <button
-                                v-if="trip.can_complete"
+                                v-if="!readOnly && trip.can_complete"
                                 type="button"
                                 :disabled="isChangingStatus"
                                 class="vyamap-button vyamap-button-sm"
@@ -786,7 +789,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             </button>
 
                             <button
-                                v-if="trip.status === 'planned'"
+                                v-if="!readOnly && trip.status === 'planned'"
                                 type="button"
                                 :disabled="isChangingStatus"
                                 class="vyamap-button-secondary vyamap-button-sm"
@@ -796,7 +799,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             </button>
 
                             <button
-                                v-if="trip.status === 'cancelled'"
+                                v-if="!readOnly && trip.status === 'cancelled'"
                                 type="button"
                                 :disabled="isChangingStatus"
                                 class="vyamap-button-secondary vyamap-button-sm"
@@ -806,7 +809,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             </button>
 
                             <button
-                                v-if="trip.status === 'completed'"
+                                v-if="!readOnly && trip.status === 'completed'"
                                 type="button"
                                 :disabled="isChangingStatus"
                                 class="vyamap-button-secondary vyamap-button-sm"
@@ -816,7 +819,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             </button>
                         </div>
 
-                        <p v-if="trip.phase === 'pending'" class="mt-3 max-w-xl text-sm text-[var(--vyamap-warning)]">
+                        <p v-if="!readOnly && trip.phase === 'pending'" class="mt-3 max-w-xl text-sm text-[var(--vyamap-warning)]">
                             This trip has ended. Mark it as completed to count its places as visited.
                         </p>
 
@@ -825,7 +828,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                         <p v-if="trip.description" class="vyamap-page-description">{{ trip.description }}</p>
                     </div>
 
-                    <div class="flex shrink-0 flex-wrap gap-2">
+                    <div v-if="!readOnly" class="flex shrink-0 flex-wrap gap-2">
                         <Link :href="tripPath(trip, 'edit')" class="vyamap-button-secondary">
                             <Icon name="edit" :size="16" />
                             Edit trip
@@ -981,7 +984,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                     </div>
 
                     <!-- Buscador de ciudades -->
-                    <div class="relative mb-4">
+                    <div v-if="!readOnly" class="relative mb-4">
                         <label for="city-search" class="sr-only">Add a city</label>
                         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--vyamap-text-subtle)]">
                             <Icon name="search" :size="18" />
@@ -1071,7 +1074,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                                     </p>
                                 </div>
 
-                                <div v-if="editingVisitId !== visit.id" class="flex shrink-0 gap-1">
+                                <div v-if="!readOnly && editingVisitId !== visit.id" class="flex shrink-0 gap-1">
                                     <button
                                         type="button"
                                         class="vyamap-button-ghost vyamap-button-sm !px-2"
@@ -1152,7 +1155,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                         compact
                         icon="pin"
                         title="No cities yet"
-                        text="Search above for each city you visited. Completed trips count their cities and countries as visited."
+                        :text="readOnly ? 'This trip has no cities in its itinerary.' : 'Search above for each city you visited. Completed trips count their cities and countries as visited.'"
                     />
                 </div>
 
@@ -1161,7 +1164,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                     <div class="vyamap-panel-header">
                         <h2 class="vyamap-h2">Flights</h2>
                         <button
-                            v-if="!showFlightForm"
+                            v-if="!readOnly && !showFlightForm"
                             type="button"
                             class="vyamap-button-secondary vyamap-button-sm"
                             @click="openFlightForm()"
@@ -1219,7 +1222,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                                         <dd class="vyamap-number text-[var(--vyamap-text-muted)]">{{ flight.arrival ? flightTimeWithZone(flight.arrival, flight.destination.timezone) : '—' }}</dd>
                                     </div>
                                 </dl>
-                                <div class="flex gap-1">
+                                <div v-if="!readOnly" class="flex gap-1">
                                     <button type="button" class="vyamap-button-ghost vyamap-button-sm" @click="openFlightForm(flight)">
                                         <Icon name="edit" :size="16" />
                                         Edit
@@ -1240,7 +1243,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                         title="No flights yet"
                         text="Add the flights of this trip to see their routes and distance."
                     >
-                        <template #actions>
+                        <template v-if="!readOnly" #actions>
                             <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="openFlightForm()">
                                 <Icon name="plus" :size="16" />
                                 Add flight
@@ -1258,7 +1261,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                         <p class="mt-1 text-sm text-[var(--vyamap-text-muted)]">Maps and lists used while planning the trip.</p>
                     </div>
                     <button
-                        v-if="!showGoogleMapForm"
+                        v-if="!readOnly && !showGoogleMapForm"
                         type="button"
                         class="vyamap-button-secondary vyamap-button-sm"
                         @click="showGoogleMapForm = true; googleMapMode = 'create'"
@@ -1339,6 +1342,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             </span>
                         </a>
                         <button
+                            v-if="!readOnly"
                             type="button"
                             class="vyamap-button-ghost vyamap-button-sm !px-2 hover:!text-[var(--vyamap-danger)]"
                             :aria-label="`Remove ${mapList.name}`"

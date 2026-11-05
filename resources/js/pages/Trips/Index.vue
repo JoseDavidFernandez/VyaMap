@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
+import { useReadOnly } from '../../composables/useReadOnly';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { tripPhaseBadge, tripPhaseLabel } from '../../utils/tripPhase';
 import { calendarYear, tripDays as calendarTripDays } from '../../utils/tripDates';
@@ -12,6 +13,8 @@ import { emptyYear, type PlaceCounts, type YearPlaceStats } from '../../types/st
 import { tripPath } from '../../utils/routes';
 import StockImage from '../../components/ui/StockImage.vue';
 import { stockImage, stockImageFor } from '../../data/stockImages';
+
+const readOnly = useReadOnly();
 
 interface Country {
     name: string;
@@ -121,7 +124,7 @@ const flagEmoji = (isoCode: string) => {
                     <h1 class="vyamap-page-title">Trips</h1>
                     <p class="vyamap-page-description">Every journey in one place.</p>
                 </div>
-                <Link href="/trips/create" class="vyamap-button hidden lg:inline-flex">
+                <Link v-if="!readOnly" href="/trips/create" class="vyamap-button hidden lg:inline-flex">
                     <Icon name="plus" :size="16" />
                     New trip
                 </Link>
@@ -258,7 +261,7 @@ const flagEmoji = (isoCode: string) => {
                 text="Create a trip with its dates, then add the cities you visited and the flights you took. Each trip keeps its own map and statistics."
             >
                 <template #actions>
-                    <Link href="/trips/create" class="vyamap-button">
+                    <Link v-if="!readOnly" href="/trips/create" class="vyamap-button">
                         <Icon name="plus" :size="16" />
                         Create your first trip
                     </Link>

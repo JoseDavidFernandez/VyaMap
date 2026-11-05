@@ -4,10 +4,13 @@ import { computed, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
+import { useReadOnly } from '../../composables/useReadOnly';
 import EmptyState from '../../components/ui/EmptyState.vue';
 import { countCountries, isTerritoryStatus, type CountryStatus } from '../../utils/countryStatus';
 import { countryPath } from '../../utils/routes';
 import { stockImage } from '../../data/stockImages';
+
+const readOnly = useReadOnly();
 
 interface Country {
     id: number;
@@ -113,7 +116,7 @@ const filteredCountries = computed(() => {
                 text="Your visited countries will appear here once you start adding trips. A country counts when a completed trip has a city in it."
             >
                 <template #actions>
-                    <Link href="/trips/create" class="vyamap-button">
+                    <Link v-if="!readOnly" href="/trips/create" class="vyamap-button">
                         <Icon name="plus" :size="16" />
                         New trip
                     </Link>

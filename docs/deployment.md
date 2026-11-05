@@ -241,6 +241,7 @@ REGISTRATION_ENABLED=false      # true solo cuando el correo funcione (7.3)
 REGISTRATION_MAX_USERS=100
 UPLOADS_ENABLED=false
 EMAIL_VERIFICATION=true         # es el valor por defecto fuera de local
+DEMO_USER_EMAIL=demo@josedavidfernandezcomino.com   # cuenta demo de solo lectura (7.2)
 # GEOAPIFY_API_KEY=              opcional, clave nueva
 ```
 
@@ -375,6 +376,7 @@ Sin `includeSubDomains`, porque afectaría a todos los subdominios de `josedavid
 | Frecuencia | Ya limitada en la aplicación: 5 registros por minuto y 20 por hora por IP |
 | Crear una cuenta a mano | `sudo -u vyamap php artisan users:create "Nombre" correo@example.com` (pide la contraseña) |
 | Rellenar una cuenta con datos de ejemplo | `sudo -u vyamap php artisan demo:reset correo@example.com`. Solo sustituye los viajes, visitas y vuelos de esa cuenta; se niega si tiene fotos. |
+| Cuenta demo de solo lectura | Crearla con `users:create "Demo" <correo>` (contraseña larga y aleatoria: nadie la escribe), poner ese correo en `DEMO_USER_EMAIL`, `config:cache` y rellenarla con `demo:reset <correo>`. El login muestra «Try the demo», que inicia su sesión desde el servidor sin credenciales (límite de 10 por minuto por IP). Ve todo pero no puede crear, editar, borrar ni confirmar nada, ni cambiar su perfil o pedir la recuperación de la contraseña: el servidor rechaza cualquier escritura salvo cerrar sesión. Sin `DEMO_USER_EMAIL`, no hay botón ni cuenta demo. |
 
 ### 7.3 Correo: requisito para abrir el registro
 
@@ -500,6 +502,6 @@ mysql -e 'SELECT COUNT(*) FROM vyamap_restore_test.users; DROP DATABASE vyamap_r
 5. Registro: con `REGISTRATION_ENABLED=false`, `/register` devuelve 404. Las cuentas creadas con `users:create` entran sin pasar por `/email/verify`. Cuando se abra (con correo): se puede crear una cuenta, y con `REGISTRATION_MAX_USERS` igual al número de cuentas el registro se cierra (`users:list` lo indica).
 6. Aislamiento: con dos cuentas, la segunda no ve los viajes, vuelos ni estadísticas de la primera, y las URL de los recursos de la primera le devuelven 403 o 404.
 7. Subidas desactivadas: no aparecen los botones de fotos ni de avatar, y `POST /photos` devuelve 403.
-8. Con datos de `demo:reset`: Home, Trips, Passport y Flight History muestran viajes y estadísticas, y los mapas cargan.
+8. Con datos de `demo:reset`: Home, Trips, Passport y Flight History muestran viajes y estadísticas, y los mapas cargan. Con `DEMO_USER_EMAIL`: «Try the demo» entra sin credenciales, se ve la banda «This is a read-only demo account», no aparecen botones de escritura y `/trips/create` redirige a Trips con el aviso.
 9. `ss -ltnp` solo muestra 22, 80 y 443 hacia fuera; MySQL, en `127.0.0.1`.
 10. La copia de la noche aparece en `/var/backups/vyamap` y se restaura (sección 9).
