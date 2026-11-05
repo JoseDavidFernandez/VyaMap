@@ -177,14 +177,18 @@ onBeforeUnmount(() => {
 
 <template>
     <div
-        ref="mapElement"
-        class="visited-map vyamap-leaflet-dark"
+        class="visited-map"
         :class="{
             'visited-map--planned': phase === 'upcoming' || phase === 'ongoing' || phase === 'pending',
             'visited-map--ongoing': phase === 'ongoing',
             'visited-map--cancelled': phase === 'cancelled',
         }"
     >
+        <!-- Las clases de fase van en el envoltorio: si estuvieran en el
+             contenedor de Leaflet, Vue reescribiría su className al cambiar el
+             estado del viaje y borraría las clases de Leaflet (mapa en negro). -->
+        <div ref="mapElement" class="visited-map-canvas vyamap-leaflet-dark"></div>
+
         <div class="visited-map-overlay">
             <div class="visited-map-kicker">{{ overlayKicker }}</div>
             <div class="visited-map-count">{{ visits.length }} {{ visits.length === 1 ? 'city' : 'cities' }}</div>
@@ -199,6 +203,13 @@ onBeforeUnmount(() => {
     min-height: 100%;
     width: 100%;
     overflow: hidden;
+    background: #0A0F1B;
+}
+
+.visited-map-canvas {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
     background: #0A0F1B;
 }
 
