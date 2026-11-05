@@ -124,3 +124,9 @@ Implementado: viajes con estados, visitas, catálogo, vuelos independientes con 
 Implementado también: estadísticas de viaje calculadas en el servidor (días viajando sin solapes, países y primeras visitas por año, continentes y estadísticas de vuelo).
 
 Pendiente, según el plan: la reorganización completa de las páginas, sugerencias asistidas e importación de vuelos desde CSV. El catálogo de aerolíneas está aplazado.
+
+## Licencia
+
+- **Código:** [MIT](LICENSE).
+- **Catálogo de países, ciudades y aeropuertos** ([`database/data/catalog/`](database/data/catalog/README.md)): generado desde fuentes de dominio público (OurAirports, base de datos tz de IANA, Natural Earth) y CC0 (Wikidata); el origen de cada archivo está en su README.
+- **Imágenes genéricas** ([`public/images/stock/`](public/images/stock/CREDITS.md)): CC0, con sus autores en `CREDITS.md`.
