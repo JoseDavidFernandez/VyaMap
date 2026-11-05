@@ -34,7 +34,7 @@ Leyenda: **Completado** (implementado y con pruebas) · **En curso** (implementa
 
 - `trips.status` (`planned`, `completed`, `cancelled`) con su migración y relleno.
 - Transiciones manuales explícitas; un viaje nunca se completa solo por la fecha.
-- «Visitado = viaje completado» en todas las estadísticas y mapas; lo planificado en lima; lo cancelado no cuenta.
+- «Visitado = viaje completado» en todas las estadísticas y mapas; lo planificado en violeta; lo cancelado no cuenta.
 
 ### F1 — Vuelos independientes y gestión de vuelos
 
@@ -108,13 +108,13 @@ Distribución por página aprobada en el plan (se mantienen el estilo y los mapa
 - **Countries** («consulta»):
   - grupos de países y territorios;
   - en cada tarjeta: ciudades, viajes, primera y última visita, y «been here N times»;
-  - los países solo planificados, en lima y sin contar.
+  - los países solo planificados, en violeta y sin contar.
 - **Detalle de país**: ciudades con las fechas de cada visita y enlace a cada viaje.
 - **Trips** («historial y planes»):
   - pestañas Upcoming / Past, y Cancelled plegado;
   - cabecera con viajes, días viajando (unión de intervalos), países y ciudades;
   - «Trips by year» y estacionalidad.
-- **Ficha del viaje**: etiqueta de estado y acciones, mapa e itinerario en lima si está planificado, y aviso de confirmar tras la fecha de fin.
+- **Ficha del viaje**: etiqueta de estado y acciones, mapa e itinerario en violeta si está planificado, y aviso de confirmar tras la fecha de fin.
 
 Algunas piezas ya existen por F0 y F1 (por ejemplo, las acciones de estado de la ficha del viaje y la gestión de vuelos en Flight History). F4 consiste en reorganizar las páginas según esta distribución.
 

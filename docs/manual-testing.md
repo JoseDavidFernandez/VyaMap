@@ -20,14 +20,20 @@ php artisan tinker --env=manual --execute='echo DB::connection()->getDatabaseNam
 
 # 2. Servidores (en dos terminales)
 npm run dev
-EMAIL_VERIFICATION=false SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
+EMAIL_VERIFICATION=false SESSION_DRIVER=cookie CACHE_DRIVER=file php artisan serve --env=manual --port=8010
 ```
 
-Abre `http://127.0.0.1:8010` e inicia sesión con tu usuario de pruebas. La sesión se guarda en una cookie, sin dejar archivos en `storage/framework/sessions`. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
+Abre `http://127.0.0.1:8010` e inicia sesión con tu usuario de pruebas. La sesión se guarda en una cookie, sin dejar archivos en `storage/framework/sessions`. La caché va a archivo (`CACHE_DRIVER=file`; es la variable que lee `config/cache.php`): con `array` se vacía en cada petición, los límites de frecuencia nunca se alcanzan y R2b no puede dar el 429. Sus archivos quedan en `storage/framework/cache` y se borran con `CACHE_DRIVER=file php artisan cache:clear --env=manual`. En este modo no hay worker de cola, así que las fotos se quedan pendientes; las pruebas de fotos (P3) van mejor en el modo B.
 
 **Verificación del correo:** fuera de `local` es obligatoria por defecto (`EMAIL_VERIFICATION`). La cuenta de pruebas de `vyamap_manual` (id 468) se verificó el 27-10-2026 con `php artisan users:verify <correo> --env=manual`, que solo escribe su `email_verified_at`; una cuenta sin verificar iría a `/email/verify`. El `EMAIL_VERIFICATION=false` del comando del servidor ya no es imprescindible, pero evita esa pantalla con cuentas nuevas; quítalo para probar la verificación (casos R).
 
 **`APP_ENV` dentro de `.env.manual` debe ser `manual`:** el servidor que lanza `artisan serve` no recibe `--env` y elige su archivo de entorno por `APP_ENV`. **No exportes `APP_ENV=manual` en la terminal:** se aplicaría a cualquier otro comando que ejecutes en ella.
+
+**`APP_URL` dentro de `.env.manual` debe ser `http://127.0.0.1:8010`:** fuera de `local`, `TrustHosts` solo admite el host de `APP_URL`. Si falta o no coincide, todas las páginas dan **400 Bad Request**; abre la aplicación con esa misma dirección (no con `localhost:8010`). Los enlaces de los correos (verificación, recuperación) también salen de `APP_URL`, así que el puerto debe ser el del servidor. Comprobación:
+
+```bash
+php artisan tinker --env=manual --execute='echo config("app.url");'
+```
 
 **Buscador del itinerario y Geoapify:** el catálogo solo trae ciudades con aeropuerto (más las añadidas después). Para encontrar cualquier otra localidad (Ksamil, Bled, Sinaia…), `.env.manual` necesita `GEOAPIFY_API_KEY`: Laravel carga ese archivo en lugar de `.env` y no hereda su clave. Sin ella, el buscador solo devuelve ciudades del catálogo local y no avisa de ningún error. Comprobación (sin mostrar la clave):
 
@@ -50,7 +56,7 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 | # | Pasos | Datos de ejemplo | Resultado esperado |
 |---|---|---|---|
 | V1 | Crear un viaje pasado | «Lisboa», 01-05-2024 → 05-05-2024 | ✅ Se crea como **completado** (su fin ya pasó). Trips: 1 viaje, **5 días**. |
-| V2 | Crear un viaje futuro | «Marrakech», 14-11-2026 → 18-11-2026 | ✅ Se crea como **planificado** (lima). No suma días, países ni viajes; Home muestra «+1 upcoming». |
+| V2 | Crear un viaje futuro | «Marrakech», 14-11-2026 → 18-11-2026 | ✅ Se crea como **planificado** (violeta). No suma días, países ni viajes; Home muestra «+1 upcoming». |
 | V3 | ⚠️ Viaje que cruza de año | 30-12-2025 → 02-01-2026 | ✅ 4 días: en Trips, **2 en 2025 y 2 en 2026**. El viaje cuenta y se lista en **2025** (año de inicio); al filtrar 2026 no aparece, pero sus 2 días sí suman. |
 | V4 | ⚠️ Viaje de un día | 10-03-2026 → 10-03-2026 | ✅ 1 día. |
 | V5 | ⚠️ Viajes solapados | 01-05-2026 → 10-05-2026 y 05-05-2026 → 12-05-2026, ambos completados | ✅ «Days» suma **12**, no 18: los días comunes cuentan una vez. |
@@ -65,7 +71,7 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 |---|---|---|---|
 | C1 | Añadir una visita a un viaje completado | Lisboa, 01-05-2024 → 05-05-2024 | ✅ Portugal cuenta como país, en Home, Trips, Passport y Countries. |
 | C2 | Visita fuera de las fechas del viaje | Lisboa, 06-05-2024 | ✅ Error de validación. |
-| C3 | Visita en un viaje planificado | Marrakech en el viaje de V2 | ✅ Marruecos aparece en lima como planificado y **no** cuenta como visitado. |
+| C3 | Visita en un viaje planificado | Marrakech en el viaje de V2 | ✅ Marruecos aparece en violeta como planificado y **no** cuenta como visitado. |
 | C4 | ⚠️ Territorio | Una ciudad de Gibraltar | ✅ Cuenta como «+1 territory», no entre los 193 países. |
 | C5 | ⚠️ Primera visita | Visitar España en 2024 y otra vez en 2026 | ✅ Passport, «Countries discovered by year»: España solo en 2024. Al filtrar 2026, España cuenta entre los países de ese año, pero no como nuevo. |
 | C6 | ⚠️ Vuelo sin visita | Solo un vuelo a Marrakech, sin visitas | ✅ Marruecos **no** cuenta como visitado. |
@@ -92,7 +98,7 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 | F12 | ⚠️ Vuelo fuera de las fechas del viaje | Vuelo del viaje V1 el 06-05-2024 | ✅ Error en la fecha de salida. |
 | F13 | Cambiar la salida varias veces | Editar F2 cambiando la salida tres veces | ✅ La llegada y su «+1 day» no cambian. |
 | F14 | Origen igual a destino | MAD → MAD | ✅ Error. |
-| F15 | Vuelo en un viaje cancelado | Cancelar el viaje de F1 | ✅ El vuelo sale en gris y deja de contar en las cifras. |
+| F15 | Vuelo en un viaje cancelado | Cancelar el viaje de F1 | ✅ El vuelo **no aparece** en Home, Flight History ni Passport y deja de contar en las cifras (intencionado: test «a past flight of a cancelled trip appears nowhere»). Solo se sigue viendo en la ficha de su viaje, marcado como cancelado y en gris en el mapa. |
 
 ## P2 — Estadísticas (comprobar tras cada cambio)
 
@@ -119,7 +125,7 @@ Sin tocar `.env.manual`: las variables puestas delante del comando tienen priori
 
 ```bash
 REGISTRATION_ENABLED=true REGISTRATION_MAX_USERS=2 UPLOADS_ENABLED=false MAIL_MAILER=log \
-  SESSION_DRIVER=cookie CACHE_DRIVER=array php artisan serve --env=manual --port=8010
+  SESSION_DRIVER=cookie CACHE_DRIVER=file php artisan serve --env=manual --port=8010
 ```
 
 Con `MAIL_MAILER=log` no se envía ningún correo: el enlace se copia del log (ver [`deployment.md`](deployment.md), sección 7.3):
