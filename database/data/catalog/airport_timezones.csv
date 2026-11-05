@@ -31,7 +31,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 30,Aasiaat Airport,JEG,BGAA,68.7218020,-52.7846980,America/Nuuk,calculated
 31,Neerlerit Inaat Airport,CNP,BGCO,70.7431030,-22.6504990,America/Scoresbysund,calculated
 32,Nuuk International Airport,GOH,BGGH,64.1910660,-51.6791400,America/Nuuk,calculated
-33,Ilulissat Airport,JAV,BGJN,69.2432020,-51.0570980,America/Nuuk,calculated
+33,Ilulissat Airport,JAV,BGJN,69.2456410,-51.0522430,America/Nuuk,calculated
 34,Kulusuk Airport,KUS,BGKK,65.5736010,-37.1236000,America/Nuuk,calculated
 35,Qaanaaq Airport,NAQ,BGQQ,77.4886020,-69.3887020,America/Thule,calculated
 36,Kangerlussuaq International Airport,SFJ,BGSF,67.0104460,-50.7152940,America/Nuuk,calculated
@@ -60,7 +60,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 59,Jinggangshan Airport,JGS,ZSGS,26.8568990,114.7370000,Asia/Shanghai,calculated
 60,Jiaxing Nanhu Airport,JNH,ZSJX,30.6980560,120.6630560,Asia/Shanghai,calculated
 61,Shigatse Tingri Airport,DDR,ZUDR,28.6045670,86.7980000,Asia/Shanghai,calculated
-62,Tashikuergan Hongqilafu Airport,HQL,ZWTK,37.6613330,75.2888770,Asia/Urumqi,calculated
+62,Tashikuergan Hongqilafu Airport,HQL,ZWTK,37.6613330,75.2888770,Asia/Shanghai,calculated
 63,Leshan Airport,LSG,,29.4386270,103.7492180,Asia/Shanghai,calculated
 64,Zhaotong Zhaoyang Airport,ZAT,ZPZT,27.2058430,103.6915110,Asia/Shanghai,calculated
 65,Bengbu Tenghu Airport,BFY,ZSBA,33.1662920,117.0583440,Asia/Shanghai,calculated
@@ -87,7 +87,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 86,Inuvik Mike Zubko Airport,YEV,CYEV,68.3041992,-133.4830017,America/Inuvik,calculated
 87,Iqaluit Airport,YFB,CYFB,63.7564020,-68.5558010,America/Iqaluit,calculated
 88,Fredericton International Airport,YFC,CYFC,45.8686970,-66.5298910,America/Moncton,calculated
-89,Fort Simpson Airport,YFS,CYFS,61.7602005,-121.2369995,America/Inuvik,calculated
+89,Fort Simpson Airport,YFS,CYFS,61.7602005,-121.2369995,America/Edmonton,calculated
 90,La Grande Rivière Airport,YGL,CYGL,53.6253014,-77.7042007,America/Toronto,calculated
 91,Michel-Pouliot Gaspé Airport,YGP,CYGP,48.7749150,-64.4818930,America/Toronto,calculated
 92,Îles-de-la-Madeleine Airport,YGR,CYGR,47.4252420,-61.7786120,America/Halifax,calculated
@@ -109,7 +109,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 108,Moosonee Airport,YMO,CYMO,51.2910995,-80.6078033,America/Toronto,calculated
 109,Chapais Airport,YMT,CYMT,49.7719002,-74.5280991,America/Toronto,calculated
 110,Montreal Mirabel International Airport,YMX,CYMX,45.6795010,-74.0386960,America/Toronto,calculated
-111,Natashquan Airport,YNA,CYNA,50.1901140,-61.7889800,America/Blanc-Sablon,calculated
+111,Natashquan Airport,YNA,CYNA,50.1901140,-61.7889800,America/Toronto,calculated
 112,Ottawa / Gatineau Airport,YND,CYND,45.5217020,-75.5635990,America/Toronto,calculated
 113,Points North Landing Airport,YNL,CYNL,58.2766991,-104.0820007,America/Regina,calculated
 114,High Level Airport,YOJ,CYOJ,58.6213989,-117.1650009,America/Edmonton,calculated
@@ -160,7 +160,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 159,La Ronge Airport,YVC,CYVC,55.1514015,-105.2620010,America/Regina,calculated
 160,Val-d'Or Airport,YVO,CYVO,48.0532990,-77.7827988,America/Toronto,calculated
 161,Kuujjuaq Airport,YVP,CYVP,58.0960999,-68.4269028,America/Toronto,calculated
-162,Norman Wells Airport,YVQ,CYVQ,65.2816010,-126.7979965,America/Inuvik,calculated
+162,Norman Wells Airport,YVQ,CYVQ,65.2816010,-126.7979965,America/Edmonton,calculated
 163,Vancouver International Airport,YVR,CYVR,49.1939010,-123.1839980,America/Vancouver,calculated
 164,Wiarton Airport,YVV,CYVV,44.7458000,-81.1072010,America/Toronto,calculated
 165,Winnipeg / James Armstrong Richardson International Airport,YWG,CYWG,49.9099998,-97.2398987,America/Winnipeg,calculated
@@ -501,9 +501,9 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 500,Kimberley Airport,KIM,FAKM,-28.8054010,24.7648720,Africa/Johannesburg,calculated
 501,Kruger Mpumalanga International Airport,MQP,FAKN,-25.3833270,31.1053250,Africa/Johannesburg,calculated
 502,Lanseria International Airport,HLA,FALA,-25.9389640,27.9266420,Africa/Johannesburg,calculated
-503,King Shaka International Airport,DUR,FALE,-29.6144444,31.1197222,Africa/Johannesburg,calculated
+503,King Shaka International Airport,DUR,FALE,-29.6133810,31.1179420,Africa/Johannesburg,calculated
 504,Margate Airport,MGH,FAMG,-30.8574009,30.3430004,Africa/Johannesburg,calculated
-505,Mmabatho International Airport,MBD,FAMM,-25.7984009,25.5480003,Africa/Johannesburg,calculated
+505,George Dick Montshioa Airport,MBD,FAMM,-25.7984010,25.5480000,Africa/Johannesburg,calculated
 506,Mkuze Airport,MZQ,FAMU,-27.6261010,32.0443000,Africa/Johannesburg,calculated
 507,O.R. Tambo International Airport,JNB,FAOR,-26.1400810,28.2468010,Africa/Johannesburg,calculated
 508,Chief Dawid Stuurman International Airport,PLZ,FAPE,-33.9897150,25.6173530,Africa/Johannesburg,calculated
@@ -529,7 +529,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 528,RAF Ascension Island,ASI,FHAW,-7.9701790,-14.3927440,Atlantic/St_Helena,calculated
 529,Saint Helena International Airport,HLE,FHSH,-15.9588980,-5.6460660,Atlantic/St_Helena,calculated
 530,Sir Seewoosagur Ramgoolam International Airport,MRU,FIMP,-20.4302010,57.6836010,Indian/Mauritius,calculated
-531,Sir Charles Gaetan Duval Airport,RRG,FIMR,-19.7566960,63.3593260,Indian/Mauritius,calculated
+531,Sir Charles Gaetan Duval Airport,RRG,FIMR,-19.7576680,63.3610300,Indian/Mauritius,calculated
 532,Douala International Airport,DLA,FKKD,4.0060800,9.7194800,Africa/Douala,calculated
 533,Salak Airport,MVR,FKKL,10.4513998,14.2573996,Africa/Douala,calculated
 534,N'Gaoundéré Airport,NGE,FKKN,7.3570099,13.5592003,Africa/Douala,calculated
@@ -772,7 +772,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 771,Albuquerque International Sunport,ABQ,KABQ,35.0399760,-106.6089250,America/Denver,calculated
 772,Aberdeen Regional Airport,ABR,KABR,45.4491005,-98.4217987,America/Chicago,calculated
 773,Southwest Georgia Regional Airport,ABY,KABY,31.5329460,-84.1962150,America/New_York,calculated
-774,Nantucket Memorial Airport,ACK,KACK,41.2531014,-70.0602036,America/New_York,calculated
+774,Nantucket Memorial Airport,ACK,KACK,41.2531014,-70.0602035,America/New_York,calculated
 775,Waco Regional Airport,ACT,KACT,31.6112995,-97.2304993,America/Chicago,calculated
 776,California Redwood Coast-Humboldt County Airport,ACV,KACV,40.9781010,-124.1090000,America/Los_Angeles,calculated
 777,Atlantic City International Airport,ACY,KACY,39.4562010,-74.5775110,America/New_York,calculated
@@ -800,7 +800,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 799,Bradley International Airport,BDL,KBDL,41.9385550,-72.6880160,America/New_York,calculated
 800,Laurence G Hanscom Field,BED,KBED,42.4700010,-71.2890010,America/New_York,calculated
 801,Bradford Regional Airport,BFD,KBFD,41.8031006,-78.6400986,America/New_York,calculated
-802,Western Neb. Rgnl/William B. Heilig Airport,BFF,KBFF,41.8740006,-103.5960007,America/Denver,calculated
+802,Western Neb. Rgnl/William B. Heilig Airport,BFF,KBFF,41.8740005,-103.5960007,America/Denver,calculated
 803,King County International Airport - Boeing Field,BFI,KBFI,47.5270420,-122.2999500,America/Los_Angeles,calculated
 804,Meadows Field,BFL,KBFL,35.4336010,-119.0569990,America/Los_Angeles,calculated
 805,Greater Binghamton/Edwin A Link field,BGM,KBGM,42.2086983,-75.9797974,America/New_York,calculated
@@ -881,7 +881,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 880,Des Moines International Airport,DSM,KDSM,41.5340270,-93.6567190,America/Chicago,calculated
 881,Destin Executive Airport,DSI,KDTS,30.4001010,-86.4714970,America/Chicago,calculated
 882,Detroit Metropolitan Wayne County Airport,DTW,KDTW,42.2137700,-83.3537860,America/Detroit,calculated
-883,DuBois Regional Airport,DUJ,KDUJ,41.1782990,-78.8986969,America/New_York,calculated
+883,DuBois Regional Airport,DUJ,KDUJ,41.1782989,-78.8986969,America/New_York,calculated
 884,Devils Lake Regional Airport,DVL,KDVL,48.1154540,-98.9087960,America/Chicago,calculated
 885,Kearney Regional Airport,EAR,KEAR,40.7270010,-99.0067980,America/Chicago,calculated
 886,Pangborn Memorial Airport,EAT,KEAT,47.3988990,-120.2070010,America/Los_Angeles,calculated
@@ -1068,7 +1068,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1067,Worcester Regional Airport,ORH,KORH,42.2673000,-71.8757020,America/New_York,calculated
 1068,Orcas Island Airport,ESD,KORS,48.7081990,-122.9100040,America/Los_Angeles,calculated
 1069,Southwest Oregon Regional Airport,OTH,KOTH,43.4170990,-124.2460022,America/Los_Angeles,calculated
-1070,Owensboro Daviess County Airport,OWB,KOWB,37.7401009,-87.1668015,America/Chicago,calculated
+1070,Owensboro Daviess County Airport,OWB,KOWB,37.7401009,-87.1668014,America/Chicago,calculated
 1071,Ocean City Municipal Airport,OCE,KOXB,38.3103980,-75.1240010,America/New_York,calculated
 1072,Seattle Paine Field International Airport,PAE,KPAE,47.9063000,-122.2819980,America/Los_Angeles,calculated
 1073,Barkley Regional Airport,PAH,KPAH,37.0607986,-88.7738037,America/Chicago,calculated
@@ -1230,7 +1230,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1229,Jerez Airport,XRY,LEJR,36.7445980,-6.0601100,Europe/Madrid,calculated
 1230,León Airport,LEN,LELN,42.5907090,-5.6534060,Europe/Madrid,calculated
 1231,Logroño-Agoncillo Airport,RJL,LERJ,42.4609530,-2.3222350,Europe/Madrid,calculated
-1232,Málaga-Costa del Sol Airport,AGP,LEMG,36.6749000,-4.4991100,Europe/Madrid,calculated
+1232,Málaga-Costa del Sol Airport,AGP,LEMG,36.6782340,-4.5002080,Europe/Madrid,calculated
 1233,Menorca Airport,MAH,LEMH,39.8625980,4.2186500,Europe/Madrid,calculated
 1234,Region of Murcia International Airport,RMU,LEMI,37.8028520,-1.1248840,Europe/Madrid,calculated
 1235,Palma de Mallorca Airport,PMI,LEPA,39.5517010,2.7388100,Europe/Madrid,calculated
@@ -1300,7 +1300,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1299,Chios Island National Airport,JKH,LGHI,38.3432007,26.1406002,Europe/Athens,calculated
 1300,Ioannina King Pyrrhus National Airport,IOA,LGIO,39.6964000,20.8225000,Europe/Athens,calculated
 1301,Heraklion International Nikos Kazantzakis Airport,HER,LGIR,35.3396990,25.1803000,Europe/Athens,calculated
-1302,Kefallinia Airport,EFL,LGKF,38.1200981,20.5004997,Europe/Athens,calculated
+1302,"Kefalonia International Airport ""Anna Pollatou""",EFL,LGKF,38.1200980,20.5005000,Europe/Athens,calculated
 1303,Kalamata Airport,KLX,LGKL,37.0682983,22.0254993,Europe/Athens,calculated
 1304,"Kos International Airport ""Ippokratis""",KGS,LGKO,36.7945230,27.0911500,Europe/Athens,calculated
 1305,Karpathos Airport,AOK,LGKP,35.4213980,27.1460000,Europe/Athens,calculated
@@ -1318,7 +1318,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1317,Santorini International Airport,JTR,LGSR,36.4000450,25.4786380,Europe/Athens,calculated
 1318,Sitia Airport,JSH,LGST,35.2160988,26.1012993,Europe/Athens,calculated
 1319,Thessaloniki Macedonia International Airport,SKG,LGTS,40.5192800,22.9700090,Europe/Athens,calculated
-1320,Zakynthos International Airport Dionysios Solomos,ZTH,LGZA,37.7509000,20.8843000,Europe/Athens,calculated
+1320,"Zakynthos International Airport ""Dionysios Solomos""",ZTH,LGZA,37.7509000,20.8843000,Europe/Athens,calculated
 1321,Budapest Liszt Ferenc International Airport,BUD,LHBP,47.4301800,19.2623930,Europe/Budapest,calculated
 1322,Debrecen International Airport,DEB,LHDC,47.4894690,21.6162780,Europe/Budapest,calculated
 1323,Pécs-Pogány International Airport,PEV,LHPP,45.9888910,18.2420440,Europe/Budapest,calculated
@@ -1855,24 +1855,24 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1854,Barter Island Long Range Radar Station Airport,BTI,PABA,70.1340030,-143.5820010,America/Anchorage,calculated
 1855,Bethel Airport,BET,PABE,60.7798004,-161.8379974,America/Anchorage,calculated
 1856,Wiley Post Will Rogers Memorial Airport,BRW,PABR,71.2854020,-156.7660080,America/Anchorage,calculated
-1857,Cold Bay Airport,CDB,PACD,55.2078710,-162.7250290,America/Nome,calculated
+1857,Cold Bay Airport,CDB,PACD,55.2078710,-162.7250290,America/Anchorage,calculated
 1858,Merle K (Mudhole) Smith Airport,CDV,PACV,60.4917980,-145.4779970,America/Anchorage,calculated
-1859,Deering Airport,DRG,PADE,66.0689010,-162.7669140,America/Nome,calculated
+1859,Deering Airport,DRG,PADE,66.0689010,-162.7669140,America/Anchorage,calculated
 1860,Adak Airport,ADK,PADK,51.8835640,-176.6427830,America/Adak,calculated
 1861,Dillingham Airport,DLG,PADL,59.0447006,-158.5050049,America/Anchorage,calculated
 1862,Kodiak Airport,ADQ,PADQ,57.7500000,-152.4940033,America/Anchorage,calculated
-1863,Tom Madsen (Dutch Harbor) Airport,DUT,PADU,53.8988100,-166.5449960,America/Nome,calculated
-1864,Emmonak Airport,EMK,PAEM,62.7860985,-164.4909973,America/Nome,calculated
+1863,Tom Madsen (Dutch Harbor) Airport,DUT,PADU,53.8988100,-166.5449960,America/Anchorage,calculated
+1864,Emmonak Airport,EMK,PAEM,62.7860985,-164.4909973,America/Anchorage,calculated
 1865,Kenai Municipal Airport,ENA,PAEN,60.5709460,-151.2451740,America/Anchorage,calculated
 1866,Fairbanks International Airport,FAI,PAFA,64.8151020,-147.8560030,America/Anchorage,calculated
 1867,Ambler Airport,ABL,PAFM,67.1055290,-157.8553390,America/Anchorage,calculated
 1868,Edward G. Pitka Sr Airport,GAL,PAGA,64.7361980,-156.9369970,America/Anchorage,calculated
 1869,Gulkana Airport,GKN,PAGK,62.1558590,-145.4546620,America/Anchorage,calculated
-1870,Gambell Airport,GAM,PAGM,63.7676940,-171.7333030,America/Nome,calculated
-1871,Gustavus Airport,GST,PAGS,58.4253006,-135.7070007,America/Juneau,calculated
+1870,Gambell Airport,GAM,PAGM,63.7676940,-171.7333030,America/Anchorage,calculated
+1871,Gustavus Airport,GST,PAGS,58.4253006,-135.7070007,America/Anchorage,calculated
 1872,Holy Cross Airport,HCR,PAHC,62.1883011,-159.7749939,America/Anchorage,calculated
 1873,Huslia Airport,HSL,PAHL,65.6978990,-156.3509980,America/Anchorage,calculated
-1874,Haines Airport,HNS,PAHN,59.2439210,-135.5239250,America/Juneau,calculated
+1874,Haines Airport,HNS,PAHN,59.2439210,-135.5239250,America/Anchorage,calculated
 1875,Homer Airport,HOM,PAHO,59.6444560,-151.4792350,America/Anchorage,calculated
 1876,Egegik Airport,EGX,PAII,58.1843860,-157.3748730,America/Anchorage,calculated
 1877,Bob Baker Memorial Airport,IAN,PAIK,66.9761280,-160.4390140,America/Anchorage,calculated
@@ -1881,34 +1881,34 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1880,Juneau International Airport,JNU,PAJN,58.3549350,-134.5744160,America/Juneau,calculated
 1881,King Salmon Airport,AKN,PAKN,58.6778450,-156.6519650,America/Anchorage,calculated
 1882,Anaktuvuk Pass Airport,AKP,PAKP,68.1335980,-151.7429960,America/Anchorage,calculated
-1883,Ketchikan International Airport,KTN,PAKT,55.3555985,-131.7140045,America/Sitka,calculated
-1884,Klawock Airport,KLW,PAKW,55.5792010,-133.0760040,America/Sitka,calculated
-1885,Cape Lisburne LRRS Airport,LUR,PALU,68.8750990,-166.1100010,America/Nome,calculated
+1883,Ketchikan International Airport,KTN,PAKT,55.3555985,-131.7140045,America/Anchorage,calculated
+1884,Klawock Airport,KLW,PAKW,55.5792010,-133.0760040,America/Anchorage,calculated
+1885,Cape Lisburne LRRS Airport,LUR,PALU,68.8750990,-166.1100010,America/Anchorage,calculated
 1886,McGrath Airport,MCG,PAMC,62.9528999,-155.6060028,America/Anchorage,calculated
 1887,Merrill Field,MRI,PAMR,61.2127920,-149.8439880,America/Anchorage,calculated
-1888,Mekoryuk Airport,MYU,PAMY,60.3723380,-166.2697510,America/Nome,calculated
+1888,Mekoryuk Airport,MYU,PAMY,60.3723380,-166.2697510,America/Anchorage,calculated
 1889,Ted Stevens Anchorage International Airport,ANC,PANC,61.1790040,-149.9925610,America/Anchorage,calculated
 1890,Aniak Airport,ANI,PANI,61.5816002,-159.5429993,America/Anchorage,calculated
 1891,Anvik Airport,ANV,PANV,62.6467020,-160.1909940,America/Anchorage,calculated
 1892,Nome Airport,OME,PAOM,64.5121994,-165.4450073,America/Nome,calculated
 1893,Northway Airport,ORT,PAOR,62.9613000,-141.9290010,America/Anchorage,calculated
-1894,Ralph Wien Memorial Airport,OTZ,PAOT,66.8846970,-162.5989990,America/Nome,calculated
-1895,St George Airport,STG,PAPB,56.5773450,-169.6638230,America/Nome,calculated
-1896,Petersburg James A Johnson Airport,PSG,PAPG,56.8017006,-132.9450073,America/Sitka,calculated
+1894,Ralph Wien Memorial Airport,OTZ,PAOT,66.8846970,-162.5989990,America/Anchorage,calculated
+1895,St George Airport,STG,PAPB,56.5773450,-169.6638230,America/Anchorage,calculated
+1896,Petersburg James A Johnson Airport,PSG,PAPG,56.8017006,-132.9450073,America/Anchorage,calculated
 1897,Port Heiden Airport,PTH,PAPH,56.9578930,-158.6302190,America/Anchorage,calculated
 1898,Platinum Airport,PTU,PAPM,59.0176750,-161.8279270,America/Anchorage,calculated
 1899,Nuiqsut Airport,NUI,PAQT,70.2099990,-151.0059980,America/Anchorage,calculated
 1900,Arctic Village Airport,ARC,PARC,68.1147000,-145.5789950,America/Anchorage,calculated
 1901,Ruby Airport,RBY,PARY,64.7272030,-155.4700010,America/Anchorage,calculated
-1902,Savoonga Airport,SVA,PASA,63.6864010,-170.4929960,America/Nome,calculated
-1903,Deadhorse Airport,SCC,PASC,70.1947022,-148.4649963,America/Anchorage,calculated
+1902,Savoonga Airport,SVA,PASA,63.6864010,-170.4929960,America/Anchorage,calculated
+1903,Deadhorse Airport,SCC,PASC,70.1947021,-148.4649963,America/Anchorage,calculated
 1904,Sand Point Airport,SDP,PASD,55.3139080,-160.5220990,America/Anchorage,calculated
 1905,Sitka Rocky Gutierrez Airport,SIT,PASI,57.0471001,-135.3619995,America/Sitka,calculated
-1906,St Paul Island Airport,SNP,PASN,57.1663110,-170.2225550,America/Nome,calculated
+1906,St Paul Island Airport,SNP,PASN,57.1663110,-170.2225550,America/Anchorage,calculated
 1907,Atqasuk Edward Burnell Sr Memorial Airport,ATK,PATQ,70.4670400,-157.4360130,America/Anchorage,calculated
 1908,Unalakleet Airport,UNK,PAUN,63.8884010,-160.7989960,America/Anchorage,calculated
 1909,Valdez Pioneer Field,VDZ,PAVD,61.1327120,-146.2465670,America/Anchorage,calculated
-1910,Wrangell Airport,WRG,PAWG,56.4842987,-132.3699951,America/Sitka,calculated
+1910,Wrangell Airport,WRG,PAWG,56.4842987,-132.3699951,America/Anchorage,calculated
 1911,Wainwright Airport,AIN,PAWI,70.6380000,-159.9949950,America/Anchorage,calculated
 1912,Yakutat Airport,YAK,PAYA,59.5087170,-139.6604350,America/Yakutat,calculated
 1913,Fort Yukon Airport,FYU,PFYU,66.5716510,-145.2499870,America/Anchorage,calculated
@@ -1929,7 +1929,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 1928,Marshall Islands International Airport,MAJ,PKMJ,7.0651100,171.2716560,Pacific/Majuro,calculated
 1929,Bucholz Army Air Field,KWA,PKWA,8.7201204,167.7319946,Pacific/Kwajalein,calculated
 1930,Cassidy International Airport,CXI,PLCH,1.9862780,-157.3500110,Pacific/Kiritimati,calculated
-1931,Point Lay LRRS Airport,PIZ,PPIZ,69.7329030,-163.0050050,America/Nome,calculated
+1931,Point Lay LRRS Airport,PIZ,PPIZ,69.7329030,-163.0050050,America/Anchorage,calculated
 1932,Chuuk International Airport,TKK,PTKK,7.4618700,151.8430020,Pacific/Chuuk,calculated
 1933,Pohnpei International Airport,PNI,PTPN,6.9850820,158.2099200,Pacific/Pohnpei,calculated
 1934,Roman Tmetuchl International Airport,ROR,PTRO,7.3669650,134.5440850,Pacific/Palau,calculated
@@ -2035,7 +2035,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2034,Seoul Gimpo International Airport,GMP,RKSS,37.5583000,126.7910000,Asia/Seoul,calculated
 2035,Pohang Airport (G-815/K-3),KPO,RKTH,35.9879550,129.4203830,Asia/Seoul,calculated
 2036,Daegu International Airport,TAE,RKTN,35.8943940,128.6569890,Asia/Seoul,calculated
-2037,Cheongju International Airport/Cheongju Air Base (K-59/G-513),CJJ,RKTU,36.7155600,127.5002890,Asia/Seoul,calculated
+2037,Cheongju International Airport,CJJ,RKTU,36.7155600,127.5002890,Asia/Seoul,calculated
 2038,Naha International Airport,OKA,ROAH,26.1924370,127.6398040,Asia/Tokyo,calculated
 2039,New Ishigaki Airport,ISG,ROIG,24.3963890,124.2450000,Asia/Tokyo,calculated
 2040,Kumejima Airport,UEO,ROKJ,26.3634450,126.7138400,Asia/Tokyo,calculated
@@ -2248,7 +2248,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2247,Lieutenant Colonel Luis A. Mantilla International Airport,TUA,SETU,0.8095060,-77.7080990,America/Guayaquil,calculated
 2248,Silvio Pettirossi International Airport,ASU,SGAS,-25.2401560,-57.5192270,America/Asuncion,calculated
 2249,Teniente Ramon A. Ayub Gonzalez International Airport,ENO,SGEN,-27.2275370,-55.8375840,America/Asuncion,calculated
-2250,Guaraní International Airport,AGT,SGES,-25.4571860,-54.8395440,America/Asuncion,calculated
+2250,Guaraní International Airport,AGT,SGES,-25.4555000,-54.8436010,America/Asuncion,calculated
 2251,El Eden Airport,AXM,SKAR,4.4527800,-75.7664000,America/Bogota,calculated
 2252,Tres De Mayo Airport,PUU,SKAS,0.5052280,-76.5008000,America/Bogota,calculated
 2253,Palonegro Airport,BGA,SKBG,7.1265000,-73.1848000,America/Bogota,calculated
@@ -2448,7 +2448,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2447,Srednekolymsk Airport,SEK,,67.4805000,153.7364000,Asia/Srednekolymsk,calculated
 2448,Chokurdakh Airport,CKH,UESO,70.6231000,147.9019930,Asia/Srednekolymsk,calculated
 2449,Cherskiy Airport,CYX,UESS,68.7406010,161.3379970,Asia/Srednekolymsk,calculated
-2450,Tiksi Airport,IKS,UEST,71.6977005,128.9029999,Asia/Yakutsk,calculated
+2450,Tiksi Airport,IKS,UEST,71.6977010,128.9030000,Asia/Yakutsk,calculated
 2451,Zyryanka Airport,ZKP,UESU,65.7485000,150.8889000,Asia/Srednekolymsk,calculated
 2452,Zhigansk Airport,ZIX,UEVV,66.7965012,123.3610001,Asia/Yakutsk,calculated
 2453,Savannah Airstrip,KHX,,-0.7165000,29.6997000,Africa/Kampala,calculated
@@ -2566,7 +2566,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2565,Zhukovsky International Airport,ZIA,UUBW,55.5532990,38.1500020,Europe/Moscow,calculated
 2566,Domodedovo International Airport,DME,UUDD,55.4087980,37.9063000,Europe/Moscow,calculated
 2567,Golden Ring Yaroslavl International Airport,IAR,UUDL,57.5606990,40.1573980,Europe/Moscow,calculated
-2568,Sheremetyevo International Airport,SVO,UUEE,55.9768580,37.4112100,Europe/Moscow,calculated
+2568,Sheremetyevo International Airport,SVO,UUEE,55.9774860,37.3866770,Europe/Moscow,calculated
 2569,Voronezh International Airport,VOZ,UUOO,51.8143240,39.2309480,Europe/Moscow,calculated
 2570,Vnukovo International Airport,VKO,UUWW,55.5914990,37.2615010,Europe/Moscow,calculated
 2571,Ukhta Airport,UCT,UUYH,63.5668980,53.8046990,Europe/Moscow,calculated
@@ -2761,16 +2761,16 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2760,Roi Et Airport,ROI,VTUV,16.1168000,103.7740020,Asia/Bangkok,calculated
 2761,Nakhon Phanom Airport,KOP,VTUW,17.3838010,104.6429980,Asia/Bangkok,calculated
 2762,Buon Ma Thuot Airport,BMV,VVBM,12.6682997,108.1200027,Asia/Ho_Chi_Minh,calculated
-2763,Cat Bi International Airport,HPH,VVCI,20.8174280,106.7243150,Asia/Bangkok,calculated
+2763,Cat Bi International Airport,HPH,VVCI,20.8174280,106.7243150,Asia/Ho_Chi_Minh,calculated
 2764,Cà Mau Airport,CAH,VVCM,9.1776670,105.1777780,Asia/Ho_Chi_Minh,calculated
 2765,Cam Ranh International Airport / Cam Ranh Air Base,CXR,VVCR,11.9982000,109.2190020,Asia/Ho_Chi_Minh,calculated
 2766,Con Dao Airport,VCS,VVCS,8.7318300,106.6330030,Asia/Ho_Chi_Minh,calculated
 2767,Can Tho International Airport,VCA,VVCT,10.0833970,105.7093710,Asia/Ho_Chi_Minh,calculated
-2768,Dien Bien Phu Airport,DIN,VVDB,21.3974991,103.0080032,Asia/Bangkok,calculated
-2769,Dong Hoi Airport,VDH,VVDH,17.5150000,106.5905560,Asia/Bangkok,calculated
+2768,Dien Bien Phu Airport,DIN,VVDB,21.3974991,103.0080032,Asia/Ho_Chi_Minh,calculated
+2769,Dong Hoi Airport,VDH,VVDH,17.5150000,106.5905560,Asia/Ho_Chi_Minh,calculated
 2770,Lien Khuong Airport,DLI,VVDL,11.7505560,108.3669970,Asia/Ho_Chi_Minh,calculated
 2771,Da Nang International Airport,DAD,VVDN,16.0439000,108.1989970,Asia/Ho_Chi_Minh,calculated
-2772,Noi Bai International Airport,HAN,VVNB,21.2212010,105.8069990,Asia/Bangkok,calculated
+2772,Noi Bai International Airport,HAN,VVNB,21.2212010,105.8069990,Asia/Ho_Chi_Minh,calculated
 2773,Phu Bai International Airport,HUI,VVPB,16.4005810,107.7040940,Asia/Ho_Chi_Minh,calculated
 2774,Phu Cat Airport,UIH,VVPC,13.9550000,109.0420000,Asia/Ho_Chi_Minh,calculated
 2775,Pleiku Airport,PXU,VVPK,14.0045004,108.0169983,Asia/Ho_Chi_Minh,calculated
@@ -2778,8 +2778,8 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2777,Rach Gia Airport,VKG,VVRG,9.9580300,105.1323795,Asia/Ho_Chi_Minh,calculated
 2778,Dong Tac Airport,TBB,VVTH,13.0496000,109.3340000,Asia/Ho_Chi_Minh,calculated
 2779,Tan Son Nhat International Airport,SGN,VVTS,10.8188000,106.6520000,Asia/Ho_Chi_Minh,calculated
-2780,Van Don International Airport,VDO,VVVD,21.1206930,107.4153900,Asia/Bangkok,calculated
-2781,Vinh Airport,VII,VVVH,18.7376003,105.6709976,Asia/Bangkok,calculated
+2780,Van Don International Airport,VDO,VVVD,21.1206930,107.4153900,Asia/Ho_Chi_Minh,calculated
+2781,Vinh Airport,VII,VVVH,18.7376003,105.6709976,Asia/Ho_Chi_Minh,calculated
 2782,Dawei Airport,TVY,VYDW,14.1039000,98.2035980,Asia/Yangon,calculated
 2783,Heho Airport,HEH,VYHH,20.7471400,96.7920290,Asia/Yangon,calculated
 2784,Kengtung Airport,KET,VYKG,21.3015995,99.6360016,Asia/Yangon,calculated
@@ -2903,7 +2903,7 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 2902,Barcaldine Airport,BCI,YBAR,-23.5662680,145.3020860,Australia/Brisbane,calculated
 2903,Alice Springs Airport,ASP,YBAS,-23.8065880,133.9034270,Australia/Darwin,calculated
 2904,Brisbane International Airport,BNE,YBBN,-27.3841991,153.1170044,Australia/Brisbane,calculated
-2905,Gold Coast Airport,OOL,YBCG,-28.1659620,153.5066410,Australia/Sydney,calculated
+2905,Gold Coast Airport,OOL,YBCG,-28.1659620,153.5066410,Australia/Brisbane,calculated
 2906,Blackall Airport,BKQ,YBCK,-24.4316780,145.4297160,Australia/Brisbane,calculated
 2907,Cairns International Airport,CNS,YBCS,-16.8789210,145.7494800,Australia/Brisbane,calculated
 2908,Charleville Airport,CTL,YBCV,-26.4132996,146.2619934,Australia/Brisbane,calculated
@@ -3202,22 +3202,22 @@ id,name,iata_code,icao_code,latitude,longitude,timezone,timezone_status
 3201,Xingyi Wanfenglin Airport,ACX,ZUYI,25.0834230,104.9608040,Asia/Shanghai,calculated
 3202,Panzhihua Bao'anying Airport,PZI,ZUZH,26.5400000,101.7985200,Asia/Shanghai,calculated
 3203,Zunyi Xinzhou Airport,ZYI,ZUZY,27.8107230,107.2471890,Asia/Shanghai,calculated
-3204,Aksu Hongqipo Airport,AKU,ZWAK,41.2625010,80.2917020,Asia/Urumqi,calculated
-3205,Altay Xuedu Airport,AAT,ZWAT,47.7498860,88.0858080,Asia/Urumqi,calculated
-3206,Bole Alashankou Airport,BPL,ZWBL,44.8954610,82.3000700,Asia/Urumqi,calculated
-3207,Qiemo Yudu Airport,IQM,ZWCM,38.2345160,85.4654620,Asia/Urumqi,calculated
-3208,Fuyun Koktokay Airport,FYN,ZWFY,46.8041690,89.5120060,Asia/Urumqi,calculated
-3209,Hami Airport,HMI,ZWHM,42.8414000,93.6691970,Asia/Urumqi,calculated
-3210,Korla Licheng Airport,KRL,ZWKL,41.6149790,86.1408170,Asia/Urumqi,calculated
-3211,Burqin Kanas Airport,KJI,ZWKN,48.2223000,86.9959000,Asia/Urumqi,calculated
-3212,Xinyuan Nalati Airport,NLT,ZWNL,43.4318000,83.3786000,Asia/Urumqi,calculated
-3213,Ruoqiang Loulan Airport,RQA,ZWRQ,38.9747220,88.0083330,Asia/Urumqi,calculated
-3214,Shache Airport,QSZ,ZWSC,38.2454200,77.0561490,Asia/Urumqi,calculated
-3215,Kashgar Laining International Airport,KHG,ZWSH,39.5422730,76.0202300,Asia/Urumqi,calculated
-3216,Turpan Jiaohe Airport,TLQ,ZWTL,43.0308000,89.0987000,Asia/Urumqi,calculated
-3217,Hotan Airport,HTN,ZWTN,37.0385017,79.8648987,Asia/Urumqi,calculated
-3218,Ürümqi Tianshan International Airport,URC,ZWWW,43.9135840,87.4793720,Asia/Urumqi,calculated
-3219,Ili Yining International Airport,YIN,ZWYN,43.9557990,81.3302990,Asia/Urumqi,calculated
+3204,Aksu Hongqipo Airport,AKU,ZWAK,41.2625010,80.2917020,Asia/Shanghai,calculated
+3205,Altay Xuedu Airport,AAT,ZWAT,47.7498860,88.0858080,Asia/Shanghai,calculated
+3206,Bole Alashankou Airport,BPL,ZWBL,44.8954610,82.3000700,Asia/Shanghai,calculated
+3207,Qiemo Yudu Airport,IQM,ZWCM,38.2345160,85.4654620,Asia/Shanghai,calculated
+3208,Fuyun Koktokay Airport,FYN,ZWFY,46.8041690,89.5120060,Asia/Shanghai,calculated
+3209,Hami Airport,HMI,ZWHM,42.8414000,93.6691970,Asia/Shanghai,calculated
+3210,Korla Licheng Airport,KRL,ZWKL,41.6149790,86.1408170,Asia/Shanghai,calculated
+3211,Burqin Kanas Airport,KJI,ZWKN,48.2223000,86.9959000,Asia/Shanghai,calculated
+3212,Xinyuan Nalati Airport,NLT,ZWNL,43.4318000,83.3786000,Asia/Shanghai,calculated
+3213,Ruoqiang Loulan Airport,RQA,ZWRQ,38.9747220,88.0083330,Asia/Shanghai,calculated
+3214,Shache Airport,QSZ,ZWSC,38.2454200,77.0561490,Asia/Shanghai,calculated
+3215,Kashgar Laining International Airport,KHG,ZWSH,39.5422730,76.0202300,Asia/Shanghai,calculated
+3216,Turpan Jiaohe Airport,TLQ,ZWTL,43.0308000,89.0987000,Asia/Shanghai,calculated
+3217,Hotan Airport,HTN,ZWTN,37.0385017,79.8648987,Asia/Shanghai,calculated
+3218,Ürümqi Tianshan International Airport,URC,ZWWW,43.9135840,87.4793720,Asia/Shanghai,calculated
+3219,Ili Yining International Airport,YIN,ZWYN,43.9557990,81.3302990,Asia/Shanghai,calculated
 3220,Anshan Teng'ao Airport / Anshan Air Base,AOG,ZYAS,41.1053010,122.8539960,Asia/Shanghai,calculated
 3221,Baicheng Chang'an Airport,DBC,ZYBA,45.5052780,123.0197220,Asia/Shanghai,calculated
 3222,Changbaishan Airport,NBS,ZYBS,42.0669440,127.6022220,Asia/Shanghai,calculated
