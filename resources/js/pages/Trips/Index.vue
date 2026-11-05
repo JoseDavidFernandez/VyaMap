@@ -137,7 +137,7 @@ const flagEmoji = (isoCode: string) => {
                             <dd v-if="plannedCount" class="vyamap-stat-hint order-3 !text-[var(--vyamap-violet)]">+ {{ plannedCount }} planned</dd>
                         </div>
                         <div class="vyamap-stat border-l border-[var(--vyamap-border)] p-4 sm:p-5">
-                            <dt class="vyamap-stat-label order-2">Days</dt>
+                            <dt class="vyamap-stat-label order-2">{{ periodStats.days === 1 ? 'Day' : 'Days' }}</dt>
                             <dd class="vyamap-stat-value order-1">{{ periodStats.days }}</dd>
                         </div>
                         <div class="vyamap-stat border-t border-[var(--vyamap-border)] p-4 sm:border-l sm:border-t-0 sm:p-5">
@@ -232,7 +232,7 @@ const flagEmoji = (isoCode: string) => {
                                     <span v-else class="text-[var(--vyamap-text-subtle)]">No destinations recorded</span>
 
                                     <span class="vyamap-number shrink-0 text-[var(--vyamap-text-subtle)]">
-                                        <template v-if="tripDays(trip)">{{ tripDays(trip) }} days</template>
+                                        <template v-if="tripDays(trip)">{{ tripDays(trip) }} {{ tripDays(trip) === 1 ? 'day' : 'days' }}</template>
                                         <template v-if="tripDays(trip) && trip.cities.length"> · </template>
                                         <template v-if="trip.cities.length">{{ trip.cities.length }} {{ trip.cities.length === 1 ? 'city' : 'cities' }}</template>
                                     </span>

@@ -619,7 +619,7 @@ const machineReadable = computed(() => {
                         <dd v-if="selectedPeriod !== 'all'" class="vyamap-stat-hint order-3">Starting in {{ selectedPeriod }}</dd>
                     </div>
                     <div class="vyamap-stat border-l border-t border-[var(--vyamap-border)] p-5 lg:border-l-0">
-                        <dt class="vyamap-stat-label order-2">Days traveling</dt>
+                        <dt class="vyamap-stat-label order-2">{{ periodStats.days === 1 ? 'Day traveling' : 'Days traveling' }}</dt>
                         <dd class="vyamap-stat-value order-1">{{ formatNumber(periodStats.days) }}</dd>
                         <dd class="vyamap-stat-hint order-3">{{ selectedPeriod === 'all' ? 'Completed trips' : `Within ${selectedPeriod}` }}, overlaps counted once</dd>
                     </div>
