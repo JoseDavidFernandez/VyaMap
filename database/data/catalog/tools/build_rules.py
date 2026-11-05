@@ -185,6 +185,28 @@ AIRPORTS = {
 }
 
 
+# Ciudad servida por aeropuerto (cities.py). Excepciones revisadas a mano el
+# 05-11-2026; las coordenadas salen siempre de la ciudad en Wikidata.
+#
+# CITY_OVERRIDES: Wikidata solo da la localidad del aeropuerto y su nombre no
+# cita la ciudad a la que sirve, así que el buscador no lo encontraría por ella.
+CITY_OVERRIDES = {
+    'KEF': 'Reykjavík',    # Wikidata: Keflavík
+    'MRU': 'Port Louis',   # Wikidata: Plaine Magnien
+    'CCE': 'Cairo',        # Wikidata: The New Capital
+}
+
+# ADMINISTRATIVE_P931: su ciudad servida en Wikidata es un atolón o una
+# prefectura, unidades administrativas como los condados; se tratan como sin
+# ciudad utilizable y conservan la actual (regla de estabilidad).
+ADMINISTRATIVE_P931 = {
+    'KDM',   # Huvadhu Atoll
+    'GXH',   # Gannan (prefectura)
+    'DCY',   # Garzê (prefectura)
+    'DDR',   # Xigazê (prefectura)
+}
+
+
 if __name__ == '__main__':
     import sys
     from pathlib import Path

@@ -1,18 +1,20 @@
-"""Regenera los CSV de dominio público del catálogo.
+"""Regenera los CSV del catálogo desde fuentes de dominio público o CC0.
 
     python3 gen.py              # descarga lo que falte y escribe en database/data/catalog/
-    python3 gen.py --refresh    # vuelve a descargar todo
+    python3 gen.py --refresh    # vuelve a descargar todo (Wikidata tarda unos 15 minutos)
     python3 gen.py --out DIR    # escribe en otra carpeta (para comparar)
 
-Genera countries.csv, countries_overrides.csv, airports.csv y
-airport_timezones.csv. Lee vyamap_airport_city_mapping.csv del catálogo (la
-lista de aeropuertos y su orden); ese archivo no se regenera aquí.
+Genera countries.csv, countries_overrides.csv, vyamap_airport_city_mapping.csv,
+airports.csv y airport_timezones.csv. Del vyamap_airport_city_mapping.csv del
+catálogo solo toma la lista de aeropuertos (IATA y orden) y la ciudad anterior
+de cada uno, para la regla de estabilidad de cities.py.
 
 Las descargas se guardan en tools/downloads/ (fuera de Git).
 """
 import argparse
 import csv
 import io
+import json
 import shutil
 import sys
 import tarfile
@@ -25,6 +27,8 @@ from pathlib import Path
 TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS))
 
+import cities  # noqa: E402
+import wikidata  # noqa: E402
 from assign import Assigner  # noqa: E402
 from tzlib import equivalent, load_iso3166  # noqa: E402
 
@@ -79,6 +83,22 @@ def download(refresh):
                 (DOWNLOADS / name).write_bytes(archive.read(name))
 
 
+def download_wikidata(refresh, mapping):
+    """Wikidata para cities.py, en downloads/wikidata.json."""
+    target = DOWNLOADS / 'wikidata.json'
+    if not refresh and target.is_file():
+        return
+    wanted = {entry['iata_code'] for entry in mapping}
+    places = {cities.first_municipality(row['municipality']) for row in read_csv(DOWNLOADS / 'airports.csv')
+              if row['iata_code'] in wanted}
+    places |= {entry['city_name'] for entry in mapping}
+    wikidata.CACHE_DIR = DOWNLOADS / 'wikidata-cache'
+    if refresh:
+        shutil.rmtree(wikidata.CACHE_DIR, ignore_errors=True)
+    data = wikidata.fetch(wanted, places - {''})
+    target.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+
 def check_versions(any_version):
     problems = []
     tzdata = (DOWNLOADS / 'version').read_text(encoding='utf-8').strip()
@@ -122,6 +142,45 @@ def write_countries(out):
     names = load_iso3166(DOWNLOADS / 'iso3166.tab')
     lines = ['code,name'] + [f'{code},{names[code]}' for code in OVERRIDE_CODES]
     (out / 'countries_overrides.csv').write_text('\n'.join(lines), encoding='utf-8')
+
+
+def country_names():
+    names = {row['code']: row['name'] for row in read_csv(DOWNLOADS / 'countries.csv')}
+    iso = load_iso3166(DOWNLOADS / 'iso3166.tab')
+    names.update({code: iso[code] for code in OVERRIDE_CODES})
+    return names
+
+
+def write_cities(out, mapping):
+    """vyamap_airport_city_mapping.csv: ciudad servida de cada aeropuerto (cities.py)."""
+    airports = {row['iata_code']: row for row in read_csv(DOWNLOADS / 'airports.csv') if row['iata_code']}
+    entries = []
+    for entry in mapping:
+        airport = airports[entry['iata_code']]
+        entries.append({
+            'iata': airport['iata_code'], 'icao': airport['icao_code'], 'name': airport['name'],
+            'country': airport['iso_country'], 'region': airport['iso_region'], 'municipality': airport['municipality'],
+            'lat': float(airport['latitude_deg']), 'lon': float(airport['longitude_deg']),
+        })
+    previous = {entry['iata_code']: (entry['city_name'], float(entry['city_latitude']), float(entry['city_longitude']))
+                for entry in mapping if entry['city_name']}
+
+    data = json.loads((DOWNLOADS / 'wikidata.json').read_text(encoding='utf-8'))
+    assigner = cities.Assigner(cities.Wikidata(data), country_names())
+    assigned = assigner.assign_all(entries, previous)
+    rows = assigner.csv_rows(assigned)
+
+    header = ['id_original', 'iata_code', 'icao_code', 'airport_name', 'city_name',
+              'country_name', 'country_iso_code', 'city_latitude', 'city_longitude']
+    with open(out / 'vyamap_airport_city_mapping.csv', 'w', newline='', encoding='utf-8') as handle:
+        writer = csv.writer(handle, lineterminator='\n')
+        writer.writerow(header)
+        writer.writerows(rows)
+
+    changed = sum(1 for entry, row in zip(mapping, rows) if (entry['city_name'], entry['country_iso_code']) != (row[4], row[6]))
+    print(f"Ciudades: {len(rows)} aeropuertos, {changed} con otra ciudad o país que en el archivo anterior, "
+          f"{sum(1 for row in rows if not row[4])} sin ciudad (Wikidata del {data['retrieved']})")
+    print('  Método por aeropuerto:', dict(Counter(result['method'] for result in assigned)))
 
 
 def write_airports(out, wanted):
@@ -199,20 +258,22 @@ def main():
     parser.add_argument('--any-version', action='store_true', help='aceptar versiones de tzdata o Natural Earth distintas de las documentadas')
     args = parser.parse_args()
 
+    mapping = read_csv(CATALOG / 'vyamap_airport_city_mapping.csv')
     download(args.refresh)
     check_versions(args.any_version)
+    download_wikidata(args.refresh, mapping)
 
-    mapping = read_csv(CATALOG / 'vyamap_airport_city_mapping.csv')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
 
     write_countries(out)
+    write_cities(out, mapping)
     airports = write_airports(out, {entry['iata_code'] for entry in mapping})
     rows, methods = build_timezones(mapping, airports)
     compare(out / 'airport_timezones.csv', rows)
     write_timezones(out, rows)
 
-    print(f'Escrito en {out}: countries.csv, countries_overrides.csv, airports.csv ({len(airports)} filas), '
+    print(f'Escrito en {out}: countries.csv, countries_overrides.csv, vyamap_airport_city_mapping.csv, airports.csv ({len(airports)} filas), '
           f'airport_timezones.csv ({len(rows)} filas)')
     print('Método por aeropuerto:', dict(methods))
 
