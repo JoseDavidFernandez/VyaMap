@@ -8,10 +8,10 @@ __pycache__/
 /storage/*.key
 /vendor
 .env
-.env.backup
-.env.production
-.env.testing
-.env.manual
+.env.*
+!.env.example
+!.env.testing.example
+*.sql
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
