@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\ResetDemoData;
 use App\Models\Airport;
 use App\Models\City;
 use App\Models\Country;
@@ -45,12 +46,17 @@ class DemoDataTest extends TestCase
         $this->artisan('demo:reset', ['email' => 'demo@example.test', '--force' => true])->assertSuccessful();
 
         $trips = Trip::where('user_id', $this->demo->id)->get();
-        $this->assertSame(5, $trips->count());
-        $this->assertSame(4, $trips->where('status', Trip::COMPLETED)->count());
-        $this->assertSame(1, $trips->where('status', Trip::PLANNED)->count());
-        $this->assertSame(6, Visit::where('user_id', $this->demo->id)->count());
-        $this->assertSame(10, Flight::where('user_id', $this->demo->id)->count());
-        $this->assertSame(1, Flight::where('user_id', $this->demo->id)->whereNull('trip_id')->whereNotNull('confirmed_at')->count());
+        $this->assertSame(15, $trips->count());
+        $this->assertSame(13, $trips->where('status', Trip::COMPLETED)->count());
+        $this->assertSame(1, $trips->where('status', Trip::CANCELLED)->count());
+        $this->assertSame(27, Visit::where('user_id', $this->demo->id)->count());
+        $this->assertSame(35, Flight::where('user_id', $this->demo->id)->count());
+        $this->assertSame(2, Flight::where('user_id', $this->demo->id)->whereNull('trip_id')->whereNotNull('confirmed_at')->count());
+        $this->assertSame(4, Flight::where('user_id', $this->demo->id)->whereNull('departure_at')->count());
+
+        // El viaje planificado empieza siempre 45 días después de hoy.
+        $planned = $trips->where('status', Trip::PLANNED)->sole();
+        $this->assertSame(Carbon::parse(Trip::today())->addDays(45)->toDateString(), $planned->start_date->toDateString());
 
         // Coherencia con las reglas: visitas y salidas dentro de su viaje, llegada tras la salida.
         foreach ($trips as $trip) {
@@ -62,17 +68,38 @@ class DemoDataTest extends TestCase
                 $this->assertTrue($flight->departure_date->betweenIncluded($trip->start_date, $trip->end_date), "{$trip->name}: vuelo fuera del viaje");
                 $this->assertTrue($flight->arrival_at === null || $flight->arrival_at->gt($flight->departure_at));
             }
+
+            // Los viajes completados ya han terminado.
+            if ($trip->status === Trip::COMPLETED) {
+                $this->assertTrue($trip->end_date->lt(Trip::today()), "{$trip->name}: completado sin haber terminado");
+            }
         }
 
-        // Las estadísticas tienen datos que enseñar: países, continentes, un viaje que cruza de año y vuelos realizados.
+        // Escala en Doha y llegadas al día siguiente (hora local del destino).
+        $flights = Flight::with(['originAirport', 'destinationAirport'])->where('user_id', $this->demo->id)->get();
+        $this->assertSame(2, $flights->filter(fn ($flight) => $flight->destinationAirport->iata_code === 'DOH')->count());
+        $this->assertGreaterThanOrEqual(3, $flights->filter(fn ($flight) => $flight->arrival_at
+            && $flight->arrival_at->setTimezone($flight->destinationAirport->timezone)->toDateString() > $flight->departure_date->toDateString())->count());
+
+        // Estadísticas: países por año, un territorio, cuatro continentes, distancia y tiempo en el aire.
         $statistics = app(TravelStatistics::class);
         $places = $statistics->places($this->demo->id);
-        // PT, IT, GB y US. España es solo el origen de los vuelos y Francia, un viaje planificado: no cuentan.
-        $this->assertSame(4, $places['total']['countries']);
-        $this->assertGreaterThanOrEqual(2, count($places['by_year']));
-        $flights = $statistics->flights(Flight::withStatuses(Flight::with(['trip', 'originAirport.city', 'destinationAirport.city'])->where('user_id', $this->demo->id)->get()));
-        $this->assertSame(9, $flights['flights']);
-        $this->assertNotNull($flights['air_minutes']);
+        $this->assertSame(16, $places['total']['countries']);
+        $this->assertSame(1, $places['total']['territories']);
+        $this->assertSame(4, $places['total']['continents']);
+        $newByYear = collect($places['by_year'])->map(fn ($year) => collect($year['new_countries'])->pluck('iso_code')->sort()->values()->all());
+        $this->assertSame(['ES', 'IT', 'MA', 'PT', 'US'], $newByYear[2024]);
+        $this->assertSame(['BE', 'GR', 'IS', 'JP', 'MX', 'NL'], $newByYear[2025]);
+        $this->assertSame(['AT', 'CZ', 'GB', 'HU', 'TR'], $newByYear[2026]);
+        $this->assertSame(1, $places['by_year'][2024]['new_territories']);
+
+        $stats = $statistics->flights(Flight::withStatuses(Flight::with(['trip', 'originAirport.city', 'destinationAirport.city'])->where('user_id', $this->demo->id)->get()));
+        // Los del viaje cancelado y los del planificado no cuentan.
+        $this->assertSame(31, $stats['flights']);
+        $this->assertSame(27, $stats['flights_with_times']);
+        $this->assertSame(123 * 60 + 45, $stats['air_minutes']);
+        $this->assertGreaterThan(85000, $stats['distance_km']);
+        $this->assertSame(['MAD', 'MEX'], [$stats['longest']['origin'], $stats['longest']['destination']]);
     }
 
     public function test_running_it_again_restores_the_same_demo_data(): void
@@ -84,9 +111,9 @@ class DemoDataTest extends TestCase
 
         $this->artisan('demo:reset', ['email' => 'demo@example.test', '--force' => true])->assertSuccessful();
 
-        $this->assertSame(5, Trip::where('user_id', $this->demo->id)->count());
+        $this->assertSame(15, Trip::where('user_id', $this->demo->id)->count());
         $this->assertSame(0, Trip::where('name', 'Edited by a visitor')->count());
-        $this->assertSame(10, Flight::where('user_id', $this->demo->id)->count());
+        $this->assertSame(35, Flight::where('user_id', $this->demo->id)->count());
     }
 
     public function test_other_accounts_are_never_touched(): void
@@ -150,27 +177,36 @@ class DemoDataTest extends TestCase
     }
 
     // Catálogo mínimo: los aeropuertos que usa la demo, con ciudad y zona horaria.
+    /**
+     * Los aeropuertos que usa demo:reset, con sus ciudades, países, coordenadas y
+     * zonas horarias tal como están en el catálogo versionado (database/data/catalog).
+     */
     private function catalog(?string $except = null): void
     {
-        $airports = [
-            'MAD' => ['ES', 'Spain', 'Madrid', 40.4719, -3.5626, 'Europe/Madrid'],
-            'BCN' => ['ES', 'Spain', 'Barcelona', 41.2971, 2.0785, 'Europe/Madrid'],
-            'LIS' => ['PT', 'Portugal', 'Lisbon', 38.7742, -9.1342, 'Europe/Lisbon'],
-            'FCO' => ['IT', 'Italy', 'Rome', 41.8003, 12.2389, 'Europe/Rome'],
-            'FLR' => ['IT', 'Italy', 'Florence', 43.81, 11.2051, 'Europe/Rome'],
-            'LHR' => ['GB', 'United Kingdom', 'London', 51.47, -0.4543, 'Europe/London'],
-            'JFK' => ['US', 'United States', 'New York', 40.6413, -73.7781, 'America/New_York'],
-            'CDG' => ['FR', 'France', 'Paris', 49.0097, 2.5479, 'Europe/Paris'],
-        ];
+        $codes = (new \ReflectionClassConstant(ResetDemoData::class, 'AIRPORTS'))->getValue();
+        $read = fn (string $file) => collect(array_map('str_getcsv', file(base_path("database/data/catalog/{$file}"), FILE_IGNORE_NEW_LINES)))
+            ->pipe(fn ($rows) => $rows->slice(1)->map(fn ($row) => array_combine($rows->first(), $row)))
+            ->keyBy('iata_code');
+        $mapping = $read('vyamap_airport_city_mapping.csv');
+        $coordinates = $read('airports.csv');
+        $timezones = $read('airport_timezones.csv');
 
-        foreach ($airports as $code => [$iso, $country, $city, $latitude, $longitude, $timezone]) {
+        foreach ($codes as $code) {
             if ($code === $except) {
                 continue;
             }
 
-            $countryModel = Country::firstOrCreate(['iso_code' => $iso], ['name' => $country]);
-            $cityModel = City::firstOrCreate(['country_id' => $countryModel->id, 'name' => $city]);
-            Airport::create(['city_id' => $cityModel->id, 'name' => "{$code} Airport", 'iata_code' => $code, 'latitude' => $latitude, 'longitude' => $longitude, 'timezone' => $timezone]);
+            $row = $mapping[$code];
+            $country = Country::firstOrCreate(['iso_code' => $row['country_iso_code']], ['name' => $row['country_name']]);
+            $city = City::firstOrCreate(
+                ['country_id' => $country->id, 'name' => $row['city_name']],
+                ['latitude' => $row['city_latitude'], 'longitude' => $row['city_longitude']],
+            );
+            Airport::create([
+                'city_id' => $city->id, 'name' => $row['airport_name'], 'iata_code' => $code,
+                'latitude' => $coordinates[$code]['latitude_deg'], 'longitude' => $coordinates[$code]['longitude_deg'],
+                'timezone' => $timezones[$code]['timezone'],
+            ]);
         }
     }
 }

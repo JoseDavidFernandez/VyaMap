@@ -92,7 +92,7 @@ La aplicación se sirve con el servidor web local o con `php artisan serve`. Con
 php artisan demo:reset correo@example.com
 ```
 
-Sustituye los viajes, visitas y vuelos de **esa** cuenta por datos ficticios: viajes de varios años, un viaje planificado y vuelos con y sin horas. Se niega si la cuenta tiene fotos o si falta el catálogo, y pide confirmación. Úsalo solo con una cuenta de demostración.
+Sustituye los viajes, visitas y vuelos de **esa** cuenta por el historial ficticio de una persona que vive en Madrid: 13 viajes completados entre 2024 y 2026 (16 países y Gibraltar, en cuatro continentes), uno cancelado, uno planificado que siempre empieza 45 días después de ejecutarlo, y 35 vuelos (con escala, llegadas al día siguiente, algunos sin horas y dos independientes confirmados). Solo usa ciudades y aeropuertos del catálogo. Se niega si la cuenta tiene fotos o si falta el catálogo, y pide confirmación. Úsalo solo con una cuenta de demostración.
 
 ### Producción
 
