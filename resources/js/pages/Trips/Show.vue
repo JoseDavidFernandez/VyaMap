@@ -809,7 +809,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                                 v-if="trip.status === 'completed'"
                                 type="button"
                                 :disabled="isChangingStatus"
-                                class="vyamap-button-ghost vyamap-button-sm"
+                                class="vyamap-button-secondary vyamap-button-sm"
                                 @click="changeStatus('planned')"
                             >
                                 Mark as planned
