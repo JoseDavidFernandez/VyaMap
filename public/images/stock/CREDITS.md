@@ -1,6 +1,6 @@
 # Imágenes genéricas de VyaMap
 
-Paisajes de uso ilustrativo para tarjetas y estados vacíos. **No son fotos de los viajes de ningún usuario**: la interfaz las muestra siempre con la etiqueta «Illustrative image».
+Paisajes de uso ilustrativo para tarjetas y estados vacíos. **No son fotos de los viajes de ningún usuario.** La interfaz las muestra sin etiqueta ni crédito visible (CC0 no lo exige); la atribución está en este archivo.
 
 - **Licencia:** CC0 1.0 (dominio público), según los metadatos de Wikimedia Commons de cada archivo, sin restricciones adicionales. Son fotos publicadas originalmente en Unsplash bajo CC0. CC0 no exige atribución; se acredita igualmente.
 - **Obtención:** 2026-10-27, desde la API de Wikimedia Commons (miniatura de 1600 px de cada original).

@@ -7,8 +7,7 @@ import { stockImageFor, stockImages, stockSrc } from '../../resources/js/data/st
 
 /**
  * Imágenes genéricas (resources/js/data/stockImages.ts): se sirven desde
- * public/images/stock, están acreditadas y nunca se muestran sin la etiqueta
- * de imagen ilustrativa.
+ * public/images/stock, optimizadas y acreditadas en CREDITS.md.
  */
 const publicDir = resolve(__dirname, '../../public');
 const credits = readFileSync(resolve(publicDir, 'images/stock/CREDITS.md'), 'utf8');
@@ -36,14 +35,15 @@ describe('catálogo de imágenes genéricas', () => {
 });
 
 describe('StockImage', () => {
-    it('etiqueta la imagen como ilustrativa y acredita al autor', () => {
+    it('muestra solo la imagen, sin etiqueta de texto', () => {
         const wrapper = mount(StockImage, { props: { image: stockImages[0] } });
-        const label = wrapper.get('.vyamap-stock-label');
+        const img = wrapper.get('img');
 
-        expect(label.text()).toBe('Illustrative image');
-        expect(label.attributes('title')).toContain('not from your trips');
-        expect(label.attributes('title')).toContain(stockImages[0].author);
-        expect(wrapper.get('img').attributes('srcset')).toContain('-1600.webp 1600w');
-        expect(wrapper.get('img').attributes('alt')).toBe(stockImages[0].alt);
+        expect(wrapper.text()).toBe('');
+        expect(wrapper.findAll('.vyamap-stock > *')).toHaveLength(1);
+        expect(img.attributes('src')).toBe(stockSrc(stockImages[0]));
+        expect(img.attributes('srcset')).toContain('-1600.webp 1600w');
+        expect(img.attributes('alt')).toBe(stockImages[0].alt);
+        expect(img.attributes('loading')).toBe('lazy');
     });
 });

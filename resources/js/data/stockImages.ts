@@ -1,7 +1,6 @@
 /**
- * Imágenes genéricas de paisajes para tarjetas y estados vacíos. No son fotos
- * de los viajes del usuario: siempre se muestran con la etiqueta
- * «Illustrative image» (components/ui/StockImage.vue).
+ * Imágenes genéricas de paisajes para tarjetas y estados vacíos (se muestran
+ * con components/ui/StockImage.vue). No son fotos de los viajes del usuario.
  *
  * Todas son CC0 (dominio público): fotos publicadas en Unsplash bajo CC0 y
  * conservadas en Wikimedia Commons. Se sirven desde public/images/stock en
@@ -34,6 +33,3 @@ export const stockSrc = (image: StockImage, width: 800 | 1600 = 800): string => 
 
 export const stockSrcSet = (image: StockImage): string =>
     `${stockSrc(image, 800)} 800w, ${stockSrc(image, 1600)} 1600w`;
-
-export const stockCredit = (image: StockImage): string =>
-    `Illustrative image, not from your trips. Photo: ${image.author}, CC0 (Unsplash via Wikimedia Commons).`;

@@ -56,7 +56,7 @@ Sin etiquetas pequeñas en mayúsculas encima de los títulos, sin texto con deg
 
 ## Imágenes genéricas
 
-Paisajes CC0 (Unsplash vía Wikimedia Commons) en `public/images/stock/`, en WebP de 800 y 1600 px sin metadatos; créditos en `public/images/stock/CREDITS.md`. Se usan en las tarjetas de viaje sin foto propia, en la tarjeta del próximo viaje y en los estados vacíos grandes (`EmptyState` con `image`). Siempre a través de `components/ui/StockImage.vue`: velo de la paleta, saturación algo reducida y la etiqueta visible «Illustrative image», con el crédito en el tooltip; nunca pasan por fotos de los viajes del usuario. Las miniaturas pequeñas (menos de 64 px) usan un icono en lugar de imagen. Un mismo viaje muestra siempre la misma (`stockImageFor(id)`).
+Paisajes CC0 (Unsplash vía Wikimedia Commons) en `public/images/stock/`, en WebP de 800 y 1600 px sin metadatos; créditos en `public/images/stock/CREDITS.md`. Se usan en las tarjetas de viaje sin foto propia, en la tarjeta del próximo viaje y en los estados vacíos grandes (`EmptyState` con `image`). Siempre a través de `components/ui/StockImage.vue`: velo de la paleta y saturación algo reducida, sin etiqueta de texto. No son fotos de los viajes del usuario ni del destino: son decorativas, y el texto alternativo describe el paisaje. Las miniaturas pequeñas (menos de 64 px) usan un icono en lugar de imagen. Un mismo viaje muestra siempre la misma (`stockImageFor(id)`).
 
 ## Pasaporte
 
