@@ -101,7 +101,7 @@ const countryTotals = computed(() => countCountries(props.countries));
 
             <!-- HUELLA -->
             <section class="vyamap-card overflow-hidden">
-                <div class="flex flex-wrap items-end justify-between gap-4 p-5 sm:p-7">
+                <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:p-7">
                     <div>
                         <h2 class="vyamap-h2">Travel footprint</h2>
                         <p class="mt-1 max-w-[60ch] text-sm text-[var(--vyamap-text-muted)]">
@@ -112,7 +112,8 @@ const countryTotals = computed(() => countCountries(props.countries));
                         </p>
                     </div>
 
-                    <div class="vyamap-stat items-end text-right">
+                    <!-- En móvil, debajo del texto y alineada a la izquierda como el resto de cifras. -->
+                    <div class="vyamap-stat items-start sm:items-end sm:text-right">
                         <span class="vyamap-stat-value">{{ countryTotals.countries }}</span>
                         <span class="vyamap-stat-label">
                             {{ countryTotals.countries === 1 ? 'country' : 'countries' }}

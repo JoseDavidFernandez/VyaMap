@@ -484,25 +484,20 @@ const formattedAverageDuration = computed(() => {
                                 <p class="vyamap-number text-right text-sm text-[var(--vyamap-text-muted)]">{{ formatDistance(flight.distance_km) }}</p>
                             </div>
 
-                            <!-- Móvil -->
+                            <!-- Móvil: la ruta en su propia línea a todo el ancho; fecha y distancia, debajo. -->
                             <div class="md:hidden">
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <p class="flex items-center gap-2">
-                                            <span class="vyamap-code text-sm">{{ flight.flight_number || 'Flight' }}</span>
-                                            <span v-if="flight.airline" class="truncate text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ flight.airline }}</span>
-                                        </p>
-                                        <p class="mt-1 flex items-center gap-2 text-sm">
-                                            <span class="truncate">{{ flight.origin.city }}</span>
-                                            <span class="vyamap-route-line max-w-10" aria-hidden="true" />
-                                            <span class="truncate">{{ flight.destination.city }}</span>
-                                        </p>
-                                    </div>
-                                    <div class="shrink-0 text-right text-[0.8125rem] text-[var(--vyamap-text-muted)]">
-                                        <p class="vyamap-number">{{ flightDepartureLabel(flight) }}</p>
-                                        <p class="vyamap-number">{{ formatDistance(flight.distance_km) }}<template v-if="flight.duration_minutes"> · {{ formatDuration(flight.duration_minutes) }}</template></p>
-                                    </div>
-                                </div>
+                                <p class="flex min-w-0 items-center gap-2">
+                                    <span class="vyamap-code text-sm">{{ flight.flight_number || 'Flight' }}</span>
+                                    <span v-if="flight.airline" class="truncate text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ flight.airline }}</span>
+                                </p>
+                                <p class="mt-1 flex min-w-0 items-center gap-2 text-sm">
+                                    <span class="min-w-0 truncate">{{ flight.origin.city }}</span>
+                                    <span class="vyamap-route-line max-w-10" aria-hidden="true" />
+                                    <span class="min-w-0 truncate">{{ flight.destination.city }}</span>
+                                </p>
+                                <p class="vyamap-number mt-1 text-[0.8125rem] text-[var(--vyamap-text-muted)]">
+                                    {{ flightDepartureLabel(flight) }} · {{ formatDistance(flight.distance_km) }}<template v-if="flight.duration_minutes"> · {{ formatDuration(flight.duration_minutes) }}</template>
+                                </p>
                             </div>
 
                             <!-- Estado, viaje y acciones -->
