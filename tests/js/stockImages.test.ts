@@ -1,3 +1,6 @@
+/// <reference types="node" />
+// Este test lee ficheros de public/ con APIs de Node. tsconfig limita los tipos
+// globales a vite/client (código de navegador), así que se declaran aquí.
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { mount } from '@vue/test-utils';
