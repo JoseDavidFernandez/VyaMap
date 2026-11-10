@@ -861,6 +861,17 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 - **Inertia DevTools** graba las props de cada página (correo, viajes, rutas de fotos) en `storage/inertia-devtools` y, en `local`, sirve `/_inertia/devtools/entries` sin autenticación. `AppServiceProvider::register()` lo fuerza a desactivado en cualquier entorno distinto de `local`, aunque `INERTIA_DEVTOOLS_ENABLED=true`, y entonces sus rutas no se registran. En local, `.env.example` lo deja desactivado: activarlo solo mientras se use y vaciar después `storage/inertia-devtools` (el proyecto está en una carpeta sincronizada con iCloud).
 - **Ignition** está en `require-dev`: no se instala con `composer install --no-dev` y sus soluciones ejecutables solo funcionan con `APP_DEBUG=true` en `local`.
 
+### Dependencias de npm
+
+`npm audit` se revisa en local, nunca con `npm audit fix` en el servidor (ver `deployment.md`). Antes de decidir, se comprueba si el paquete llega al bundle del navegador mirando los sourcemaps de un `vite build`, sin fiarse de si está en `dependencies` o en `devDependencies`. axios sí llega, pero con sus adaptadores `xhr`/`fetch`: su campo `browser` excluye el adaptador de Node y, con él, `follow-redirects`.
+
+**Riesgo aceptado (revisado el 2026-11-10): `minimatch` y `glob` vía `@vue/test-utils`.**
+
+- **Cadena:** `@vue/test-utils` 2.5.1 → `js-beautify` 2.0.3 → `editorconfig` 3.0.2 → `minimatch` 10.2.x, y `js-beautify` → `glob` 13.0.x. Son 5 avisos moderados en `npm audit`: `minimatch` (DoS por amplificación de patrones, GHSA-g3hv-75wg-m249), `glob` (sigue recorriendo el disco tras un AbortSignal, GHSA-3g3m-2fjr-6pw4) y los heredados por `editorconfig`, `js-beautify` y `@vue/test-utils`.
+- **Por qué no se puede explotar:** es una dependencia solo de los tests de Vitest y no llega al navegador ni al servidor. `@vue/test-utils` usa `js-beautify` para formatear cadenas en `wrapper.html()`. `editorconfig` y `glob` solo se usan para buscar ficheros `.editorconfig` en disco, y esa búsqueda no se ejecuta. Los patrones nunca vienen de fuera.
+- **Por qué no se corrige:** no hay versión parcheada dentro de los rangos que declaran (`editorconfig` fija `minimatch ~10.2.4` y `js-beautify` pide `glob ^13`). `npm audit fix --force` propone bajar a `@vue/test-utils` 2.4.11, que es un retroceso y trae `glob` 10, también afectado. Los `overrides` forzarían versiones mayores que esos paquetes no declaran.
+- **Cuándo revisarlo:** cuando salga una versión nueva de `editorconfig` o de `js-beautify` (o de `@vue/test-utils` que las actualice). Basta con `npm outdated` y `npm audit`.
+
 ### Lista para producción
 
 - `APP_ENV=production`, `APP_DEBUG=false` y `APP_KEY` propia.
