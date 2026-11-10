@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import L from 'leaflet';
+import { OSM_ATTRIBUTION, OSM_TILE_URL } from '../../data/mapTiles';
 
 import {
     computed,
@@ -183,13 +184,7 @@ onMounted(async () => {
     } else {
         map.setView([20, 0], 2);
 
-        L.tileLayer(
-            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            {
-                attribution:
-                    '&copy; OpenStreetMap contributors',
-            },
-        ).addTo(map);
+        L.tileLayer(OSM_TILE_URL, { attribution: OSM_ATTRIBUTION }).addTo(map);
     }
 
     const response = await fetch(

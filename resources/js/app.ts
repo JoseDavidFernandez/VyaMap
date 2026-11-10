@@ -14,6 +14,12 @@ const pages = import.meta.glob<{
 createInertiaApp({
     title: (title) => (title ? `${title} · VyaMap` : 'VyaMap'),
 
+    // La barra de progreso no inyecta su <style>: la CSP no admite estilos en
+    // línea sin hash. Su CSS está en app.css («Barra de progreso de Inertia»).
+    progress: {
+        includeCSS: false,
+    },
+
     resolve: (name) => {
         const page = pages[`./pages/${name}.vue`];
 

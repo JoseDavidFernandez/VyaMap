@@ -2,6 +2,7 @@
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
+import { OSM_ATTRIBUTION, OSM_TILE_URL } from '../../data/mapTiles';
 import { escapeHtml } from '../../utils/escapeHtml';
 
 interface City {
@@ -148,8 +149,8 @@ onMounted(async () => {
         position: 'bottomright',
     }).addTo(map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+    L.tileLayer(OSM_TILE_URL, {
+        attribution: OSM_ATTRIBUTION,
         maxZoom: 19,
     }).addTo(map);
 
