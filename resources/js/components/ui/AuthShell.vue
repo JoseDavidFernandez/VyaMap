@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import BrandMark from './BrandMark.vue';
 
 /**
  * Marco común de las pantallas de acceso: marca y rutas a la izquierda (solo
@@ -20,7 +21,7 @@ defineProps<{
         <!-- MARCA (escritorio) -->
         <section class="relative hidden overflow-hidden border-r border-[var(--vyamap-border)] lg:flex lg:flex-col lg:justify-between lg:p-12">
             <Link href="/login" class="flex items-center gap-3" aria-label="VyaMap">
-                <span class="vyamap-auth-mark">V</span>
+                <BrandMark class="vyamap-auth-mark" />
                 <span class="text-lg font-semibold tracking-[-0.02em]">VyaMap</span>
             </Link>
 
@@ -74,7 +75,7 @@ defineProps<{
         <!-- FORMULARIO -->
         <section class="flex min-h-screen flex-col px-4 py-6 sm:px-8 lg:min-h-0 lg:justify-center lg:px-12">
             <Link href="/login" class="mb-10 flex items-center gap-2.5 lg:hidden" aria-label="VyaMap">
-                <span class="vyamap-auth-mark !h-8 !w-8 !text-sm">V</span>
+                <BrandMark class="vyamap-auth-mark !h-8 !w-8" />
                 <span class="text-base font-semibold tracking-[-0.02em]">VyaMap</span>
             </Link>
 
@@ -109,16 +110,8 @@ defineProps<{
 
 <style>
 .vyamap-auth-mark {
-    display: inline-flex;
     height: 2.5rem;
     width: 2.5rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.75rem;
-    background: linear-gradient(135deg, rgba(34, 211, 238, 0.95), rgba(124, 92, 255, 0.95));
-    color: #041019;
-    font-weight: 750;
-    letter-spacing: -0.04em;
-    box-shadow: 0 6px 16px -6px rgba(34, 211, 238, 0.6);
+    flex-shrink: 0;
 }
 </style>

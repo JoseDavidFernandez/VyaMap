@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router, Link, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import BrandMark from './ui/BrandMark.vue';
 import Icon, { type IconName } from './ui/Icon.vue';
 import { useReadOnly } from '../composables/useReadOnly';
 
@@ -87,9 +88,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
                 class="flex h-11 items-center gap-3 rounded-[var(--vyamap-radius-sm)] px-1.5"
                 aria-label="VyaMap home"
             >
-                <span class="vyamap-brand-mark">
-                    V
-                </span>
+                <BrandMark class="vyamap-brand-mark" />
                 <span class="hidden text-[1.0625rem] font-semibold tracking-[-0.02em] xl:inline">
                     VyaMap
                 </span>
@@ -158,7 +157,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
     >
         <div class="flex h-14 items-center justify-between gap-3 px-4">
             <Link href="/" class="flex items-center gap-2.5" aria-label="VyaMap home">
-                <span class="vyamap-brand-mark !h-8 !w-8 !text-sm">V</span>
+                <BrandMark class="vyamap-brand-mark !h-8 !w-8" />
                 <span class="text-base font-semibold tracking-[-0.02em]">VyaMap</span>
             </Link>
 
@@ -269,20 +268,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 <style>
 .vyamap-brand-mark {
-    display: inline-flex;
     height: 2.25rem;
     width: 2.25rem;
     flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.75rem;
-    background:
-        linear-gradient(135deg, rgba(34, 211, 238, 0.95), rgba(124, 92, 255, 0.95));
-    color: #041019;
-    font-size: 1rem;
-    font-weight: 750;
-    letter-spacing: -0.04em;
-    box-shadow: 0 6px 16px -6px rgba(34, 211, 238, 0.6);
 }
 
 .vyamap-avatar {
