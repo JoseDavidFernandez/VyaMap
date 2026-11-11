@@ -10,7 +10,7 @@ El registro público está **cerrado**: las cuentas se crean con `users:create`.
 |---|---|
 | PHP | 8.3, con `gd`, `exif`, `mbstring`, `pdo_mysql`, `fileinfo`, `intl`, `xml`, `curl`, `zip` y `bcmath` |
 | Composer | Dependencias de producción (sin las de desarrollo, para no instalar Ignition) |
-| Node.js | 20 o 22. Solo para compilar los assets con Vite; la aplicación no lo usa en tiempo de ejecución. |
+| Node.js | 26. Solo para compilar los assets con Vite; la aplicación no lo usa en tiempo de ejecución. |
 | Base de datos | MariaDB 10.5 (la del servidor), en una base y un usuario exclusivos de VyaMap |
 | Sesiones y caché | `file`. El proyecto no tiene tablas `sessions` ni `cache`, así que `database` no funciona. Laravel lee `CACHE_DRIVER`, no `CACHE_STORE`. Nunca `array` en producción: no guarda nada entre peticiones y los límites de intentos dejarían de funcionar. |
 | Cola | `QUEUE_CONNECTION=sync`: no hace falta worker. |
@@ -27,8 +27,34 @@ Internet ──443──▶ nginx (Plesk) ──▶ Apache ──▶ PHP-FPM 8.3
 - Todo lo gestiona Plesk: el servidor web, PHP, los certificados y la base de datos.
 - La aplicación vive en `httpdocs/` de su suscripción, y la **raíz web es `httpdocs/public`**. Nada fuera de `public/` debe ser accesible desde Internet (sección 4.2).
 - Cada suscripción tiene su propio usuario del sistema, así que VyaMap no puede leer ni escribir en los demás sitios del servidor.
-- **SSH está en *Forbidden*** salvo cuando hace falta (sección 7).
+- PHP 8.3 y Node 26 llegan por los *shims* de **phpenv** y **nodenv**, los mismos que usa el Laravel Toolkit. Por SSH, `php` y `node` son esas versiones sin configurar nada.
+- **SSH activo, solo con clave** (sección 2.1), y **Fail2Ban** vigilando los accesos (sección 2.2).
 - HTTPS lo termina el propio servidor, así que **`TRUSTED_PROXIES` no se define**. Comprobado: los enlaces de los correos salen con `https://`.
+
+### 2.1 Acceso SSH
+
+- El usuario del sistema de la suscripción tiene acceso con **`/bin/bash`** (el entorno *chrooted* no incluye PHP).
+- **Solo con clave ed25519**, subida desde tu equipo con `ssh-copy-id`:
+
+  ```bash
+  ssh-copy-id -i ~/.ssh/id_ed25519.pub <usuario>@<servidor>
+  ssh <usuario>@<servidor>
+  ```
+
+- La contraseña del usuario es larga, aleatoria y no se usa para entrar.
+- SSH tiene que estar activo porque el script de **Laravel Toolkit → Deployment** solo se puede editar con SSH activado (sección 6.1).
+- Al entrar, el directorio es la raíz de la suscripción: la aplicación está en **`~/httpdocs`**.
+
+### 2.2 Fail2Ban
+
+Instalado y activo en el servidor (**Tools & Settings → IP Address Banning**), con estas *jails*:
+
+| Jail | Protege |
+|---|---|
+| `ssh` | Intentos de acceso por SSH |
+| `plesk-panel` | El inicio de sesión del panel de Plesk |
+| `plesk-apache` | Autenticación HTTP de Apache |
+| `recidive` | Bloqueo largo para las IP que reinciden en las demás |
 
 ## 3. Antes de empezar
 
@@ -67,7 +93,7 @@ El DNS de `josedavidfernandezcomino.com` está en el panel del registrador, no e
 2. **Hosting & DNS → Hosting:**
    - **Document root:** `httpdocs/public`. Después de guardar, **vuelve a entrar y comprueba que se ha guardado**. Si se queda en `httpdocs`, el `.env` es descargable desde Internet (ver la nota de abajo).
    - **Redirección 301 de HTTP a HTTPS:** activada.
-   - **SSH access:** *Forbidden*.
+   - **SSH access:** `/bin/bash`, solo con clave (sección 2.1).
 3. **PHP:** versión 8.3 (FPM). `memory_limit` 256M y **`display_errors` en Off**.
 4. **Mail → Mail Settings:** correo de entrada desactivado. VyaMap solo envía, y lo hace por Brevo.
 5. Borra el `index.html` por defecto que crea Plesk en `httpdocs`.
@@ -124,7 +150,7 @@ HSTS va sin `includeSubDomains`, porque afectaría a todos los subdominios de `j
    - Pulsa *Deploy now* y comprueba en el File Manager que `httpdocs` tiene `artisan`, `app/`, `public/`, etc.
 2. **PHP Composer** (en la página del dominio): *Scan*, **Mode: Production** e ***Install***. Nunca *Update*, que ignoraría el `composer.lock`.
 3. **Laravel Toolkit → Scan.** Si devuelve *0 applications*, casi seguro que la raíz web no está en `httpdocs/public`.
-4. **Laravel Toolkit → Node.js:** activa Node 20 o 22, `npm install` y `npm run build`. Comprueba que existe `public/build/manifest.json`.
+4. **Laravel Toolkit → Node.js:** Node 26, `npm install` y `npm run build`. Comprueba que existe `public/build/manifest.json`.
    - `npm install` avisa de vulnerabilidades. **Nunca** ejecutes `npm audit fix` en el servidor: se revisan y corrigen en local, se prueban y se despliegan.
 
 ### 5.3 `.env` de producción
@@ -217,24 +243,21 @@ Después, en **Artisan**, por este orden. **Cuidado:** unos comandos simulan si 
 
 ### 5.6 Cuentas
 
-`users:create` **pide la contraseña de forma interactiva** (así no queda en ningún historial ni registro), y el Toolkit no puede responder. Hace falta SSH:
+`users:create` **pide la contraseña de forma interactiva** (así no queda en ningún historial ni registro), y el Toolkit no puede responder. Hace falta SSH (sección 2.1):
 
-1. **Hosting & DNS → Hosting → SSH access:** `/bin/bash`. El entorno *chrooted* no incluye PHP.
-2. Abre **SSH Terminal** en la página del dominio:
+1. Entra por SSH (`ssh <usuario>@<servidor>`) o con **SSH Terminal** en la página del dominio:
 
    ```bash
-   cd httpdocs
+   cd ~/httpdocs
    php artisan users:create "Nombre" correo@ejemplo.com
    ```
 
-3. **Cuenta demo:** con una contraseña larga y aleatoria (`openssl rand -base64 24`), porque nadie la escribe:
+2. **Cuenta demo:** con una contraseña larga y aleatoria (`openssl rand -base64 24`), porque nadie la escribe:
 
    ```bash
    php artisan users:create "Demo" demo@vyamap.josedavidfernandezcomino.com
    php artisan demo:reset demo@vyamap.josedavidfernandezcomino.com --force
    ```
-
-4. **Vuelve a poner SSH en *Forbidden*.**
 
 ### 5.7 Cachés
 
@@ -246,19 +269,51 @@ Guarda en caché la configuración, los eventos, las rutas y las vistas. **A par
 
 ## 6. Actualizaciones
 
-Mientras no esté automatizado (6.1), cada despliegue con cambios de código se hace a mano:
+Los despliegues se hacen con un clic desde **Laravel Toolkit → Deployment**. Si el script falla, el procedimiento manual está en la sección 11.
 
-1. **Git:** *Pull* y *Deploy*.
-2. Si ha cambiado `composer.lock`: **PHP Composer → Install**.
-3. Si han cambiado el JS, el CSS o `package-lock.json`: **Node.js → `npm install`** y **`npm run build`**.
-4. Si hay migraciones nuevas: **Artisan → `migrate --force`**. Antes de una migración que cambie datos, haz una copia de seguridad (sección 8).
-5. Siempre: **Artisan → `optimize`**.
+### 6.1 Configuración de Deployment
 
-Si el despliegue solo cambia documentación, basta con *Pull* y *Deploy*.
+- **Modo *Manual*:** nada se despliega solo al hacer push a GitHub; hay que pulsar ***Deploy***.
+- **Pasos marcados:**
 
-### 6.1 Automatizar (pendiente)
+  | Paso | Acción |
+  |---|---|
+  | 1 | Activar el modo mantenimiento |
+  | 4 | `composer install` |
+  | 5 | `npm install` |
+  | 6 | Script de despliegue (abajo) |
+  | 7 | Quitar el modo mantenimiento |
 
-**Laravel Toolkit → Deployment** permite ejecutar todo lo anterior al pulsar *Deploy*: modo mantenimiento, `composer install`, `npm install` y un script propio (`npm run build`, `migrate --force`, `optimize`). Para editar el script hace falta activar SSH en la suscripción.
+- **Script de despliegue** (paso 6):
+
+  ```bash
+  npm run build
+  php artisan migrate --force
+  php artisan optimize
+  ```
+
+- Para editar el script hace falta SSH activo (sección 2.1).
+- `public/build` no está en el repositorio: los assets se compilan en el servidor con `npm run build`.
+
+### 6.2 Desplegar
+
+1. **Si el despliegue incluye una migración**, comprueba antes que hay una **copia de seguridad reciente** de la base de datos (sección 9). Mientras las copias automáticas de la sección 9 sigan pendientes, **exporta un volcado** de la base desde Plesk (**Databases → Export Dump**) antes de pulsar *Deploy*.
+2. Push a `main` en GitHub.
+3. **Laravel Toolkit → Deployment → *Deploy***.
+4. Verifica el despliegue (6.3) y, si toca, las comprobaciones de la sección 10.
+
+### 6.3 Verificar un despliegue
+
+Por SSH (sección 2.1):
+
+```bash
+cd ~/httpdocs
+ls -l public/build/manifest.json bootstrap/cache/config.php
+php artisan migrate:status
+```
+
+- Las fechas de `manifest.json` (lo escribe `npm run build`) y de `config.php` (lo escribe `optimize`) tienen que ser **de la hora del despliegue**. El servidor va en **UTC**.
+- `migrate:status` no debe mostrar migraciones pendientes.
 
 ## 7. Operación
 
@@ -270,6 +325,7 @@ Si el despliegue solo cambia documentación, basta con *Pull* y *Deploy*.
 | Límite de cuentas | `REGISTRATION_MAX_USERS`. Al alcanzarlo, el registro se cierra solo. `users:create` no está sujeto al límite. |
 | Revisar las altas | **Artisan → `users:list`** (o `--limit=200`). Solo lectura. |
 | Crear una cuenta | Por SSH, sección 5.6 |
+| Desplegar | **Laravel Toolkit → Deployment → *Deploy***, sección 6 |
 | Restablecer la demo | **Artisan → `demo:reset demo@vyamap.josedavidfernandezcomino.com --force`**. Solo sustituye los viajes, visitas y vuelos de esa cuenta. |
 | Verificar una cuenta concreta | `users:verify <correo>` (pide confirmación, así que por SSH) |
 
@@ -323,4 +379,18 @@ Se configurarán con las herramientas de copia de Plesk, guardando una copia fue
 7. «Try the demo» entra sin credenciales, muestra la banda de cuenta de solo lectura y no deja crear ni editar nada.
 8. *¿Olvidaste tu contraseña?* envía el correo, llega a la bandeja de entrada y el enlace funciona.
 9. Con dos cuentas, la segunda no ve los datos de la primera, y las URL de los recursos de la primera le devuelven 403 o 404.
-10. SSH vuelve a estar en *Forbidden*.
+10. SSH solo admite clave (una conexión sin clave no ofrece contraseña) y Fail2Ban está activo con las *jails* de la sección 2.2.
+
+## 11. Plan B: despliegue manual
+
+Si el script de Deployment falla, se despliega a mano con los pasos de antes:
+
+1. **Si hay migraciones nuevas**, comprueba antes que hay una copia de seguridad reciente de la base de datos (sección 9).
+2. **Git:** *Pull* y *Deploy*.
+3. Si ha cambiado `composer.lock`: **PHP Composer → Install**.
+4. Si han cambiado el JS, el CSS o `package-lock.json`: **Laravel Toolkit → Node.js → `npm install`** y **`npm run build`**.
+5. Si hay migraciones nuevas: **Artisan → `migrate --force`**.
+6. Siempre: **Artisan → `optimize`**.
+7. Verifica como en la sección 6.3.
+
+Si el Toolkit se queda en modo mantenimiento por el fallo, quítalo con **Artisan → `up`** (o `php artisan up` por SSH desde `~/httpdocs`).
