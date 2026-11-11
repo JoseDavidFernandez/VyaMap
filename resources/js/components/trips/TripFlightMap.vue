@@ -2,6 +2,7 @@
 
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { OSM_ATTRIBUTION, OSM_TILE_URL } from '../../data/mapTiles';
 import type { FlightRecord as Flight } from '../../types/flights';
 import { escapeHtml } from '../../utils/escapeHtml';

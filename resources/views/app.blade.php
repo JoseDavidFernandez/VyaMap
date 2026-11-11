@@ -12,7 +12,9 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/site.webmanifest">
 
-    @vite(['resources/css/app.css', 'resources/js/app.ts'])
+    {{-- La página inicial va como entrada más: su chunk (y su CSS) se precarga
+         con modulepreload en vez de esperar a que app.ts la pida. --}}
+    @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
     @inertiaHead
 </head>
 <body>

@@ -1,15 +1,12 @@
-import './bootstrap';
-import 'leaflet/dist/leaflet.css';
-
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import type { DefineComponent } from 'vue';
 
+// Cada página es un chunk aparte: solo se descarga la que se visita (y lo que
+// importa, como Leaflet). app.blade.php precarga la de la primera petición.
 const pages = import.meta.glob<{
     default: DefineComponent;
-}>('./pages/**/*.vue', {
-    eager: true,
-});
+}>('./pages/**/*.vue');
 
 createInertiaApp({
     title: (title) => (title ? `${title} · VyaMap` : 'VyaMap'),
@@ -27,7 +24,7 @@ createInertiaApp({
             throw new Error(`Page not found: ${name}`);
         }
 
-        return page;
+        return page().then((module) => module.default);
     },
 
     setup({ el, App, props, plugin }) {

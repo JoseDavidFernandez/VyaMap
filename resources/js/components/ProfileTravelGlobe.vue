@@ -9,6 +9,7 @@ import Globe from 'three-globe';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { normalizeGeoJsonIsoCode } from '../data/countryCodes';
+import { loadWorldCountries } from '../data/worldCountries';
 
 interface Country {
     name: string;
@@ -30,6 +31,25 @@ let controls: OrbitControls | null = null;
 
 let animationFrame: number | null = null;
 let resizeObserver: ResizeObserver | null = null;
+let visibilityObserver: IntersectionObserver | null = null;
+
+/*
+ * Render bajo demanda: la escena solo cambia al girar o hacer zoom, al
+ * redimensionar y mientras three-globe construye y anima los polígonos.
+ * Fuera de esos momentos el bucle se detiene (antes dibujaba el mismo
+ * fotograma 60 veces por segundo), y también cuando el globo no se ve.
+ */
+const IDLE_MS = 1500; // > polygonsTransitionDuration (1000 ms por defecto)
+
+// Unidades de la escena (globo de radio 100, cámara a 340-540): ~0,1 px en pantalla.
+const MIN_CAMERA_MOVE = 0.1;
+const lastCameraPosition = new THREE.Vector3();
+let updatingControls = false;
+
+let visible = true;
+let interacting = false;
+let polygonsBuilt = false;
+let lastActivity = 0;
 
 const getVisitedCodes = () => {
     return new Set(
@@ -79,25 +99,78 @@ const resize = () => {
             1.75,
         ),
     );
+
+    requestRender();
+};
+
+// three-globe crea todos los polígonos a la vez en su propio ticker.
+const hasPolygons = (): boolean => {
+    let found = false;
+
+    globe?.traverse((object) => {
+        found ||= (object as { __globeObjType?: string }).__globeObjType === 'polygon';
+    });
+
+    return found;
 };
 
 const animate = () => {
-    if (!scene || !camera || !renderer) {
+    animationFrame = null;
+
+    if (!scene || !camera || !renderer || !visible) {
         return;
     }
 
+    const now = performance.now();
+
+    // Giro, zoom e inercia. update() da true hasta movimientos de una milésima
+    // de píxel, así que se mide el desplazamiento de la cámara.
+    lastCameraPosition.copy(camera.position);
+    updatingControls = true;
     controls?.update();
+    updatingControls = false;
+
+    if (camera.position.distanceTo(lastCameraPosition) > MIN_CAMERA_MOVE) {
+        lastActivity = now;
+    }
+
+    if (!polygonsBuilt && hasPolygons()) {
+        polygonsBuilt = true;
+        lastActivity = now; // deja correr la transición de altura de los países
+    }
 
     renderer.render(
         scene,
         camera,
     );
 
-    animationFrame =
-        window.requestAnimationFrame(
-            animate,
-        );
+    if (!polygonsBuilt || interacting || now - lastActivity < IDLE_MS) {
+        animationFrame ??=
+            window.requestAnimationFrame(
+                animate,
+            );
+    } else if (animationFrame === null) {
+        // Quieto: también se paran los bucles internos de three-globe (tweens y tickers).
+        globe?.pauseAnimation();
+    }
 };
+
+function requestRender() {
+    lastActivity = performance.now();
+
+    if (!visible) {
+        return;
+    }
+
+    globe?.resumeAnimation();
+
+    if (animationFrame === null) {
+        animationFrame =
+            window.requestAnimationFrame(
+                animate,
+            );
+    }
+}
 
 const initGlobe = async () => {
     if (!container.value) {
@@ -107,24 +180,15 @@ const initGlobe = async () => {
     /*
      * WORLD DATA
      *
-     * Use the original GeoJSON.
-     * The simplified version caused geometry/rendering issues.
+     * TopoJSON cuantizado, sin simplificar: una versión simplificada daba
+     * problemas de geometría (ver data/worldCountries.ts).
      */
 
-    const response = await fetch(
-        '/data/world.json',
-        {
-            cache: 'force-cache',
-        },
-    );
+    const world = await loadWorldCountries();
 
-    if (!response.ok) {
-        throw new Error(
-            'No se ha podido cargar /data/world.json',
-        );
+    if (!container.value) {
+        return;
     }
-
-    const world = await response.json();
 
     /*
      * SCENE
@@ -337,6 +401,25 @@ const initGlobe = async () => {
         0,
     );
 
+    controls.addEventListener('start', () => {
+        interacting = true;
+        requestRender();
+    });
+
+    controls.addEventListener('end', () => {
+        interacting = false;
+        requestRender();
+    });
+
+    // Zoom con la rueda o teclas: OrbitControls se actualiza solo y avisa. Los
+    // 'change' de nuestro propio controls.update() (inercia) no cuentan: los
+    // mide animate() con MIN_CAMERA_MOVE.
+    controls.addEventListener('change', () => {
+        if (!updatingControls) {
+            requestRender();
+        }
+    });
+
     /*
      * CENTER ON MADRID / SPAIN
      *
@@ -390,10 +473,34 @@ const initGlobe = async () => {
     );
 
     /*
+     * Pausa mientras el globo está fuera de pantalla.
+     */
+
+    visibilityObserver =
+        new IntersectionObserver(([entry]) => {
+            visible = entry.isIntersecting;
+
+            if (visible) {
+                requestRender();
+            } else {
+                if (animationFrame !== null) {
+                    window.cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                }
+
+                globe?.pauseAnimation();
+            }
+        });
+
+    visibilityObserver.observe(
+        container.value,
+    );
+
+    /*
      * START RENDER LOOP
      */
 
-    animate();
+    requestRender();
 };
 
 onMounted(async () => {
@@ -430,6 +537,7 @@ onBeforeUnmount(() => {
      */
 
     resizeObserver?.disconnect();
+    visibilityObserver?.disconnect();
 
     /*
      * Controls
@@ -442,6 +550,8 @@ onBeforeUnmount(() => {
      */
 
     if (globe) {
+        // Sin esto, los bucles de three-globe seguían corriendo en las demás páginas.
+        globe.pauseAnimation();
         globe.polygonsData([]);
 
         globe = null;
