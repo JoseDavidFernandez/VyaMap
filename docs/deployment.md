@@ -230,14 +230,13 @@ Después, en **Artisan**, por este orden. **Cuidado:** unos comandos simulan si 
 | # | Simulación | Aplicar | Resultado del primer despliegue |
 |---|---|---|---|
 | 1 | `countries:import` | `countries:import --apply` | 251 países |
-| 2 | `cities:import --dry-run` | `cities:import` | 3139 ciudades |
+| 2 | `cities:import --dry-run` | `cities:import` | 3145 ciudades |
 | 3 | `app:import-airports --dry-run` | `app:import-airports` | 3244 aeropuertos |
-| 4 | `airports:map-cities` | `airports:map-cities --apply` | 3238 asociados |
+| 4 | `airports:map-cities` | `airports:map-cities --apply` | 3244 asociados |
 | 5 | `airports:enrich-coordinates` | `airports:enrich-coordinates --apply` | 3244 |
 | 6 | `cities:enrich-regions` | `cities:enrich-regions --apply` | 41 regiones |
 | 7 | `airports:import-timezones` | `airports:import-timezones --apply` | 3244 |
 
-- **Seis aeródromos de la Polinesia Francesa** (FAV, XMH, TKP, MVT, TKX, MAU) no tienen ciudad en el CSV. Se importan sin ciudad y salen como avisos en los pasos 2 y 4.
 - **`cities:enrich-regions`** consulta Geoapify, tanto al simular como al aplicar, pero solo para las ciudades homónimas (unas 25 parejas). Los homónimos de China a los que Geoapify no da código de región se quedan sin él.
 - Si el Toolkit muestra **«undefined»**, normalmente ha caducado la sesión de Plesk: recarga la página y repite la simulación para ver qué se ha aplicado. Todos los comandos son seguros de repetir: nunca duplican.
 
@@ -314,6 +313,21 @@ php artisan migrate:status
 
 - Las fechas de `manifest.json` (lo escribe `npm run build`) y de `config.php` (lo escribe `optimize`) tienen que ser **de la hora del despliegue**. El servidor va en **UTC**.
 - `migrate:status` no debe mostrar migraciones pendientes.
+
+### 6.4 Actualizar el catálogo
+
+Un despliegue no toca el catálogo: los importadores leen los CSV de `storage/app/data/`, no los del repositorio. Si un despliegue cambia algún CSV de `database/data/catalog/`, por SSH (sección 2.1):
+
+1. Exporta antes un volcado de la base (**Databases → Export Dump**).
+2. Copia solo los CSV que han cambiado, guardando los anteriores:
+
+   ```bash
+   cd ~/httpdocs
+   cp storage/app/data/<archivo>.csv storage/app/data/<archivo>.csv.bak-$(date +%Y%m%d)
+   cp database/data/catalog/<archivo>.csv storage/app/data/
+   ```
+
+3. Lanza los comandos de la tabla de la sección 5.5 que leen ese archivo, en el mismo orden: primero la simulación y, si el resumen es el esperado, la orden que aplica. Los importadores nunca modifican ciudades existentes, nunca reasignan un aeropuerto que ya tiene ciudad y nunca cambian la zona de un aeropuerto con vuelos, así que en una base en uso solo añaden lo que falta.
 
 ## 7. Operación
 

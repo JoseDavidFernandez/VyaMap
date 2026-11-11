@@ -1663,16 +1663,16 @@ id_original,iata_code,icao_code,airport_name,city_name,country_name,country_iso_
 1662,AAA,NTGA,Anaa Airport,Anaa,French Polynesia,PF,-17.3833,-145.5000
 1663,FGU,NTGB,Fangatau Airport,Teana,French Polynesia,PF,-15.8289,-140.8910
 1664,TIH,NTGC,Tikehau Airport,Tuherahera,French Polynesia,PF,-15.1196,-148.2310
-1665,FAV,NTGF,Fakarava Airport,,,,,
-1666,XMH,NTGI,Manihi Airport,,,,,
+1665,FAV,NTGF,Fakarava Airport,Fakarava,French Polynesia,PF,-16.0541,-145.6570
+1666,XMH,NTGI,Manihi Airport,Manihi,French Polynesia,PF,-14.4368,-146.0700
 1667,GMR,NTGJ,Totegegie Airport,Rikitea,French Polynesia,PF,-23.1200,-134.9700
 1668,KKR,NTGK,Kaukura Airport,Raitahiti,French Polynesia,PF,-15.6633,-146.8850
 1669,MKP,NTGM,Makemo Airport,Makemo,French Polynesia,PF,-16.5742,-143.6983
-1670,TKP,NTGT,Takapoto Airport,,,,,
+1670,TKP,NTGT,Takapoto Airport,Takapoto,French Polynesia,PF,-14.7095,-145.2460
 1671,AXR,NTGU,Arutua Airport,Rautini,French Polynesia,PF,-15.3611,-146.6203
-1672,MVT,NTGV,Mataiva Airport,,,,,
+1672,MVT,NTGV,Mataiva Airport,Mataiva,French Polynesia,PF,-14.8681,-148.7170
 1673,AHE,NTHE,Ahe Airport,Ahe Atoll,French Polynesia,PF,-14.4281,-146.2570
-1674,TKX,NTKR,Takaroa Airport,,,,,
+1674,TKX,NTKR,Takaroa Airport,Takaroa,French Polynesia,PF,-14.4558,-145.0250
 1675,NHV,NTMD,Nuku Hiva Airport,Taiohae,French Polynesia,PF,-8.9097,-140.1014
 1676,AUQ,NTMN,Hiva Oa-Atuona Airport,Atuona,French Polynesia,PF,-9.8030,-139.0396
 1677,BOB,NTTB,Bora Bora Airport,Bora Bora,French Polynesia,PF,-16.4980,-151.7360
@@ -1680,7 +1680,7 @@ id_original,iata_code,icao_code,airport_name,city_name,country_name,country_iso_
 1679,HUH,NTTH,Huahine-Fare Airport,Fare,French Polynesia,PF,-16.7109,-151.0345
 1680,MOZ,NTTM,Moorea Temae Airport,Afareaitu,French Polynesia,PF,-17.5494,-149.7906
 1681,HOI,NTTO,Hao Airport,Otepa,French Polynesia,PF,-18.0748,-140.9460
-1682,MAU,NTTP,Maupiti Airport,,,,,
+1682,MAU,NTTP,Maupiti Airport,Maupiti,French Polynesia,PF,-16.4265,-152.2440
 1683,RFP,NTTR,Raiatea Airport,Avera,French Polynesia,PF,-16.7978,-151.4011
 1684,SON,NVSS,Santo Pekoa International Airport,Luganville,Vanuatu,VU,-15.5128,167.1735
 1685,VLI,NVVV,Bauerfield International Airport,Port Vila,Vanuatu,VU,-17.7333,168.3167
