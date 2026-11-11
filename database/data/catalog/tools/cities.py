@@ -31,8 +31,10 @@ público). Para cada aeropuerto, en orden:
    nombre a 50 km o menos, o las del aeropuerto. Sin `municipality`, el
    aeropuerto queda sin ciudad.
 8. Excepciones de build_rules.py: CITY_OVERRIDES (ciudad fijada, con
-   coordenadas de Wikidata) y ADMINISTRATIVE_P931 (su P931 es un atolón o una
-   prefectura: se tratan como sin ciudad utilizable).
+   coordenadas de Wikidata), ADMINISTRATIVE_P931 (su P931 es un atolón o una
+   prefectura: se tratan como sin ciudad utilizable) e ISLAND_AS_CITY (sin
+   ciudad utilizable ni `municipality`: el nombre de la isla o atolón de su
+   P931, con el país y las coordenadas del aeropuerto).
 9. Una misma ciudad lleva las mismas coordenadas en todas sus filas.
 
 Sáhara Occidental: sus aeropuertos llevan siempre EH (AIRPORT_COUNTRY_ONLY).
@@ -174,11 +176,12 @@ class Wikidata:
 
 
 class Assigner:
-    def __init__(self, wikidata, country_names, overrides=None, administrative=None):
+    def __init__(self, wikidata, country_names, overrides=None, administrative=None, islands=None):
         self.wd = wikidata
         self.country_names = country_names
         self.overrides = build_rules.CITY_OVERRIDES if overrides is None else overrides
         self.administrative = build_rules.ADMINISTRATIVE_P931 if administrative is None else administrative
+        self.islands = build_rules.ISLAND_AS_CITY if islands is None else islands
 
     def candidates(self, item, country, lat, lon, names, own_name):
         found = []
@@ -322,6 +325,18 @@ class Assigner:
             raise ValueError(f"{airport['iata']}: no hay en Wikidata ninguna ciudad «{name}» a {MAX_CITY_KM} km o menos")
         return name, result['country'], min(places, key=lambda c: dist(lat, lon, *c))
 
+    def island(self, result):
+        """Excepción de build_rules.ISLAND_AS_CITY: el nombre de la isla o atolón que
+        Wikidata da como ciudad servida (P931), con el país y las coordenadas del
+        aeropuerto. Se detiene si el nombre ya no es la etiqueta de ningún P931."""
+        airport = result['airport']
+        name = self.islands[airport['iata']]
+        served = self.wd.airports[result['item']]['cities'] if result['item'] else []
+        if not any(self.wd.labels.get(city) == name for city in served):
+            raise ValueError(f"{airport['iata']}: «{name}» no es la ciudad servida (P931) del aeropuerto en Wikidata")
+        result['method'] = 'island+airport'
+        return name, result['country'], (airport['lat'], airport['lon'])
+
     def fallback(self, result, by_name):
         airport = result['airport']
         lat, lon = airport['lat'], airport['lon']
@@ -338,6 +353,8 @@ class Assigner:
                 result['method'] = 'stable+airport'
                 return before[0], result['country'], (lat, lon)
         name = first_municipality(airport['municipality'])
+        if not name and airport['iata'] in self.islands:
+            return self.island(result)
         if not name:
             result['method'] = 'none'
             return None

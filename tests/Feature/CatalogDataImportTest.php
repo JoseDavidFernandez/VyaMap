@@ -53,8 +53,8 @@ class CatalogDataImportTest extends TestCase
             $this->assertSame(0, $this->artisan($command, $options)->run(), "{$command} ha fallado");
         }
 
-        // Algunos aeropuertos no tienen ciudad en el CSV (sin dato en Wikidata ni en
-        // OurAirports; ver database/data/catalog/README.md): todos los demás la reciben.
+        // Cada aeropuerto con ciudad en el CSV la recibe (desde el 11-11-2026 la tienen
+        // todos; ver database/data/catalog/README.md).
         $withCity = collect(array_map('str_getcsv', file(base_path('database/data/catalog/vyamap_airport_city_mapping.csv'), FILE_IGNORE_NEW_LINES)))
             ->slice(1)
             ->filter(fn (array $row) => ($row[4] ?? '') !== '')
@@ -63,7 +63,7 @@ class CatalogDataImportTest extends TestCase
         $this->assertSame(251, Country::count());
         $this->assertGreaterThan(3000, City::count());
         $this->assertSame(3244, Airport::count());
-        $this->assertGreaterThan(3200, $withCity);
+        $this->assertSame(3244, $withCity);
         $this->assertSame($withCity, Airport::whereNotNull('city_id')->count());
         $this->assertSame(3244, Airport::whereNotNull('latitude')->whereNotNull('longitude')->count());
         $this->assertSame(3244, Airport::whereNotNull('timezone')->count());

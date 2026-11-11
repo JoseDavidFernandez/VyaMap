@@ -206,6 +206,24 @@ ADMINISTRATIVE_P931 = {
     'DDR',   # Xigazê (prefectura)
 }
 
+# ISLAND_AS_CITY: aeródromos de la Polinesia Francesa sin `municipality` en
+# OurAirports ni ciudad utilizable en Wikidata (revisado el 2026-11-11). Su
+# ciudad servida (P931) es la isla o el atolón, con país FR, y cities.py la
+# descarta por no ser una ciudad. Se usa ese nombre, como ya ocurre con Anaa,
+# Makemo o Bora Bora: es como buscan los viajeros y no hay una localidad mejor
+# en las fuentes. cities.py comprueba que el nombre es la etiqueta del P931.
+# País del aeropuerto (PF) y coordenadas del aeropuerto, como en
+# ADMINISTRATIVE_P931: el punto de Wikidata de un atolón puede caer en mitad
+# de la laguna (Fakarava, a 29 km del aeródromo).
+ISLAND_AS_CITY = {
+    'FAV': 'Fakarava',   # atolón (Tuamotu)
+    'XMH': 'Manihi',     # atolón (Tuamotu); Wikidata cita además Manihiki, de las Islas Cook
+    'TKP': 'Takapoto',   # atolón (Tuamotu)
+    'MVT': 'Mataiva',    # atolón (Tuamotu)
+    'TKX': 'Takaroa',    # atolón (Tuamotu)
+    'MAU': 'Maupiti',    # isla alta (Islas de Sotavento)
+}
+
 
 if __name__ == '__main__':
     import sys
