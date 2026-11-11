@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { OSM_ATTRIBUTION, OSM_TILE_URL } from '../../data/mapTiles';
 import { greatCircleRoute, toPoint, type Point } from '../../utils/greatCircle';
 import { escapeHtml } from '../../utils/escapeHtml';

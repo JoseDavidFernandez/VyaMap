@@ -28,5 +28,25 @@ export default defineConfig({
     },
     build: {
         outDir: 'public/build',
+        rollupOptions: {
+            output: {
+                // Leaflet (y su CSS) en un chunk propio, con nombre reconocible y
+                // que se mantiene en caché entre despliegues si no se actualiza.
+                // Solo lo piden las páginas con mapas. Los helpers de CommonJS
+                // van aparte: si no, Rollup los mete en el chunk de Leaflet (es
+                // UMD) y el globo del perfil lo descargaría entero por ellos.
+                manualChunks: (id) => {
+                    if (id.includes('/node_modules/leaflet/')) {
+                        return 'leaflet';
+                    }
+
+                    if (id.includes('commonjsHelpers')) {
+                        return 'commonjsHelpers';
+                    }
+
+                    return undefined;
+                },
+            },
+        },
     },
 });
