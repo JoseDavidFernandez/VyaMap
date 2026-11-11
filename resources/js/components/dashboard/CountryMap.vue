@@ -10,6 +10,7 @@ import {
     watch,
 } from 'vue';
 import { normalizeGeoJsonIsoCode } from '../../data/countryCodes';
+import { loadWorldCountries } from '../../data/worldCountries';
 
 interface Country {
     id: number;
@@ -187,18 +188,13 @@ onMounted(async () => {
         L.tileLayer(OSM_TILE_URL, { attribution: OSM_ATTRIBUTION }).addTo(map);
     }
 
-    const response = await fetch(
-        '/data/world.json',
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            'Unable to load world map data.',
-        );
-    }
-
     const worldGeoJson =
-        await response.json();
+        await loadWorldCountries();
+
+    // Se ha salido de la página mientras se descargaba el mapa.
+    if (!map) {
+        return;
+    }
 
     geoJsonLayer = L.geoJSON(
         worldGeoJson,

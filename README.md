@@ -129,5 +129,10 @@ Pendiente, según el plan: la reorganización completa de las páginas, sugerenc
 
 - **Código:** [MIT](LICENSE).
 - **Catálogo de países, ciudades y aeropuertos** ([`database/data/catalog/`](database/data/catalog/README.md)): generado desde fuentes de dominio público (OurAirports, base de datos tz de IANA, Natural Earth) y CC0 (Wikidata); el origen de cada archivo está en su README.
-- **Mapa de países** (`public/data/world.json`): polígonos de [Natural Earth](https://www.naturalearthdata.com/) (dominio público), reducidos al código ISO y al nombre de cada país.
+- **Mapa de países** (`resources/data/world.geo.json`): polígonos de [Natural Earth](https://www.naturalearthdata.com/) (dominio público), reducidos al código ISO y al nombre de cada país.
+  El navegador descarga `public/data/world.topo.json`, que se genera desde ese GeoJSON sin simplificar la geometría: solo comparte las fronteras y cuantiza las coordenadas (unos 0,036°, menos de medio píxel en el mapa de países y en el globo). Si se cambia el GeoJSON, se regenera con:
+
+  ```bash
+  npx -p topojson-server@3.0.1 geo2topo -q 1e4 countries=resources/data/world.geo.json > public/data/world.topo.json
+  ```
 - **Imágenes genéricas** ([`public/images/stock/`](public/images/stock/CREDITS.md)): CC0, con sus autores en `CREDITS.md`.

@@ -9,6 +9,7 @@ import Globe from 'three-globe';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { normalizeGeoJsonIsoCode } from '../data/countryCodes';
+import { loadWorldCountries } from '../data/worldCountries';
 
 interface Country {
     name: string;
@@ -107,24 +108,15 @@ const initGlobe = async () => {
     /*
      * WORLD DATA
      *
-     * Use the original GeoJSON.
-     * The simplified version caused geometry/rendering issues.
+     * TopoJSON cuantizado, sin simplificar: una versión simplificada daba
+     * problemas de geometría (ver data/worldCountries.ts).
      */
 
-    const response = await fetch(
-        '/data/world.json',
-        {
-            cache: 'force-cache',
-        },
-    );
+    const world = await loadWorldCountries();
 
-    if (!response.ok) {
-        throw new Error(
-            'No se ha podido cargar /data/world.json',
-        );
+    if (!container.value) {
+        return;
     }
-
-    const world = await response.json();
 
     /*
      * SCENE
