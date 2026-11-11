@@ -865,6 +865,12 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 
 `npm audit` se revisa en local, nunca con `npm audit fix` en el servidor (ver `deployment.md`). Antes de decidir, se comprueba si el paquete llega al bundle del navegador mirando los sourcemaps de un `vite build`, sin fiarse de si está en `dependencies` o en `devDependencies`. axios no llega: el frontend no lo importa (Inertia 3 usa su propio cliente XHR, que ya envía `X-XSRF-TOKEN`, y el código propio usa `fetch`). Sigue instalado porque es dependencia *peer* de `@inertiajs/core` y de `laravel-precognition`; Inertia solo lo cargaría, en un chunk aparte, si se configurase su adaptador de axios.
 
+#### Globo del perfil
+
+`ProfileTravelGlobe` usa three-globe solo con el globo, la atmósfera y los polígonos de países. three-globe importa además el renderer WebGPU (`three/webgpu` y `three/tsl`, para su capa de heatmaps) y `h3-js` (capas hexBin y hexPolygons), unos 260 KB con gzip que el globo no usa. `vite.config.js` los sustituye por los módulos de `resources/js/vendor-stubs/`, que exportan los mismos nombres y lanzan un error claro si se llaman. Si algún día se quieren esas capas, basta con quitar el alias correspondiente.
+
+**Al actualizar three-globe (o three):** `tests/js/vendorStubs.test.ts` comprueba que los sustitutos exportan todo lo que three-globe importa de esos módulos y que no los usa de otra forma. Si falla, hay que revisar el uso nuevo antes de ampliar el sustituto. Después, abrir `/profile` con el build de producción y comprobar que el globo se dibuja sin errores en la consola.
+
 **Riesgo aceptado (revisado el 2026-11-10): `minimatch` y `glob` vía `@vue/test-utils`.**
 
 - **Cadena:** `@vue/test-utils` 2.5.1 → `js-beautify` 2.0.3 → `editorconfig` 3.0.2 → `minimatch` 10.2.x, y `js-beautify` → `glob` 13.0.x. Son 5 avisos moderados en `npm audit`: `minimatch` (DoS por amplificación de patrones, GHSA-g3hv-75wg-m249), `glob` (sigue recorriendo el disco tras un AbortSignal, GHSA-3g3m-2fjr-6pw4) y los heredados por `editorconfig`, `js-beautify` y `@vue/test-utils`.
