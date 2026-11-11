@@ -863,7 +863,7 @@ La suite debe mantenerse pasando antes de avanzar a cambios estructurales import
 
 ### Dependencias de npm
 
-`npm audit` se revisa en local, nunca con `npm audit fix` en el servidor (ver `deployment.md`). Antes de decidir, se comprueba si el paquete llega al bundle del navegador mirando los sourcemaps de un `vite build`, sin fiarse de si está en `dependencies` o en `devDependencies`. axios sí llega, pero con sus adaptadores `xhr`/`fetch`: su campo `browser` excluye el adaptador de Node y, con él, `follow-redirects`.
+`npm audit` se revisa en local, nunca con `npm audit fix` en el servidor (ver `deployment.md`). Antes de decidir, se comprueba si el paquete llega al bundle del navegador mirando los sourcemaps de un `vite build`, sin fiarse de si está en `dependencies` o en `devDependencies`. axios no llega: el frontend no lo importa (Inertia 3 usa su propio cliente XHR, que ya envía `X-XSRF-TOKEN`, y el código propio usa `fetch`). Sigue instalado porque es dependencia *peer* de `@inertiajs/core` y de `laravel-precognition`; Inertia solo lo cargaría, en un chunk aparte, si se configurase su adaptador de axios.
 
 **Riesgo aceptado (revisado el 2026-11-10): `minimatch` y `glob` vía `@vue/test-utils`.**
 

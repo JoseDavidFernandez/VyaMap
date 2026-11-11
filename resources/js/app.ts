@@ -1,4 +1,3 @@
-import './bootstrap';
 import 'leaflet/dist/leaflet.css';
 
 import { createApp, h } from 'vue';
