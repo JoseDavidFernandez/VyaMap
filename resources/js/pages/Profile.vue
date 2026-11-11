@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 import Icon from '../components/ui/Icon.vue';
 import { useReadOnly } from '../composables/useReadOnly';
@@ -12,6 +12,37 @@ const readOnly = useReadOnly();
 const ProfileTravelGlobe = defineAsyncComponent(
     () => import('../components/ProfileTravelGlobe.vue'),
 );
+
+// ...y solo cuando su hueco está a punto de verse (a 300 px). Con la cabecera
+// actual entra en la primera pantalla incluso en un móvil, así que casi siempre
+// se carga en seguida; evita la descarga si el perfil se abre con la pantalla
+// muy baja o la cabecera crece.
+const globeFrame = ref<HTMLElement | null>(null);
+const showGlobe = ref(false);
+let globeObserver: IntersectionObserver | null = null;
+
+onMounted(() => {
+    if (!globeFrame.value || !('IntersectionObserver' in window)) {
+        showGlobe.value = true;
+
+        return;
+    }
+
+    globeObserver = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+            showGlobe.value = true;
+            globeObserver?.disconnect();
+            globeObserver = null;
+        }
+    }, { rootMargin: '300px 0px' });
+
+    globeObserver.observe(globeFrame.value);
+});
+
+onBeforeUnmount(() => {
+    globeObserver?.disconnect();
+    globeObserver = null;
+});
 
 interface User {
     name: string;
@@ -127,7 +158,10 @@ const countryTotals = computed(() => countCountries(props.countries));
                     </div>
                 </div>
 
-                <ProfileTravelGlobe :countries="props.countries" />
+                <!-- Misma altura y fondo que el globo: no hay salto mientras se carga. -->
+                <div ref="globeFrame" class="h-[380px] bg-[#0E1525] min-[769px]:h-[520px]">
+                    <ProfileTravelGlobe v-if="showGlobe" :countries="props.countries" />
+                </div>
                 <p class="border-t border-[var(--vyamap-border)] px-5 py-3 text-[0.8125rem] text-[var(--vyamap-text-subtle)] sm:px-7">
                     Drag to rotate the globe. Visited countries are raised in cyan.
                 </p>
