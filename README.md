@@ -6,6 +6,32 @@ VyaMap es una aplicación web personal para registrar, visualizar y explorar el 
 
 Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones están en [`docs/architecture.md`](docs/architecture.md).
 
+**Demo:** [vyamap.josedavidfernandezcomino.com](https://vyamap.josedavidfernandezcomino.com). Se entra con el botón «Try the demo», que abre una cuenta demo de solo lectura.
+
+## Capturas
+
+### Escritorio
+
+| Inicio | Viaje |
+|---|---|
+| ![Inicio](docs/screenshots/desktop-inicio.jpg) | ![Viaje](docs/screenshots/desktop-viaje.jpg) |
+
+| Vuelos | Pasaporte |
+|---|---|
+| ![Vuelos](docs/screenshots/desktop-vuelos.jpg) | ![Pasaporte](docs/screenshots/desktop-pasaporte.jpg) |
+
+![Países](docs/screenshots/desktop-paises.jpg)
+
+### Móvil
+
+<p align="center">
+  <img src="docs/screenshots/mobile-inicio.jpg" alt="Inicio en móvil" width="180">
+  <img src="docs/screenshots/mobile-vuelos.jpg" alt="Mapa de vuelos en móvil" width="180">
+  <img src="docs/screenshots/mobile-viaje.jpg" alt="Viaje en móvil" width="180">
+  <img src="docs/screenshots/mobile-pasaporte.jpg" alt="Pasaporte en móvil" width="180">
+  <img src="docs/screenshots/mobile-globo.jpg" alt="Globo de países visitados" width="180">
+</p>
+
 ## Funcionalidades implementadas
 
 - **Viajes** con fechas y estado: planificado, completado o cancelado. El cambio de estado es siempre manual y está limitado a unas transiciones concretas (un viaje no se completa solo por la fecha). Para los planificados se deduce si son próximos, están en curso o están pendientes de confirmar.
