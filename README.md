@@ -54,7 +54,7 @@ Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones
 |---|---|
 | Backend | PHP 8.3+, Laravel 13, Laravel Fortify, Laravel Sanctum, Intervention Image (GD) |
 | Base de datos | MySQL |
-| Frontend | Vue 3, TypeScript, Inertia.js, Tailwind CSS 4, Vite 5 |
+| Frontend | Vue 3, TypeScript, Inertia.js, Tailwind CSS 4, Vite 6 |
 | Mapas | Leaflet; three-globe para el globo del perfil |
 | Pruebas | PHPUnit (Laravel), Vitest con @vue/test-utils y happy-dom, vue-tsc |
 
