@@ -91,14 +91,14 @@ El DNS de `josedavidfernandezcomino.com` está en el panel del registrador, no e
 
 1. **Subscriptions → Add Subscription**, con el dominio `vyamap.josedavidfernandezcomino.com` (sin `www`).
 2. **Hosting & DNS → Hosting:**
-   - **Document root:** `httpdocs/public`. Después de guardar, **vuelve a entrar y comprueba que se ha guardado**. Si se queda en `httpdocs`, el `.env` es descargable desde Internet (ver la nota de abajo).
+   - **Document root:** `httpdocs/public`. Después de guardar, **vuelve a entrar y comprueba que se ha guardado**. Si se queda en `httpdocs`, el `.env` es descargable desde Internet (ver el aviso de abajo).
    - **Redirección 301 de HTTP a HTTPS:** activada.
    - **SSH access:** `/bin/bash`, solo con clave (sección 2.1).
 3. **PHP:** versión 8.3 (FPM). `memory_limit` 256M y **`display_errors` en Off**.
 4. **Mail → Mail Settings:** correo de entrada desactivado. VyaMap solo envía, y lo hace por Brevo.
 5. Borra el `index.html` por defecto que crea Plesk en `httpdocs`.
 
-> **Incidente del primer despliegue.** El *Document root* no llegó a guardarse y la raíz web quedó en `httpdocs/`. A los pocos minutos de crear el `.env`, un bot lo descargó. Hubo que corregir la raíz y cambiar todas las claves. Por eso la sección 5.3 obliga a comprobar el `.env` justo después de crearlo.
+> **Importante.** El *Document root* tiene que ser `httpdocs/public`. Después de guardarlo, vuelve a entrar y comprueba que se ha guardado: si la raíz web queda en `httpdocs`, cualquiera puede descargar el `.env`. Justo después de crear el `.env` (sección 5.3), `curl -I https://<dominio>/.env` tiene que dar **404**.
 
 ### 4.3 Certificado
 
