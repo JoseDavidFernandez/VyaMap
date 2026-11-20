@@ -173,7 +173,7 @@ Resumen; el procedimiento completo y las comprobaciones están en [docs/deployme
 
 - **Dónde:** VPS de IONOS con Plesk, suscripción propia, raíz web `httpdocs/public`. PHP 8.3 (FPM), MariaDB local, Node solo para compilar los assets. Sin cron ni worker (`QUEUE_CONNECTION=sync`).
 - **Cómo:** Plesk Git (modo *Manual*, deploy key de solo lectura) + **Laravel Toolkit → Deployment**: push a `main` en GitHub y pulsar *Deploy*. El script ejecuta `composer install`, `npm install`, `npm run build`, `php artisan migrate --force` y `php artisan optimize` en modo mantenimiento.
-- **Antes de desplegar una migración:** volcado de la base (**Databases → Export Dump**); las copias automáticas siguen pendientes.
+- **Antes de desplegar una migración:** comprobar la última copia de Backup Manager o exportar un volcado (§9.4).
 - **Después:** verificar las fechas de `public/build/manifest.json` y `bootstrap/cache/config.php` y que `migrate:status` no tiene pendientes (§6.3); comprobaciones de seguridad de §10.
 - **Recordar:**
   - Si cambia un CSV del catálogo, copiarlo a mano a `storage/app/data/` (con copia `.bak`) y lanzar sus importadores, primero simulando (§6.4).
