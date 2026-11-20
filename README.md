@@ -53,7 +53,7 @@ Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones
 | Capa | Tecnologías |
 |---|---|
 | Backend | PHP 8.3+, Laravel 13, Laravel Fortify, Laravel Sanctum, Intervention Image (GD) |
-| Base de datos | MySQL |
+| Base de datos | MySQL 8 en local; MariaDB 10.5 en producción |
 | Frontend | Vue 3, TypeScript, Inertia.js, Tailwind CSS 4, Vite 6 |
 | Mapas | Leaflet; three-globe para el globo del perfil |
 | Pruebas | PHPUnit (Laravel), Vitest con @vue/test-utils y happy-dom, vue-tsc |
@@ -122,7 +122,7 @@ Sustituye los viajes, visitas y vuelos de **esa** cuenta por el historial fictic
 
 ### Producción
 
-Ver [`docs/deployment.md`](docs/deployment.md): despliegue en un VPS Linux con Nginx, PHP-FPM, MySQL y HTTPS, registro limitado, copias de seguridad y comprobaciones.
+Ver [`docs/deployment.md`](docs/deployment.md): despliegue en un VPS con Plesk (nginx + Apache, PHP-FPM 8.3, MariaDB y HTTPS con Let's Encrypt) mediante Plesk Git y Laravel Toolkit, con registro limitado, copias de seguridad y comprobaciones.
 
 ## Pruebas
 
@@ -141,7 +141,7 @@ npx vue-tsc --noEmit    # comprobación de tipos
 - [`docs/VyaMap_Map_System.md`](docs/VyaMap_Map_System.md) y [`docs/VyaMap_ADR-001_Separate_Map_Contexts.md`](docs/VyaMap_ADR-001_Separate_Map_Contexts.md): sistema de mapas.
 - [`docs/roadmap.md`](docs/roadmap.md): plan de desarrollo.
 - [`docs/manual-testing.md`](docs/manual-testing.md): pruebas manuales por prioridad.
-- [`docs/deployment.md`](docs/deployment.md): despliegue en un VPS.
+- [`docs/deployment.md`](docs/deployment.md): despliegue en un VPS con Plesk.
 
 ## Estado del proyecto
 
