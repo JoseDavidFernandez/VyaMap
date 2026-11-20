@@ -296,7 +296,7 @@ Los despliegues se hacen con un clic desde **Laravel Toolkit → Deployment**. S
 
 ### 6.2 Desplegar
 
-1. **Si el despliegue incluye una migración**, comprueba antes que hay una **copia de seguridad reciente** de la base de datos (sección 9). Mientras las copias automáticas de la sección 9 sigan pendientes, **exporta un volcado** de la base desde Plesk (**Databases → Export Dump**) antes de pulsar *Deploy*.
+1. **Si el despliegue incluye una migración**, comprueba antes que hay una **copia de seguridad reciente** de la base de datos (sección 9). Si hace falta, exporta antes un volcado (sección 9.4).
 2. Push a `main` en GitHub.
 3. **Laravel Toolkit → Deployment → *Deploy***.
 4. Verifica el despliegue (6.3) y, si toca, las comprobaciones de la sección 10.
@@ -378,9 +378,47 @@ grep -oE 'http[^"<> ]*/reset-password/[^"<> ]*' storage/logs/laravel.log | tail 
 
 ## 9. Copias de seguridad
 
-**Pendiente.** Qué hay que copiar: la base de datos y `httpdocs/storage/app`. El catálogo no hace falta, porque se regenera desde el repositorio (sección 5.5).
+Las copias se hacen con **Backup Manager** de Plesk, a nivel de servidor: cubren esta suscripción y la de Food Pantry. Probadas con una restauración real en noviembre de 2026.
 
-Se configurarán con las herramientas de copia de Plesk, guardando una copia fuera del servidor, y se probarán con al menos **una restauración** en una base temporal, comprobando que contiene usuarios y viajes.
+### 9.1 Qué se copia
+
+- Configuración, correo, archivos y bases de datos. Lo que importa de VyaMap es la base de datos y `httpdocs/storage/app`. El catálogo se regenera desde el repositorio (sección 5.5).
+- Se excluyen los archivos de log (*Exclude log files*) y lo que se regenera en cada despliegue con `composer install` y `npm run build`. Las exclusiones van separadas por comas y son relativas a cada suscripción (las de `/food-pantry-manager` son de Food Pantry):
+
+  ```
+  /httpdocs/node_modules, /httpdocs/vendor, /httpdocs/public/build, /food-pantry-manager/node_modules, /food-pantry-manager/vendor, /food-pantry-manager/public/build
+  ```
+
+### 9.2 Programación
+
+| Ajuste | Valor |
+|---|---|
+| Frecuencia | Diaria, de madrugada (hora del servidor, **UTC**) |
+| Tipo | Incremental, con una copia completa cada semana |
+| Retención | Como máximo **2 copias completas**. Las manuales también cuentan: una completa manual puede hacer que se borre la completa programada más antigua. |
+| Avisos | Correo si una copia falla |
+
+### 9.3 Copia fuera del servidor
+
+Backup Manager guarda las copias en el propio VPS: si se pierde el servidor, se pierden con él. Por eso, una vez a la semana:
+
+1. Backup Manager → copia completa más reciente → **Download**, protegida con contraseña. La contraseña está en el gestor de contraseñas: sin ella la copia no se puede restaurar.
+2. Comprueba que el archivo pesa lo que indica Plesk. En macOS sale algo más, porque Plesk cuenta 1 MB = 1.048.576 bytes.
+3. Guárdalo fuera del equipo (disco externo) con la fecha en el nombre y borra las copias de hace más de un mes.
+
+Más adelante, esta descarga puede sustituirse por un script que, por SSH, se traiga los volcados de las bases de datos, el `.env` y `storage`.
+
+### 9.4 Antes de desplegar una migración
+
+- En Backup Manager, comprueba que la última copia programada está en verde.
+- Si desde esa copia hay datos que no quieres perder, exporta un volcado solo de la base (**Databases → Export Dump**). No es una copia de Backup Manager, así que no cuenta para el máximo de 2 completas.
+
+### 9.5 Restaurar
+
+1. **Antes de restaurar**, haz una copia del estado actual, por si el resultado no es el esperado.
+2. **Solo la base de datos** (lo habitual): Backup Manager → la copia → **Restore** → **Selected objects** → **Database** → la base de VyaMap. Una suscripción cada vez. No hace falta volver a desplegar.
+3. **Subscription** restaura la suscripción entera, **también los archivos** (código, `.env` y `storage`). Solo si se ha perdido todo. Después despliega (sección 6.2), porque `vendor`, `node_modules` y `public/build` no están en la copia, y vuelve a copiar los CSV del catálogo si faltan (sección 5.5).
+4. Al terminar, entra con tu cuenta y comprueba que están los viajes, las visitas y los vuelos, y que «Try the demo» funciona.
 
 ## 10. Comprobaciones después del despliegue
 
