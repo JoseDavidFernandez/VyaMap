@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\FlightRequest;
 use App\Models\Flight;
 use App\Models\Trip;
+use App\Services\TripFlightService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,10 @@ use Illuminate\Validation\ValidationException;
  */
 class FlightController extends Controller
 {
+    public function __construct(private readonly TripFlightService $tripFlights)
+    {
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Rutas del viaje
@@ -102,6 +107,13 @@ class FlightController extends Controller
 
     private function save(FlightRequest $request, Flight $flight, ?Trip $trip): void
     {
+        // Quitar el viaje ("No trip") sigue la misma regla que "Remove from
+        // trip": si ya contaba como realizado, queda confirmado. Se evalúa
+        // antes de aplicar los cambios del formulario.
+        if ($trip === null && $flight->trip_id !== null && $flight->trip) {
+            $this->tripFlights->release($flight, $flight->trip);
+        }
+
         $flight->fill($request->flightAttributes());
         $flight->trip_id = $trip?->id;
 

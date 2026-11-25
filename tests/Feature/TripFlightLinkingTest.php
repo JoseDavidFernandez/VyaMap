@@ -194,17 +194,64 @@ class TripFlightLinkingTest extends TestCase
         $this->assertModelExists($trip);
     }
 
-    public function test_a_flown_flight_removed_from_a_completed_trip_stays_flown(): void
+    /**
+     * Las dos formas de quitar el viaje a un vuelo: "Remove from trip" en la
+     * ficha y "No trip" en el formulario de Flight History.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function removalRoutes(): array
+    {
+        return ['remove from trip' => ['detach'], 'no trip in flight history' => ['no-trip']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('removalRoutes')]
+    public function test_both_removal_routes_keep_a_flown_flight_confirmed(string $route): void
     {
         $flight = $this->flight('2026-05-12', 'FLOWN', $this->trip);
         $this->assertSame(Trip::COMPLETED, $this->trip->status);
 
-        $this->actingAs($this->user)->post("/trips/{$this->trip->id}/flights/{$flight->id}/detach");
+        $this->removeFromTrip($route, $this->trip, $flight)->assertSessionHasNoErrors();
 
         $flight = $flight->fresh()->load(['trip', 'originAirport']);
         $this->assertNull($flight->trip_id);
         $this->assertNotNull($flight->confirmed_at);
         $this->assertSame(Flight::FLOWN, $flight->status());
+        $this->assertSame('FLOWN', $flight->flight_number);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('removalRoutes')]
+    public function test_both_removal_routes_leave_a_flight_that_had_not_counted_unconfirmed(string $route): void
+    {
+        // Viaje planificado que ya terminó (pendiente de confirmar): su vuelo
+        // sin hora aún no contaba como realizado.
+        $planned = Trip::create(['user_id' => $this->user->id, 'name' => 'Pending', 'start_date' => '2026-09-01', 'end_date' => '2026-09-05', 'status' => Trip::PLANNED]);
+        $pending = $this->flight('2026-09-02', 'PEND', $planned);
+
+        // Viaje cancelado: sus vuelos no cuentan y no se confirman.
+        $cancelled = Trip::create(['user_id' => $this->user->id, 'name' => 'Cancelled', 'start_date' => '2026-06-01', 'end_date' => '2026-06-05', 'status' => Trip::CANCELLED]);
+        $void = $this->flight('2026-06-02', 'VOID', $cancelled);
+
+        $this->removeFromTrip($route, $planned, $pending)->assertSessionHasNoErrors();
+        $this->removeFromTrip($route, $cancelled, $void)->assertSessionHasNoErrors();
+
+        foreach ([$pending, $void] as $flight) {
+            $this->assertNull($flight->fresh()->trip_id);
+            $this->assertNull($flight->fresh()->confirmed_at);
+        }
+    }
+
+    public function test_moving_a_released_flight_to_the_future_drops_the_confirmation(): void
+    {
+        // "No trip" y nueva fecha futura a la vez: D7 manda sobre la confirmación.
+        $flight = $this->flight('2026-05-12', 'MOVED', $this->trip);
+
+        $this->actingAs($this->user)
+            ->put("/flights/{$flight->id}", $this->flightPayload($flight, ['departure_date' => '2026-12-01']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($flight->fresh()->trip_id);
+        $this->assertNull($flight->fresh()->confirmed_at);
     }
 
     public function test_a_removed_flight_can_be_suggested_again(): void
@@ -344,6 +391,26 @@ class TripFlightLinkingTest extends TestCase
     | Utilidades
     |--------------------------------------------------------------------------
     */
+
+    private function removeFromTrip(string $route, Trip $trip, Flight $flight): \Illuminate\Testing\TestResponse
+    {
+        return $route === 'detach'
+            ? $this->actingAs($this->user)->post("/trips/{$trip->id}/flights/{$flight->id}/detach")
+            : $this->actingAs($this->user)->from('/flight-history')->put("/flights/{$flight->id}", $this->flightPayload($flight));
+    }
+
+    // Formulario de Flight History con los datos del vuelo y "No trip".
+    private function flightPayload(Flight $flight, array $overrides = []): array
+    {
+        return [
+            'origin_airport_id' => $flight->origin_airport_id,
+            'destination_airport_id' => $flight->destination_airport_id,
+            'departure_date' => $flight->departure_date->toDateString(),
+            'flight_number' => $flight->flight_number,
+            'trip_id' => null,
+            ...$overrides,
+        ];
+    }
 
     /** @return list<int> */
     private function suggestedIds(string $start = '2026-05-10', string $end = '2026-05-20'): array

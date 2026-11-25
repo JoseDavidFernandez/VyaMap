@@ -336,7 +336,7 @@ Un vuelo con conexiones se representa mediante múltiples registros Flight, uno 
 
 - **Sugerencias** (`GET /flights/suggestions`): al crear o editar un viaje se ofrecen los vuelos independientes del usuario cuya fecha local de salida cae entre el inicio menos un día y el fin más un día (vuelo de ida la víspera, husos horarios). Cada sugerencia se acepta o se descarta, una a una o todas a la vez; las aceptadas se envían con el formulario (`flight_ids`) y se asocian en la misma transacción. Las descartadas no se guardan y pueden volver a salir.
 - **Búsqueda** (`GET /flights/standalone`): por fecha local de salida y por texto (código IATA o ICAO, ciudad de origen o destino, número de vuelo). Dos términos («MAD LIS») buscan la ruta con su sentido.
-- **Asociar** (`POST /trips/{trip}/flights/attach`) y **quitar** (`POST /trips/{trip}/flights/{flight}/detach`). Quitar no borra el vuelo: vuelve a ser independiente y, si ya contaba como realizado por su viaje, queda confirmado (`confirmed_at`), con la misma regla que al borrar el viaje.
+- **Asociar** (`POST /trips/{trip}/flights/attach`) y **quitar** (`POST /trips/{trip}/flights/{flight}/detach`). Quitar no borra el vuelo: vuelve a ser independiente y, si ya contaba como realizado por su viaje, queda confirmado (`confirmed_at`). Es una sola regla (`TripFlightService::release`) para las tres formas de dejar un viaje: «Remove from trip», borrar el viaje y elegir «No trip» en el formulario de Flight History.
 - Solo se ofrecen y aceptan vuelos independientes propios (`StandaloneFlightRules`), y solo en viajes propios (`TripPolicy`, `FlightPolicy`). La cuenta demo no ve los botones y `DemoReadOnly` rechaza las escrituras.
 - `confirmed_at`: confirmación explícita de que el vuelo se realizó.
 

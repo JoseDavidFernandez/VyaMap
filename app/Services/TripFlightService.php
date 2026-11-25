@@ -7,7 +7,6 @@ use App\Models\Trip;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Vuelos existentes en un viaje: sugerir, buscar, asociar y quitar.
@@ -19,7 +18,8 @@ use Illuminate\Support\Facades\DB;
  *   y el fin más un día (vuelo de ida la víspera, husos horarios).
  * - Un vuelo fuera de las fechas del viaje se avisa, no se bloquea (D3).
  * - Quitar un vuelo no lo borra: vuelve a ser independiente. Si ya contaba
- *   como realizado, queda confirmado, igual que al borrar el viaje.
+ *   como realizado, queda confirmado (release(): la misma regla al quitarlo
+ *   desde la ficha, al borrar el viaje y con "No trip" en Flight History).
  */
 class TripFlightService
 {
@@ -102,15 +102,14 @@ class TripFlightService
     }
 
     /**
-     * Quita un vuelo del viaje sin borrarlo.
+     * Quita un vuelo del viaje sin borrarlo ("Remove from trip").
      */
     public function detach(Trip $trip, Flight $flight): void
     {
-        DB::transaction(function () use ($trip, $flight) {
-            $this->confirmFlownFlights($trip, Flight::query()->whereKey($flight->id));
+        abort_unless($flight->trip_id === $trip->id, 404);
 
-            Flight::query()->whereKey($flight->id)->where('trip_id', $trip->id)->update(['trip_id' => null]);
-        });
+        $this->release($flight, $trip);
+        $flight->save();
     }
 
     /**
@@ -118,9 +117,35 @@ class TripFlightService
      */
     public function detachAll(Trip $trip): void
     {
-        $this->confirmFlownFlights($trip, $trip->flights()->getQuery());
+        $trip->flights()->with('originAirport')->get()->each(function (Flight $flight) use ($trip) {
+            $this->release($flight, $trip);
+            $flight->save();
+        });
+    }
 
-        $trip->flights()->update(['trip_id' => null]);
+    /**
+     * Regla única para un vuelo que deja su viaje y queda independiente, sea
+     * desde la ficha ("Remove from trip"), al borrar el viaje o al elegir
+     * "No trip" en Flight History. Cambia el modelo sin guardarlo.
+     *
+     * Si ya contaba como realizado por su viaje (no cancelado), queda
+     * confirmado para no volver a "pendientes"; los de un viaje cancelado no
+     * se confirman. Se evalúa con los datos actuales del vuelo, antes de
+     * aplicar otros cambios (si después pasa al futuro, D7 lo desconfirma).
+     */
+    public function release(Flight $flight, Trip $trip): void
+    {
+        if ($flight->confirmed_at === null && $trip->status !== Trip::CANCELLED) {
+            $flight->loadMissing('originAirport');
+            $flight->setRelation('trip', $trip);
+
+            if ($flight->status(now(), Trip::today()) === Flight::FLOWN) {
+                $flight->confirmed_at = now();
+            }
+        }
+
+        $flight->trip_id = null;
+        $flight->setRelation('trip', null);
     }
 
     public function isOutsideTrip(Flight $flight, Trip $trip): bool
@@ -130,29 +155,6 @@ class TripFlightService
         return $date === null
             || $date < $trip->start_date->toDateString()
             || $date > $trip->end_date->toDateString();
-    }
-
-    /**
-     * Los vuelos que ya contaban como realizados por su viaje (no cancelado)
-     * quedan confirmados para no volver a "pendientes" al quedarse sin viaje.
-     */
-    private function confirmFlownFlights(Trip $trip, Builder $flights): void
-    {
-        if ($trip->status === Trip::CANCELLED) {
-            return;
-        }
-
-        $now = now();
-        $today = Trip::today();
-
-        $flights
-            ->where('trip_id', $trip->id)
-            ->whereNull('confirmed_at')
-            ->with('originAirport')
-            ->get()
-            ->each(fn (Flight $flight) => $flight->setRelation('trip', $trip))
-            ->filter(fn (Flight $flight) => $flight->status($now, $today) === Flight::FLOWN)
-            ->each(fn (Flight $flight) => $flight->update(['confirmed_at' => $now]));
     }
 
     private function standalone(int $userId): Builder
