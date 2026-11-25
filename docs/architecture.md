@@ -334,9 +334,13 @@ Un vuelo con conexiones se representa mediante múltiples registros Flight, uno 
 
 `App\Services\TripFlightService`, con las rutas de `TripFlightController`:
 
-- **Sugerencias** (`GET /flights/suggestions`): al crear o editar un viaje se ofrecen los vuelos independientes del usuario cuya fecha local de salida cae entre el inicio menos un día y el fin más un día (vuelo de ida la víspera, husos horarios). Cada sugerencia se acepta o se descarta, una a una o todas a la vez; las aceptadas se envían con el formulario (`flight_ids`) y se asocian en la misma transacción. Las descartadas no se guardan y pueden volver a salir.
+- **Sugerencias** (`GET /flights/suggestions`): al crear o editar un viaje se ofrecen los vuelos independientes del usuario cuya fecha local de salida cae entre el inicio menos un día y el fin más un día (vuelo de ida la víspera, husos horarios). Cada sugerencia se acepta o se descarta, una a una o todas a la vez; las aceptadas se envían con el formulario (`flight_ids`) y se asocian en la misma transacción.
+  - Las descartadas no se guardan: quedan atenuadas en la lista, con «Undo», y pueden volver a salir otro día.
+  - Si un cambio de fechas deja fuera un vuelo aceptado, se quita y se avisa. Durante la sesión del formulario se recuerda: si las fechas vuelven a incluirlo, vuelve aceptado.
+  - Si al guardar algún vuelo ya no está disponible (otra pestaña lo ha añadido a otro viaje), el servidor no guarda nada. El formulario lo quita de la lista, recarga las sugerencias y lo avisa; el resto de cambios se conserva para volver a guardar.
 - **Búsqueda** (`GET /flights/standalone`): por fecha local de salida y por texto (código IATA o ICAO, ciudad de origen o destino, número de vuelo). Dos términos («MAD LIS») buscan la ruta con su sentido.
 - **Asociar** (`POST /trips/{trip}/flights/attach`) y **quitar** (`POST /trips/{trip}/flights/{flight}/detach`). Quitar no borra el vuelo: vuelve a ser independiente y, si ya contaba como realizado por su viaje, queda confirmado (`confirmed_at`). Es una sola regla (`TripFlightService::release`) para las tres formas de dejar un viaje: «Remove from trip», borrar el viaje y elegir «No trip» en el formulario de Flight History.
+- **Asociar es atómico y de todo o nada.** Dentro de una transacción, `TripFlightService::attach` bloquea las filas (`SELECT … FOR UPDATE`) y vuelve a exigir `trip_id IS NULL` y el mismo usuario. Si dos peticiones intentan llevarse el mismo vuelo, la segunda espera a la primera, ya no lo encuentra libre y falla con un error `flight_ids.N` por vuelo perdido (N es su posición en la lista enviada). El vuelo se queda en el viaje que llegó primero, y la segunda petición no guarda nada, tampoco el viaje que estuviera creando.
 - Solo se ofrecen y aceptan vuelos independientes propios (`StandaloneFlightRules`), y solo en viajes propios (`TripPolicy`, `FlightPolicy`). La cuenta demo no ve los botones y `DemoReadOnly` rechaza las escrituras.
 - `confirmed_at`: confirmación explícita de que el vuelo se realizó.
 
@@ -772,6 +776,19 @@ Principios mínimos:
 - no almacenar secretos en Git.
 
 Las funcionalidades de IA y APIs externas deberán utilizar credenciales almacenadas mediante `.env` y configuración segura.
+
+## Peticiones de otro sitio (CSRF)
+
+En Laravel 13, `VerifyCsrfToken` es un alias obsoleto de `PreventRequestForgery`. Este middleware deja pasar una escritura en dos casos:
+
+- el navegador la marca con `Sec-Fetch-Site: same-origin`, una cabecera que pone el propio navegador y que una página no puede cambiar;
+- trae un token válido en `_token`, `X-CSRF-TOKEN` o `X-XSRF-TOKEN`.
+
+Por eso un `fetch` desde la propia aplicación funciona sin token. Una petición desde otro origen (`cross-site`, o `same-site` mientras no se active `allowSameSite`), o sin esa cabecera y sin token, recibe **419**. Además, la cookie de sesión es `SameSite=Lax`, así que un POST desde otro sitio ni siquiera lleva la sesión. Laravel desactiva esta comprobación en las pruebas; `tests/Feature/RequestForgeryTest.php` la vuelve a activar.
+
+## Errores sin detalles internos
+
+En producción `APP_DEBUG=false` ([deployment.md](deployment.md) §5.3 y §10). Aun así, Laravel incluye en las respuestas JSON el mensaje de las `HttpException`, y un modelo no encontrado llega como «No query results for model [App\Models\Trip] 1». `App\Exceptions\Handler` lo convierte en un 404 con el mensaje «Not Found», sin clase ni id (`NotFoundDetailsTest`).
 
 ---
 

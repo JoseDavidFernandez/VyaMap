@@ -9,6 +9,8 @@ import {
     flightSuggestionsUrl,
     loadStandaloneFlights,
     standaloneFlightSearchUrl,
+    unavailableFlightIds,
+    unavailableFlightsMessage,
 } from '../../utils/standaloneFlights';
 import type { FlightRecord } from '../../types/flights';
 
@@ -87,19 +89,28 @@ onBeforeUnmount(() => {
 
 const isOutside = (flight: FlightRecord) => isOutsideDates(flight.departure_date, props.startDate, props.endDate);
 
-const attach = (ids: number[]) => {
+const attach = (flightIds: number[]) => {
     attachError.value = '';
 
-    router.post(`/trips/${props.tripId}/flights/attach`, { flight_ids: ids }, {
+    router.post(`/trips/${props.tripId}/flights/attach`, { flight_ids: flightIds }, {
         preserveScroll: true,
         onStart: () => {
             attaching.value = true;
         },
         onSuccess: () => {
-            flights.value = flights.value.filter((flight) => !ids.includes(flight.id));
+            flights.value = flights.value.filter((flight) => !flightIds.includes(flight.id));
         },
         onError: (errors) => {
-            attachError.value = Object.values(errors)[0] ?? 'The flight could not be added.';
+            // Otra pestaña o petición ya lo ha añadido a otro viaje: se avisa y se recarga la lista.
+            const { ids } = unavailableFlightIds(errors, flightIds);
+
+            attachError.value = ids.length
+                ? unavailableFlightsMessage(ids.length)
+                : Object.values(errors)[0] ?? 'The flight could not be added.';
+
+            if (ids.length) {
+                load();
+            }
         },
         onFinish: () => {
             attaching.value = false;

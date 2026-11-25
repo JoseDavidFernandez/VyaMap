@@ -2,15 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Http\Requests\StoreTripRequest;
+use App\Http\Requests\UpdateTripRequest;
 use App\Models\Airport;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Flight;
 use App\Models\Trip;
 use App\Models\User;
+use App\Services\TripFlightService;
+use App\Support\StandaloneFlightRules;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -171,9 +176,85 @@ class TripFlightLinkingTest extends TestCase
 
         $this->actingAs($this->user)
             ->post("/trips/{$this->trip->id}/flights/attach", ['flight_ids' => [$flight->id]])
-            ->assertSessionHasErrors(['flight_ids.0' => 'Choose flights of your own that are not in another trip.']);
+            ->assertSessionHasErrors(['flight_ids.0' => StandaloneFlightRules::UNAVAILABLE]);
 
         $this->assertSame($other->id, $flight->fresh()->trip_id);
+    }
+
+    public function test_attaching_is_all_or_nothing_when_a_flight_was_taken_meanwhile(): void
+    {
+        // Las dos peticiones validaron con el vuelo libre; la primera ya lo asoció.
+        $taken = $this->flight('2026-05-12', 'TAKEN');
+        $free = $this->flight('2026-05-13', 'FREE');
+        $first = $this->trip($this->user, '2026-05-01', '2026-05-30');
+        app(TripFlightService::class)->attach($first, [$taken->id]);
+
+        try {
+            app(TripFlightService::class)->attach($this->trip, [$free->id, $taken->id]);
+            $this->fail('The second attach should fail.');
+        } catch (ValidationException $e) {
+            // El índice es el del vuelo perdido en la lista enviada.
+            $this->assertSame(['flight_ids.1' => [StandaloneFlightRules::UNAVAILABLE]], $e->errors());
+        }
+
+        $this->assertSame($first->id, $taken->fresh()->trip_id);
+        $this->assertNull($free->fresh()->trip_id);
+    }
+
+    /**
+     * La carrera por HTTP: otra petición se lleva el vuelo después de que esta
+     * lo haya validado y antes de guardarlo.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function attachRoutes(): array
+    {
+        return ['create trip' => ['store'], 'edit trip' => ['update'], 'trip page' => ['attach']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('attachRoutes')]
+    public function test_a_flight_taken_after_validation_is_reported_and_nothing_is_saved(string $route): void
+    {
+        $flight = $this->flight('2026-05-12', 'RACE');
+        $winner = $this->trip($this->user, '2026-05-01', '2026-05-30');
+
+        // La otra petición termina después de que esta valide y antes de que
+        // guarde: al resolver el FormRequest (ya validado) o, en la ficha, que
+        // valida en el controlador, justo antes de asociar.
+        $otherRequestWins = fn () => Flight::whereKey($flight->id)->update(['trip_id' => $winner->id]);
+
+        if ($route === 'attach') {
+            $this->app->instance(TripFlightService::class, new class($otherRequestWins) extends TripFlightService
+            {
+                public function __construct(private \Closure $before)
+                {
+                }
+
+                public function attach(Trip $trip, iterable $flightIds): int
+                {
+                    ($this->before)();
+
+                    return parent::attach($trip, $flightIds);
+                }
+            });
+        } else {
+            $this->app->afterResolving($route === 'store' ? StoreTripRequest::class : UpdateTripRequest::class, $otherRequestWins);
+        }
+
+        $payload = ['name' => 'Second', 'start_date' => '2026-05-10', 'end_date' => '2026-05-20', 'flight_ids' => [$flight->id]];
+        $request = $this->actingAs($this->user)->from('/trips/create');
+
+        $response = match ($route) {
+            'store' => $request->post('/trips', $payload),
+            'update' => $request->put("/trips/{$this->trip->id}", $payload),
+            'attach' => $request->post("/trips/{$this->trip->id}/flights/attach", ['flight_ids' => [$flight->id]]),
+        };
+
+        $response->assertSessionHasErrors(['flight_ids.0' => StandaloneFlightRules::UNAVAILABLE]);
+
+        // Se queda con el viaje que llegó primero y la otra petición no guarda nada.
+        $this->assertSame($winner->id, $flight->fresh()->trip_id);
+        $this->assertDatabaseMissing('trips', ['name' => 'Second']);
     }
 
     public function test_removing_a_flight_from_a_trip_keeps_it_as_standalone(): void

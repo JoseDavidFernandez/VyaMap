@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { useAcceptedFlights } from '../../composables/useAcceptedFlights';
 import AppLayout from '../../layouts/AppLayout.vue';
 import Icon from '../../components/ui/Icon.vue';
 import TripFormFields from '../../components/trips/TripFormFields.vue';
@@ -15,14 +15,14 @@ const form = useForm({
     flight_ids: [] as number[],
 });
 
+// Ref de plantilla de TripFlightSuggestions (ref="flightSuggestions").
+const { suggestions: flightSuggestions, rememberSent, onError, flightIdsError } = useAcceptedFlights(form);
+
 const submit = () => {
-    form.post('/trips');
+    rememberSent();
+    form.post('/trips', { onError });
 };
 
-// Error de algún vuelo aceptado (p. ej. ya asociado a otro viaje entretanto).
-const flightIdsError = computed(() =>
-    Object.entries(form.errors as Record<string, string>).find(([key]) => key.startsWith('flight_ids'))?.[1] ?? '',
-);
 </script>
 
 <template>
@@ -45,7 +45,7 @@ const flightIdsError = computed(() =>
             <form class="vyamap-card p-5 sm:p-7" @submit.prevent="submit">
                 <TripFormFields :form="form" />
 
-                <TripFlightSuggestions v-model="form.flight_ids" :start-date="form.start_date" :end-date="form.end_date" />
+                <TripFlightSuggestions ref="flightSuggestions" v-model="form.flight_ids" :start-date="form.start_date" :end-date="form.end_date" />
                 <p v-if="flightIdsError" class="vyamap-error">{{ flightIdsError }}</p>
 
                 <div class="mt-7 flex flex-col-reverse gap-3 border-t border-[var(--vyamap-border)] pt-5 sm:flex-row sm:justify-end">

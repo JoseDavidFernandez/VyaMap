@@ -7,7 +7,10 @@ import type { FlightRecord } from '../../resources/js/types/flights';
 /*
  * Vuelos existentes en un viaje:
  * - TripFlightSuggestions (crear y editar): aceptar o descartar cada
- *   sugerencia o todas; lo descartado no se envía; aviso fuera de fechas.
+ *   sugerencia o todas; lo descartado no se envía, queda atenuado y se puede
+ *   deshacer; aviso fuera de fechas; aviso al perder aceptados por un cambio
+ *   de fechas (y se recuerdan si vuelven a entrar); vuelos que otra petición
+ *   se llevó antes de guardar (useAcceptedFlights).
  * - TripFlightPicker (ficha): asociar un vuelo encontrado.
  * - Ficha del viaje: la demo no ve «Add existing flight» ni «Remove from trip».
  * - FlightForm: aviso, sin bloqueo, de una salida fuera del viaje (D3).
@@ -77,6 +80,7 @@ const settle = async () => {
 describe('TripFlightSuggestions', () => {
     const mountSuggestions = async (flights: FlightRecord[]) => {
         respondWith(flights);
+        type Handle = { markUnavailable: (ids: number[]) => Promise<void> };
         const { default: TripFlightSuggestions } = await import('../../resources/js/components/trips/TripFlightSuggestions.vue');
         let accepted: number[] = [];
 
@@ -93,7 +97,7 @@ describe('TripFlightSuggestions', () => {
         });
         await settle();
 
-        return { accepted: () => accepted };
+        return { accepted: () => accepted, handle: () => wrapper!.vm as unknown as Handle };
     };
 
     const buttonIn = (id: number, label: string) =>
@@ -114,11 +118,29 @@ describe('TripFlightSuggestions', () => {
         await buttonIn(2, 'Dismiss').trigger('click');
 
         expect(state.accepted()).toEqual([1]);
-        expect(wrapper!.find('[data-suggestion="2"]').exists()).toBe(false);
         expect(wrapper!.get('[data-suggestion="1"]').text()).toContain('Will be added');
 
         await buttonIn(1, 'Undo').trigger('click');
         expect(state.accepted()).toEqual([]);
+    });
+
+    it('keeps a dismissed flight in the list, dimmed, and can undo the dismissal', async () => {
+        const state = await mountSuggestions([flight(1, '2026-05-12'), flight(2, '2026-05-14')]);
+
+        await buttonIn(2, 'Dismiss').trigger('click');
+
+        const dismissed = wrapper!.get('[data-suggestion="2"]');
+        expect(dismissed.attributes('data-dismissed')).toBe('true');
+        expect(dismissed.classes()).toContain('opacity-55');
+        expect(dismissed.text()).toContain('Dismissed');
+        // «Accept all» ya no lo incluye.
+        expect(button('Accept all')).toBeUndefined();
+
+        await buttonIn(2, 'Undo').trigger('click');
+        expect(wrapper!.get('[data-suggestion="2"]').attributes('data-dismissed')).toBeUndefined();
+
+        await buttonIn(2, 'Accept').trigger('click');
+        expect(state.accepted()).toEqual([2]);
     });
 
     it('accepts or dismisses all of them at once', async () => {
@@ -132,7 +154,78 @@ describe('TripFlightSuggestions', () => {
         await button('Dismiss all')!.trigger('click');
 
         expect(state.accepted()).toEqual([]);
-        expect(wrapper!.find('[data-flight-suggestions]').exists()).toBe(false);
+        expect(wrapper!.findAll('[data-dismissed="true"]')).toHaveLength(2);
+        expect(button('Accept all')).toBeUndefined();
+    });
+
+    it('warns when new dates drop an accepted flight and remembers it if the dates include it again', async () => {
+        const state = await mountSuggestions([flight(1, '2026-05-12'), flight(2, '2026-05-19')]);
+        await buttonIn(1, 'Accept').trigger('click');
+        await buttonIn(2, 'Accept').trigger('click');
+
+        // Fechas nuevas: el vuelo 2 queda fuera del margen.
+        respondWith([flight(1, '2026-05-12')]);
+        await wrapper!.setProps({ endDate: '2026-05-15' });
+        await settle();
+
+        expect(state.accepted()).toEqual([1]);
+        expect(wrapper!.get('[data-dates-notice]').text())
+            .toBe('1 accepted flight is outside the new dates and was removed. It comes back if the dates include it again.');
+
+        // De vuelta a unas fechas que lo incluyen: vuelve aceptado y el aviso desaparece.
+        respondWith([flight(1, '2026-05-12'), flight(2, '2026-05-19')]);
+        await wrapper!.setProps({ endDate: '2026-05-20' });
+        await settle();
+
+        expect(state.accepted()).toEqual([1, 2]);
+        expect(wrapper!.find('[data-dates-notice]').exists()).toBe(false);
+    });
+
+    it('does not remember a flight whose acceptance was undone', async () => {
+        const state = await mountSuggestions([flight(1, '2026-05-12')]);
+        await buttonIn(1, 'Accept').trigger('click');
+        await buttonIn(1, 'Undo').trigger('click');
+
+        respondWith([]);
+        await wrapper!.setProps({ endDate: '2026-05-11' });
+        await settle();
+        expect(wrapper!.find('[data-dates-notice]').exists()).toBe(false);
+
+        respondWith([flight(1, '2026-05-12')]);
+        await wrapper!.setProps({ endDate: '2026-05-20' });
+        await settle();
+        expect(state.accepted()).toEqual([]);
+    });
+
+    it('keeps the accepted flights while the dates are being typed (invalid range)', async () => {
+        const state = await mountSuggestions([flight(1, '2026-05-12')]);
+        await buttonIn(1, 'Accept').trigger('click');
+
+        await wrapper!.setProps({ endDate: '2026-05-01' });
+        await settle();
+
+        expect(state.accepted()).toEqual([1]);
+        expect(wrapper!.find('[data-dates-notice]').exists()).toBe(false);
+    });
+
+    it('removes flights that another trip took, reloads and says so', async () => {
+        const state = await mountSuggestions([flight(1, '2026-05-12'), flight(2, '2026-05-14')]);
+        await buttonIn(1, 'Accept').trigger('click');
+        await buttonIn(2, 'Accept').trigger('click');
+        const calls = fetchMock.mock.calls.length;
+
+        // El servidor ya no lo devuelve: está en otro viaje.
+        respondWith([flight(2, '2026-05-14')]);
+        await state.handle().markUnavailable([1]);
+        await settle();
+
+        expect(fetchMock.mock.calls.length).toBe(calls + 1);
+        expect(state.accepted()).toEqual([2]);
+        expect(wrapper!.find('[data-suggestion="1"]').exists()).toBe(false);
+        expect(wrapper!.get('[data-unavailable-notice]').text())
+            .toBe('This flight has already been added to another trip and was removed from the list.');
+        // No es una pérdida por fechas.
+        expect(wrapper!.find('[data-dates-notice]').exists()).toBe(false);
     });
 
     it('warns about a flight in the one-day margin without blocking it', async () => {
@@ -154,6 +247,39 @@ describe('TripFlightSuggestions', () => {
     });
 });
 
+describe('useAcceptedFlights', () => {
+    it('maps flight_ids.N errors to the flights that were sent and clears them', async () => {
+        const { useAcceptedFlights } = await import('../../resources/js/composables/useAcceptedFlights');
+        const clearErrors = vi.fn();
+        const markUnavailable = vi.fn(async () => {});
+        const form = reactive({ flight_ids: [5, 7, 9], errors: {} as Record<string, string>, clearErrors });
+        const flights = useAcceptedFlights(form);
+        flights.suggestions.value = { markUnavailable };
+
+        flights.rememberSent();
+        // Entretanto, el usuario deshace el 5: los índices son los de lo enviado.
+        form.flight_ids = [7, 9];
+        flights.onError({ 'flight_ids.1': 'This flight is no longer available: it is already in another trip.', name: 'The name field is required.' });
+
+        expect(markUnavailable).toHaveBeenCalledWith([7]);
+        expect(clearErrors).toHaveBeenCalledWith('flight_ids.1');
+    });
+
+    it('leaves other errors of the flight list visible', async () => {
+        const { useAcceptedFlights } = await import('../../resources/js/composables/useAcceptedFlights');
+        const markUnavailable = vi.fn(async () => {});
+        const form = reactive({ flight_ids: [5], errors: { flight_ids: 'Too many flights.' } as Record<string, string>, clearErrors: vi.fn() });
+        const flights = useAcceptedFlights(form);
+        flights.suggestions.value = { markUnavailable };
+
+        flights.rememberSent();
+        flights.onError({ flight_ids: 'Too many flights.' });
+
+        expect(markUnavailable).not.toHaveBeenCalled();
+        expect(flights.flightIdsError.value).toBe('Too many flights.');
+    });
+});
+
 describe('TripFlightPicker', () => {
     it('shows the suggestions and attaches the chosen flight to the trip', async () => {
         respondWith([flight(7, '2026-05-21')]);
@@ -170,6 +296,26 @@ describe('TripFlightPicker', () => {
 
         expect(post.mock.calls[0][0]).toBe('/trips/5/flights/attach');
         expect(post.mock.calls[0][1]).toEqual({ flight_ids: [7] });
+    });
+
+    it('reloads and explains when the flight was added to another trip meanwhile', async () => {
+        respondWith([flight(7, '2026-05-12')]);
+        vi.spyOn(router, 'post').mockImplementation((_url, _data, options) => {
+            (options as { onError: (errors: Record<string, string>) => void }).onError({ 'flight_ids.0': 'This flight is no longer available: it is already in another trip.' });
+        });
+        const { default: TripFlightPicker } = await import('../../resources/js/components/trips/TripFlightPicker.vue');
+
+        wrapper = mount(TripFlightPicker, { props: { tripId: 5, startDate: '2026-05-10', endDate: '2026-05-20' } });
+        await settle();
+        const calls = fetchMock.mock.calls.length;
+
+        respondWith([]);
+        await wrapper.get('[data-picker-flight="7"] button').trigger('click');
+        await settle();
+
+        expect(wrapper.text()).toContain('This flight has already been added to another trip and was removed from the list.');
+        expect(fetchMock.mock.calls.length).toBe(calls + 1);
+        expect(wrapper.find('[data-picker-flight="7"]').exists()).toBe(false);
     });
 
     it('searches by route and date', async () => {

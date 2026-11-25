@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Models\Flight;
 use App\Models\Trip;
+use App\Support\StandaloneFlightRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Vuelos existentes en un viaje: sugerir, buscar, asociar y quitar.
@@ -81,24 +84,48 @@ class TripFlightService
     }
 
     /**
-     * Asocia al viaje los vuelos independientes del mismo usuario. Los ids
-     * que no cumplan (ajenos o ya en otro viaje) se ignoran; la validación
-     * de la petición ya los rechaza antes.
+     * Asocia al viaje los vuelos independientes del mismo usuario, todos o
+     * ninguno. La validación de la petición ya los comprueba, pero entre esa
+     * comprobación y el guardado otra petición puede haberse llevado alguno
+     * (otra pestaña, dos envíos a la vez). Por eso aquí se bloquean las filas
+     * (SELECT ... FOR UPDATE) dentro de una transacción y se vuelve a exigir
+     * trip_id IS NULL: la segunda petición espera a la primera, ya no ve el
+     * vuelo disponible y falla con un error por cada id perdido
+     * (flight_ids.N, el índice en la lista recibida). Si se llama dentro de
+     * otra transacción (crear o editar el viaje), esta también se deshace.
      *
      * @param  iterable<int>  $flightIds
      * @return int vuelos asociados
+     *
+     * @throws ValidationException
      */
     public function attach(Trip $trip, iterable $flightIds): int
     {
-        $ids = collect($flightIds)->map(fn ($id) => (int) $id)->unique()->values();
+        $ids = collect($flightIds)->map(fn ($id) => (int) $id)->values();
 
         if ($ids->isEmpty()) {
             return 0;
         }
 
-        return $this->standalone($trip->user_id)
-            ->whereKey($ids->all())
-            ->update(['trip_id' => $trip->id]);
+        return DB::transaction(function () use ($trip, $ids) {
+            $available = Flight::query()
+                ->where('user_id', $trip->user_id)
+                ->whereNull('trip_id')
+                ->whereKey($ids->unique()->all())
+                ->lockForUpdate()
+                ->pluck('id')
+                ->all();
+
+            $missing = $ids->reject(fn ($id) => in_array($id, $available, true));
+
+            if ($missing->isNotEmpty()) {
+                throw ValidationException::withMessages(
+                    $missing->mapWithKeys(fn ($id, $index) => ["flight_ids.{$index}" => StandaloneFlightRules::UNAVAILABLE])->all()
+                );
+            }
+
+            return Flight::query()->whereKey($available)->update(['trip_id' => $trip->id]);
+        });
     }
 
     /**

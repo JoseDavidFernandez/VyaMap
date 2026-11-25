@@ -425,7 +425,7 @@ Más adelante, esta descarga puede sustituirse por un script que, por SSH, se tr
 1. `https://…/login` carga con certificado válido, también con `www`, y `http://` redirige a `https://`.
 2. **Devuelven 404:** `/.env`, `/_ignition/health-check`, `/_inertia/devtools/entries`, `/storage/logs/laravel.log` e `/index.php/../.env`.
 3. Las cabeceras de la sección 4.4 aparecen en `curl -I` y no aparece `X-Powered-By`.
-4. Con un error forzado no se ven trazas ni datos de configuración (`APP_DEBUG=false`).
+4. Con un error forzado no se ven trazas ni datos de configuración (`APP_DEBUG=false`). Un recurso inexistente (`/trips/999999`, también con `curl -H 'Accept: application/json'`) devuelve 404 con «Not Found», sin nombres de clases como `App\Models\Trip`.
 5. Con el registro cerrado, `/register` devuelve 404.
 6. Tu cuenta entra sin pasar por `/email/verify`; Home, Trips y Profile cargan y los mapas se ven.
 7. «Try the demo» entra sin credenciales, muestra la banda de cuenta de solo lectura y no deja crear ni editar nada.

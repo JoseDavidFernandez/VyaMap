@@ -13,6 +13,13 @@ class StandaloneFlightRules
 {
     public const MAX_FLIGHTS = 100;
 
+    /*
+     * Mismo mensaje para un vuelo ajeno, inexistente o ya en otro viaje: no
+     * revela si el id existe. TripFlightService::attach lo repite si otra
+     * petición se lleva el vuelo después de validar.
+     */
+    public const UNAVAILABLE = 'This flight is no longer available: it is already in another trip.';
+
     public static function rules(?int $userId, bool $required = false): array
     {
         return [
@@ -28,7 +35,7 @@ class StandaloneFlightRules
     public static function messages(): array
     {
         return [
-            'flight_ids.*.exists' => 'Choose flights of your own that are not in another trip.',
+            'flight_ids.*.exists' => self::UNAVAILABLE,
         ];
     }
 }
