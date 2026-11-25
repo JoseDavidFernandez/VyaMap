@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Trip;
+use App\Support\StandaloneFlightRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -21,13 +22,19 @@ class UpdateTripRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            // Vuelos independientes sugeridos que el usuario aceptó.
+            ...StandaloneFlightRules::rules($this->user()?->id),
         ];
     }
 
+    public function messages(): array
+    {
+        return StandaloneFlightRules::messages();
+    }
+
     /**
-     * Las nuevas fechas no pueden dejar fuera visitas ni vuelos existentes.
-     * Los vuelos se comparan con su fecha local de salida, el mismo criterio
-     * que se usa al crearlos (la llegada no se limita).
+     * Las nuevas fechas no pueden dejar fuera visitas existentes. Los vuelos
+     * fuera de las fechas no bloquean (D3): la ficha del viaje los avisa.
      */
     public function after(): array
     {
@@ -65,30 +72,12 @@ class UpdateTripRequest extends FormRequest
                         ->orWhereDate('visited_until', '>', $end))
                     ->count();
 
-                // Misma regla que al crear un vuelo (D3): la fecha local de salida
-                // debe quedar dentro del viaje; la llegada no se limita.
-                $flightsOutside = $trip->flights()
-                    ->where(fn ($query) => $query
-                        ->where('departure_date', '<', $start->toDateString())
-                        ->orWhere('departure_date', '>', $end->toDateString()))
-                    ->count();
-
                 if ($visitsOutside > 0) {
                     $validator->errors()->add(
                         'start_date',
                         trans_choice(
                             '{1} One visit falls outside the new dates. Adjust it first.|[2,*] :count visits fall outside the new dates. Adjust them first.',
                             $visitsOutside
-                        )
-                    );
-                }
-
-                if ($flightsOutside > 0) {
-                    $validator->errors()->add(
-                        'end_date',
-                        trans_choice(
-                            '{1} One flight falls outside the new dates. Adjust it first.|[2,*] :count flights fall outside the new dates. Adjust them first.',
-                            $flightsOutside
                         )
                     );
                 }

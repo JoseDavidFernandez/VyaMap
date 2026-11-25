@@ -56,6 +56,8 @@ class DemoAccountTest extends TestCase
         'trips.flights.store' => ['POST', '/trips/{trip}/flights'],
         'trips.flights.update' => ['PUT', '/trips/{trip}/flights/{flight}'],
         'trips.flights.destroy' => ['DELETE', '/trips/{trip}/flights/{flight}'],
+        'trips.flights.attach' => ['POST', '/trips/{trip}/flights/attach'],
+        'trips.flights.detach' => ['POST', '/trips/{trip}/flights/{flight}/detach'],
         'flights.store' => ['POST', '/flights'],
         'flights.update' => ['PUT', '/flights/{standaloneFlight}'],
         'flights.destroy' => ['DELETE', '/flights/{standaloneFlight}'],

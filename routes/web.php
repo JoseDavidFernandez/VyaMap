@@ -16,6 +16,7 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\PhotoFileController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TripController;
+use App\Http\Controllers\TripFlightController;
 use App\Http\Controllers\VisitController;
 use App\Http\Middleware\GuardAuthEndpoints;
 use App\Models\Photo;
@@ -140,7 +141,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::delete('/trips/{trip}/flights/{flight}', [FlightController::class, 'destroy'])
             ->name('trips.flights.destroy');
+
+        // Quitar un vuelo del viaje sin borrarlo (vuelve a ser independiente).
+        Route::post('/trips/{trip}/flights/{flight}/detach', [TripFlightController::class, 'detach'])
+            ->name('trips.flights.detach');
     });
+
+    // Asociar vuelos independientes existentes al viaje.
+    Route::post('/trips/{trip}/flights/attach', [TripFlightController::class, 'attach'])
+        ->name('trips.flights.attach');
+
+    // Vuelos independientes del usuario: sugerencias por fechas y búsqueda.
+    Route::get('/flights/suggestions', [TripFlightController::class, 'suggestions'])
+        ->middleware('throttle:60,1')
+        ->name('flights.suggestions');
+
+    Route::get('/flights/standalone', [TripFlightController::class, 'search'])
+        ->middleware('throttle:60,1')
+        ->name('flights.standalone');
 
     // Vuelos generales (con o sin viaje), gestionados desde Flight History.
     Route::post('/flights', [FlightController::class, 'storeFlight'])

@@ -13,6 +13,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { tripDays as calendarTripDays, tripNights as calendarTripNights } from '../../utils/tripDates';
 import { flightDepartureLabel, flightTimeWithZone } from '../../utils/flightTime';
 import FlightForm from '../../components/flights/FlightForm.vue';
+import TripFlightPicker from '../../components/trips/TripFlightPicker.vue';
 import type { FlightRecord as Flight } from '../../types/flights';
 import { countCountries, type CountryStatus } from '../../utils/countryStatus';
 
@@ -88,7 +89,8 @@ interface GoogleMapList {
 const props = defineProps<{
     trip: Trip;
     visits: Visit[];
-    flights: Flight[];
+    // outside_trip_dates: salida fuera de las fechas del viaje (aviso, no bloqueo: D3).
+    flights: (Flight & { outside_trip_dates: boolean })[];
     photos: Photo[];
     processing_photos_count: number;
     google_map_lists: GoogleMapList[];
@@ -349,6 +351,7 @@ const editingFlight = ref<Flight | null>(null);
 const flightFormKey = ref(0);
 
 const openFlightForm = (flight: Flight | null = null) => {
+    showFlightPicker.value = false;
     editingFlight.value = flight;
     flightFormKey.value += 1;
     showFlightForm.value = true;
@@ -357,6 +360,29 @@ const openFlightForm = (flight: Flight | null = null) => {
 const closeFlightForm = () => {
     showFlightForm.value = false;
     editingFlight.value = null;
+};
+
+// Vuelos independientes existentes: sugerencias y búsqueda (TripFlightPicker).
+const showFlightPicker = ref(false);
+
+const openFlightPicker = () => {
+    closeFlightForm();
+    showFlightPicker.value = true;
+};
+
+// Quitar del viaje no borra el vuelo: vuelve a ser independiente.
+const detachFlight = (flight: Flight) => {
+    const confirmed = window.confirm(
+        `Remove the flight ${flight.origin.code ?? flight.origin.city} → ${flight.destination.code ?? flight.destination.city}${flight.flight_number ? ` (${flight.flight_number})` : ''} from this trip? The flight is kept in Flight History.`,
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    router.post(`/trips/${props.trip.id}/flights/${flight.id}/detach`, {}, {
+        preserveScroll: true,
+    });
 };
 
 /*
@@ -1163,19 +1189,42 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                 <div class="vyamap-panel">
                     <div class="vyamap-panel-header">
                         <h2 class="vyamap-h2">Flights</h2>
-                        <button
-                            v-if="!readOnly && !showFlightForm"
-                            type="button"
-                            class="vyamap-button-secondary vyamap-button-sm"
-                            @click="openFlightForm()"
-                        >
-                            <Icon name="plus" :size="16" />
-                            Add flight
-                        </button>
+                        <div v-if="!readOnly && !showFlightForm && !showFlightPicker" class="flex flex-wrap gap-1">
+                            <button
+                                type="button"
+                                class="vyamap-button-ghost vyamap-button-sm"
+                                data-add-existing-flight
+                                @click="openFlightPicker()"
+                            >
+                                <Icon name="search" :size="16" />
+                                Add existing flight
+                            </button>
+                            <button
+                                type="button"
+                                class="vyamap-button-secondary vyamap-button-sm"
+                                @click="openFlightForm()"
+                            >
+                                <Icon name="plus" :size="16" />
+                                Add flight
+                            </button>
+                        </div>
                     </div>
 
                     <div v-if="flights.length" class="vyamap-map-card mb-4 h-[240px] !rounded-[var(--vyamap-radius-lg)] sm:h-[280px]">
                         <TripFlightMap :flights="flights" />
+                    </div>
+
+                    <!-- VUELOS EXISTENTES SIN VIAJE -->
+                    <div
+                        v-if="!readOnly && showFlightPicker"
+                        class="mb-4 rounded-[var(--vyamap-radius-lg)] border border-[rgba(34,211,238,0.3)] bg-[var(--vyamap-surface-muted)] p-4 sm:p-5"
+                    >
+                        <TripFlightPicker
+                            :trip-id="trip.id"
+                            :start-date="trip.start_date"
+                            :end-date="trip.end_date"
+                            @close="showFlightPicker = false"
+                        />
                     </div>
 
                     <!-- FORMULARIO DE VUELO (componente compartido con Flight History) -->
@@ -1189,6 +1238,7 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                             :flight="editingFlight"
                             :trip-id="trip.id"
                             :default-date="trip.start_date"
+                            :trip-dates="{ start_date: trip.start_date, end_date: trip.end_date }"
                             @close="closeFlightForm"
                         />
                     </div>
@@ -1200,8 +1250,13 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                                     <span class="vyamap-code text-sm">{{ flight.flight_number || 'Flight' }}</span>
                                     <span v-if="flight.airline" class="text-[0.8125rem] text-[var(--vyamap-text-muted)]">{{ flight.airline }}</span>
                                 </span>
-                                <span v-if="flight.status !== 'flown'" class="vyamap-badge" :class="flightStatusBadge[flight.status]">
-                                    {{ flightStatusLabel[flight.status] }}
+                                <span class="flex flex-wrap gap-1.5">
+                                    <span v-if="flight.outside_trip_dates" class="vyamap-badge vyamap-badge-amber" data-outside-trip-dates>
+                                        Outside trip dates
+                                    </span>
+                                    <span v-if="flight.status !== 'flown'" class="vyamap-badge" :class="flightStatusBadge[flight.status]">
+                                        {{ flightStatusLabel[flight.status] }}
+                                    </span>
                                 </span>
                             </div>
 
@@ -1227,6 +1282,9 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                                         <Icon name="edit" :size="16" />
                                         Edit
                                     </button>
+                                    <button type="button" class="vyamap-button-ghost vyamap-button-sm" data-detach-flight @click="detachFlight(flight)">
+                                        Remove from trip
+                                    </button>
                                     <button type="button" class="vyamap-button-ghost vyamap-button-sm hover:!text-[var(--vyamap-danger)]" @click="deleteFlight(flight)">
                                         <Icon name="trash" :size="16" />
                                         Delete
@@ -1237,13 +1295,17 @@ const showPhotosPanel = computed(() => uploadsEnabled || props.photos.length > 0
                     </ul>
 
                     <EmptyState
-                        v-else-if="!showFlightForm"
+                        v-else-if="!showFlightForm && !showFlightPicker"
                         compact
                         icon="flight"
                         title="No flights yet"
                         text="Add the flights of this trip to see their routes and distance."
                     >
                         <template v-if="!readOnly" #actions>
+                            <button type="button" class="vyamap-button-ghost vyamap-button-sm" @click="openFlightPicker()">
+                                <Icon name="search" :size="16" />
+                                Add existing flight
+                            </button>
                             <button type="button" class="vyamap-button-secondary vyamap-button-sm" @click="openFlightForm()">
                                 <Icon name="plus" :size="16" />
                                 Add flight

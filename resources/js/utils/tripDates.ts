@@ -53,3 +53,20 @@ export const touchesYear = (start: string | null | undefined, end: string | null
 
     return from !== null && until !== null && from <= year && year <= until;
 };
+
+/*
+ * Una fecha YYYY-MM-DD fuera de [inicio, fin], ambos incluidos. Se usa para
+ * avisar de un vuelo fuera de las fechas de su viaje (no se bloquea: D3).
+ * Sin fechas completas no hay aviso.
+ */
+export const isOutsideDates = (date: string | null | undefined, start: string | null | undefined, end: string | null | undefined): boolean => {
+    const day = toUtcDay(date);
+    const from = toUtcDay(start);
+    const until = toUtcDay(end);
+
+    if (day === null || from === null || until === null) {
+        return false;
+    }
+
+    return day < from || day > until;
+};

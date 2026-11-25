@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\StandaloneFlightRules;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTripRequest extends FormRequest
@@ -18,6 +19,13 @@ class StoreTripRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            // Vuelos independientes sugeridos que el usuario aceptó.
+            ...StandaloneFlightRules::rules($this->user()?->id),
         ];
+    }
+
+    public function messages(): array
+    {
+        return StandaloneFlightRules::messages();
     }
 }

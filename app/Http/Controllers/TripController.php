@@ -9,6 +9,7 @@ use App\Models\Flight;
 use App\Models\GoogleMapList;
 use App\Models\Trip;
 use App\Services\PhotoFileManager;
+use App\Services\TripFlightService;
 use App\Services\TravelStatistics;
 use App\Support\FlightPresenter;
 use Illuminate\Http\RedirectResponse;
@@ -20,15 +21,22 @@ use Inertia\Response;
 
 class TripController extends Controller
 {
-    public function store(StoreTripRequest $request)
+    // Los vuelos sugeridos que el usuario aceptó se asocian en la misma transacción.
+    public function store(StoreTripRequest $request, TripFlightService $flights)
     {
-        $trip = Trip::create([
-            'user_id' => $request->user()->id,
-            'name' => $request->validated('name'),
-            'description' => $request->validated('description'),
-            'start_date' => $request->validated('start_date'),
-            'end_date' => $request->validated('end_date'),
-        ]);
+        $trip = DB::transaction(function () use ($request, $flights) {
+            $trip = Trip::create([
+                'user_id' => $request->user()->id,
+                'name' => $request->validated('name'),
+                'description' => $request->validated('description'),
+                'start_date' => $request->validated('start_date'),
+                'end_date' => $request->validated('end_date'),
+            ]);
+
+            $flights->attach($trip, $request->validated('flight_ids') ?? []);
+
+            return $trip;
+        });
 
         return redirect()->route('trips.show', $trip);
     }
@@ -54,39 +62,21 @@ class TripController extends Controller
 
     public function update(
         UpdateTripRequest $request,
-        Trip $trip
+        Trip $trip,
+        TripFlightService $flights
     ) {
-        $trip->update([
-            'name' => $request->validated('name'),
-            'description' => $request->validated('description'),
-            'start_date' => $request->validated('start_date'),
-            'end_date' => $request->validated('end_date'),
-        ]);
+        DB::transaction(function () use ($request, $trip, $flights) {
+            $trip->update([
+                'name' => $request->validated('name'),
+                'description' => $request->validated('description'),
+                'start_date' => $request->validated('start_date'),
+                'end_date' => $request->validated('end_date'),
+            ]);
+
+            $flights->attach($trip, $request->validated('flight_ids') ?? []);
+        });
 
         return redirect()->route('trips.show', $trip);
-    }
-
-    /**
-     * Antes de borrar un viaje, sus vuelos pasan a ser independientes. Los que
-     * ya contaban como realizados (viaje no cancelado) quedan confirmados para
-     * no volver a "pendientes"; los de un viaje cancelado no se confirman.
-     */
-    private function keepFlightsAsStandalone(Trip $trip): void
-    {
-        if ($trip->status !== Trip::CANCELLED) {
-            $now = now();
-            $today = Trip::today();
-
-            $trip->flights()
-                ->with('originAirport')
-                ->whereNull('confirmed_at')
-                ->get()
-                ->each(fn (Flight $flight) => $flight->setRelation('trip', $trip))
-                ->filter(fn (Flight $flight) => $flight->status($now, $today) === Flight::FLOWN)
-                ->each(fn (Flight $flight) => $flight->update(['confirmed_at' => $now]));
-        }
-
-        $trip->flights()->update(['trip_id' => null]);
     }
 
     public function updateStatus(UpdateTripStatusRequest $request, Trip $trip)
@@ -96,18 +86,19 @@ class TripController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, Trip $trip, PhotoFileManager $files)
+    public function destroy(Request $request, Trip $trip, PhotoFileManager $files, TripFlightService $flights)
     {
         $this->authorize('delete', $trip);
 
         $photoIds = $trip->photos()->pluck('id');
 
         // Las fotos y visitas se borran en cascada en la base de datos; los
-        // vuelos se conservan como independientes (D2). Los archivos se
-        // eliminan después: si el almacenamiento falla, quedan huérfanos, pero
-        // ningún registro apunta a archivos inexistentes.
-        DB::transaction(function () use ($trip) {
-            $this->keepFlightsAsStandalone($trip);
+        // vuelos se conservan como independientes (D2): los que ya contaban
+        // como realizados quedan confirmados (TripFlightService::detachAll).
+        // Los archivos se eliminan después: si el almacenamiento falla, quedan
+        // huérfanos, pero ningún registro apunta a archivos inexistentes.
+        DB::transaction(function () use ($trip, $flights) {
+            $flights->detachAll($trip);
 
             $trip->delete();
         });
@@ -119,7 +110,7 @@ class TripController extends Controller
         return redirect()->route('trips.index');
     }
 
-    public function show(Request $request, Trip $trip): Response|RedirectResponse
+    public function show(Request $request, Trip $trip, TripFlightService $tripFlights): Response|RedirectResponse
     {
         $this->authorize('view', $trip);
 
@@ -174,11 +165,15 @@ class TripController extends Controller
             ]),
 
             // Misma forma y mismo estado que en Flight History (FlightPresenter).
+            // Un vuelo fuera de las fechas del viaje se avisa, no se bloquea (D3).
             'flights' => Flight::withStatuses(
                 $trip->flights->each(fn (Flight $flight) => $flight->setRelation('trip', $trip)),
                 $now,
                 $today,
-            )->map(fn (Flight $flight) => FlightPresenter::toArray($flight))->values(),
+            )->map(fn (Flight $flight) => [
+                ...FlightPresenter::toArray($flight),
+                'outside_trip_dates' => $tripFlights->isOutsideTrip($flight, $trip),
+            ])->values(),
 
             'photos' => $trip->photos->map(fn ($photo) => [
                 'id' => $photo->id,

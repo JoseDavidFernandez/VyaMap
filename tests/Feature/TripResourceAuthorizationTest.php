@@ -145,13 +145,14 @@ class TripResourceAuthorizationTest extends TestCase
             ->assertJsonValidationErrors(['visited_from']);
     }
 
-    public function test_owner_still_receives_date_validation_errors_for_flights(): void
+    public function test_owner_can_save_a_flight_outside_the_trip_dates(): void
     {
+        // D3: fuera de las fechas del viaje se avisa, no se bloquea.
         $this->actingAs($this->owner)
             ->postJson("/trips/{$this->trip->id}/flights", $this->invalidFlightPayload())
-            ->assertUnprocessable()
-            // F1: la fecha local de salida es la que debe caer dentro del viaje.
-            ->assertJsonValidationErrors(['departure_date']);
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('flights', ['flight_number' => 'VY9999', 'trip_id' => $this->trip->id]);
     }
 
     public function test_owner_can_update_and_delete_their_flight(): void

@@ -41,6 +41,8 @@ Es un proyecto en desarrollo y de uso personal. La arquitectura y sus decisiones
   - fecha local de salida obligatoria; horas en formato de 24 horas, número de vuelo y aerolínea opcionales;
   - horas interpretadas en la zona horaria de cada aeropuerto y guardadas en UTC;
   - estado deducido (próximo, realizado, pendiente de confirmar o cancelado) y confirmación manual;
+  - al crear o editar un viaje se sugieren los vuelos independientes de esas fechas (con un día de margen), que se aceptan o descartan; desde la ficha del viaje se puede buscar y añadir un vuelo existente o quitarlo sin borrarlo;
+  - un vuelo fuera de las fechas de su viaje se avisa, no se bloquea;
   - al borrar un viaje, sus vuelos se conservan como independientes.
 - **Flight History**: lista, mapa de rutas con arcos de círculo máximo, filtros y gestión de vuelos.
 - **Países**: listado y detalle, distinguiendo Estados soberanos (porcentaje sobre los 193 miembros de la ONU) y territorios.

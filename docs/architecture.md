@@ -328,7 +328,16 @@ Un vuelo con conexiones se representa mediante múltiples registros Flight, uno 
 - `departure_at` / `arrival_at`: instantes en UTC, opcionales. El formulario recoge las horas locales de cada aeropuerto en formato de 24 horas (`HH:MM`) y `FlightRequest` las convierte con la zona horaria del aeropuerto. Una hora que no existe por el cambio de horario se rechaza.
 - La hora de llegada solo se admite junto con la de salida; la llegada puede caer entre un día antes y dos días después de la fecha de salida.
 - `flight_number` y `airline` son opcionales.
-- `trip_id` es opcional. Si el vuelo pertenece a un viaje, su fecha local de salida debe estar entre las fechas del viaje, ambas incluidas.
+- `trip_id` es opcional. Un vuelo solo puede estar en un viaje. Si su fecha local de salida cae fuera de las fechas del viaje, se avisa pero no se bloquea (D3), ni al crearlo o editarlo, ni al asociarlo, ni al cambiar las fechas del viaje: la ficha del viaje lo marca como «Outside trip dates» y el formulario lo avisa antes de guardar.
+
+### Vuelos existentes en un viaje
+
+`App\Services\TripFlightService`, con las rutas de `TripFlightController`:
+
+- **Sugerencias** (`GET /flights/suggestions`): al crear o editar un viaje se ofrecen los vuelos independientes del usuario cuya fecha local de salida cae entre el inicio menos un día y el fin más un día (vuelo de ida la víspera, husos horarios). Cada sugerencia se acepta o se descarta, una a una o todas a la vez; las aceptadas se envían con el formulario (`flight_ids`) y se asocian en la misma transacción. Las descartadas no se guardan y pueden volver a salir.
+- **Búsqueda** (`GET /flights/standalone`): por fecha local de salida y por texto (código IATA o ICAO, ciudad de origen o destino, número de vuelo). Dos términos («MAD LIS») buscan la ruta con su sentido.
+- **Asociar** (`POST /trips/{trip}/flights/attach`) y **quitar** (`POST /trips/{trip}/flights/{flight}/detach`). Quitar no borra el vuelo: vuelve a ser independiente y, si ya contaba como realizado por su viaje, queda confirmado (`confirmed_at`), con la misma regla que al borrar el viaje.
+- Solo se ofrecen y aceptan vuelos independientes propios (`StandaloneFlightRules`), y solo en viajes propios (`TripPolicy`, `FlightPolicy`). La cuenta demo no ve los botones y `DemoReadOnly` rechaza las escrituras.
 - `confirmed_at`: confirmación explícita de que el vuelo se realizó.
 
 ### Estado de un vuelo
@@ -687,7 +696,7 @@ Comportamientos de eliminación:
 
 - User → Trips / Visits / Flights / Photos: CASCADE
 - Trip → Visits / Photos / Journal / listas de Google Maps (tabla pivote): CASCADE
-- Trip → Flights: SET NULL. Al borrar un viaje, `TripController@destroy` conserva sus vuelos como independientes en una transacción; si el viaje no estaba cancelado, los vuelos que ya contaban como realizados quedan confirmados (`confirmed_at`).
+- Trip → Flights: SET NULL. Al borrar un viaje, `TripController@destroy` conserva sus vuelos como independientes en una transacción (`TripFlightService::detachAll`); si el viaje no estaba cancelado, los vuelos que ya contaban como realizados quedan confirmados (`confirmed_at`).
 - Journal → JournalDays: CASCADE
 - JournalDay → JournalEntries: CASCADE
 - JournalEntry → Photos: SET NULL

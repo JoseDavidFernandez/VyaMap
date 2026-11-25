@@ -236,19 +236,26 @@ class TripFlowTest extends TestCase
             );
     }
 
-    public function test_flight_dates_are_checked_against_the_trip_in_local_airport_time(): void
+    public function test_flight_dates_are_compared_with_the_trip_in_local_airport_time(): void
     {
         // 23:30 en Madrid el último día del viaje (21:30 UTC): dentro del viaje.
         $this->actingAs($this->owner)
             ->postJson("/trips/{$this->trip->id}/flights", $this->flightPayload('VY1', '2026-09-12T22:00', '2026-09-12T23:30'))
             ->assertRedirect();
 
-        // 00:30 en Madrid del día siguiente (22:30 UTC del último día): fuera del viaje.
+        // 00:30 en Madrid del día siguiente (22:30 UTC del último día): fuera del
+        // viaje por la fecha local de salida. Se guarda y se avisa (D3).
         $this->actingAs($this->owner)
             ->postJson("/trips/{$this->trip->id}/flights", $this->flightPayload('VY2', '2026-09-13T00:30', '2026-09-13T01:40'))
-            ->assertUnprocessable()
-            // F1: la regla se aplica a la fecha local de salida.
-            ->assertJsonValidationErrors(['departure_date']);
+            ->assertRedirect();
+
+        $this->actingAs($this->owner)
+            ->get("/trips/{$this->trip->getRouteKey()}")
+            ->assertInertia(fn ($page) => $page
+                ->where('flights.0.flight_number', 'VY1')
+                ->where('flights.0.outside_trip_dates', false)
+                ->where('flights.1.flight_number', 'VY2')
+                ->where('flights.1.outside_trip_dates', true));
     }
 
     public function test_flight_crossing_the_date_line_is_valid_when_it_arrives_after_departing_in_real_time(): void

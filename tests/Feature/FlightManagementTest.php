@@ -228,7 +228,7 @@ class FlightManagementTest extends TestCase
             ->assertSessionHasErrors('departure_time');
     }
 
-    public function test_the_trip_must_be_own_and_contain_the_local_departure_date(): void
+    public function test_the_trip_must_be_own_and_a_date_outside_it_is_only_a_warning(): void
     {
         $foreign = Trip::create(['user_id' => User::factory()->create()->id, 'name' => 'Foreign', 'start_date' => '2026-03-01', 'end_date' => '2026-03-31']);
         $own = $this->trip('2026-03-01', '2026-03-10');
@@ -237,17 +237,18 @@ class FlightManagementTest extends TestCase
         $this->actingAs($this->user)->post('/flights', $base + ['departure_date' => '2026-03-05', 'trip_id' => $foreign->id])
             ->assertSessionHasErrors(['trip_id' => 'Choose one of your trips.']);
 
+        // D3: una salida fuera de las fechas del viaje no se bloquea (la ficha la avisa).
         $this->actingAs($this->user)->post('/flights', $base + ['departure_date' => '2026-03-11', 'trip_id' => $own->id])
-            ->assertSessionHasErrors('departure_date');
+            ->assertSessionHasNoErrors();
 
-        // D3: el último día del viaje vale, aunque llegue al día siguiente.
+        // El último día del viaje vale, aunque llegue al día siguiente.
         $this->actingAs($this->user)->post('/flights', $base + [
             'departure_date' => '2026-03-10', 'departure_time' => '22:00',
             'arrival_date' => '2026-03-11', 'arrival_time' => '11:00',
             'trip_id' => $own->id,
         ])->assertSessionHasNoErrors();
 
-        $this->assertSame([$own->id], Flight::pluck('trip_id')->all());
+        $this->assertSame([$own->id, $own->id], Flight::pluck('trip_id')->all());
     }
 
     /*

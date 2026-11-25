@@ -17,7 +17,7 @@ Leyenda: **Completado** (implementado y con pruebas) · **En curso** (implementa
 | — | — | Corrección del formulario de horas | Completado |
 | F3 | P1 | Estadísticas | Completado (15-10-2026; commits `1f8b079` y `237a3a4`) |
 | F4 | P2 | Reorganización de páginas | En curso: estadísticas conectadas; falta la reorganización |
-| F5 | P2 | Sugerencias | Pendiente |
+| F5 | P2 | Sugerencias | En curso: vuelos independientes en un viaje (sugerencias, búsqueda, asociar y quitar) |
 | F6 | P3 | Estacionalidad, repeticiones, CSV, «repetir ruta» y sugerencia de aerolínea | Pendiente |
 | Bloque B | — | Catálogo de aerolíneas | Aplazado |
 | — | — | Lugares de interés en el itinerario | Fuera de V1 (posible estudio en V2) |
@@ -123,7 +123,7 @@ Algunas piezas ya existen por F0 y F1 (por ejemplo, las acciones de estado de la
 ### F5 — Sugerencias (P2)
 
 - Sugerir la visita de cada foto: la fecha de la foto cae dentro de la visita y su GPS está cerca de la ciudad. Siempre con confirmación, nunca automático; las coordenadas solo se comparan en el servidor.
-- Sugerir el viaje para un vuelo independiente cuyas fechas caen dentro de un viaje.
+- ~~Sugerir el viaje para un vuelo independiente cuyas fechas caen dentro de un viaje.~~ Hecho al revés, desde el viaje: al crearlo o editarlo se sugieren los vuelos independientes de sus fechas (±1 día), y la ficha permite buscar, asociar y quitar vuelos existentes (`TripFlightService`, [`architecture.md`](architecture.md) §9). La regla D3 (salida dentro de las fechas del viaje) pasa de bloqueo a aviso.
 - «Añadir visita a [destino]» después de un vuelo, con fechas sugeridas.
 
 ### F6 — Carga y análisis (P3)

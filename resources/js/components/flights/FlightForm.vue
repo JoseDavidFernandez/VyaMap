@@ -4,6 +4,7 @@ import { computed, reactive, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AirportSelect from './AirportSelect.vue';
 import { flightTime, normalizeTimeInput } from '../../utils/flightTime';
+import { isOutsideDates } from '../../utils/tripDates';
 import type { FlightAirport, FlightRecord, TripOption } from '../../types/flights';
 
 /*
@@ -13,8 +14,11 @@ import type { FlightAirport, FlightRecord, TripOption } from '../../types/flight
  * número de vuelo, aerolínea y viaje. Nunca se rellenan horas ni números:
  * "vuelta" y "conexión" solo reutilizan aeropuertos, viaje y fechas.
  *
- * - tripId: ficha del viaje (rutas /trips/{trip}/flights; el viaje es fijo).
+ * - tripId: ficha del viaje (rutas /trips/{trip}/flights; el viaje es fijo),
+ *   con tripDates para avisar de una salida fuera de sus fechas.
  * - trips: Flight History (rutas /flights; viaje opcional).
+ *
+ * Una salida fuera de las fechas del viaje se avisa, no se bloquea (D3).
  */
 
 const props = defineProps<{
@@ -22,6 +26,7 @@ const props = defineProps<{
     tripId?: number | null;
     trips?: TripOption[];
     defaultDate?: string | null;
+    tripDates?: { start_date: string | null; end_date: string | null } | null;
 }>();
 
 const emit = defineEmits<{
@@ -206,6 +211,18 @@ const afterSave = () => {
 
 const selectableTrips = computed(() => props.trips ?? []);
 
+// Viaje elegido (fijo o del selector) y aviso si la salida cae fuera de sus fechas.
+const chosenTripDates = computed(() =>
+    props.tripId
+        ? props.tripDates ?? null
+        : selectableTrips.value.find((trip) => trip.id === form.trip_id) ?? null,
+);
+
+const outsideTripDates = computed(() =>
+    chosenTripDates.value !== null
+    && isOutsideDates(form.departure_date, chosenTripDates.value.start_date, chosenTripDates.value.end_date),
+);
+
 // arrival_date se calcula al enviar (no es un campo del formulario), pero el servidor puede rechazarla.
 const arrivalDateError = computed(() => (form.errors as Record<string, string | undefined>).arrival_date);
 </script>
@@ -252,6 +269,9 @@ const arrivalDateError = computed(() => (form.errors as Record<string, string | 
                 <input id="flight-date" v-model="form.departure_date" type="date" class="vyamap-input" required />
                 <p class="vyamap-help">Local date at the origin airport.</p>
                 <p v-if="form.errors.departure_date" class="vyamap-error">{{ form.errors.departure_date }}</p>
+                <p v-else-if="outsideTripDates" class="mt-1.5 text-[0.8125rem] text-[var(--vyamap-warning)]" data-outside-warning>
+                    Outside the trip dates. You can still save it.
+                </p>
             </div>
 
             <div>

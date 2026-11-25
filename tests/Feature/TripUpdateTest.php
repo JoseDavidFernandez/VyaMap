@@ -63,7 +63,7 @@ class TripUpdateTest extends TestCase
         $this->assertSame('2026-09-10', $this->trip->fresh()->start_date->format('Y-m-d'));
     }
 
-    public function test_new_dates_cannot_leave_flights_outside_the_trip(): void
+    public function test_new_dates_can_leave_flights_outside_the_trip(): void
     {
         $tokyo = Airport::create([
             'city_id' => $this->city->id,
@@ -90,15 +90,25 @@ class TripUpdateTest extends TestCase
             'arrival_at' => '2026-09-19 12:10:00',
         ]);
 
+        // D3: el vuelo queda fuera de las fechas y la ficha lo avisa, sin bloquear.
         $this->actingAs($this->user)
             ->putJson("/trips/{$this->trip->id}", $this->payload('2026-09-10', '2026-09-18'))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['end_date']);
+            ->assertRedirect();
 
-        // El mismo día local sí es válido.
+        $this->assertSame('2026-09-18', $this->trip->fresh()->end_date->format('Y-m-d'));
+
+        $this->actingAs($this->user)
+            ->get("/trips/{$this->trip->fresh()->getRouteKey()}")
+            ->assertInertia(fn ($page) => $page->where('flights.0.outside_trip_dates', true));
+
+        // El mismo día local de salida está dentro.
         $this->actingAs($this->user)
             ->putJson("/trips/{$this->trip->id}", $this->payload('2026-09-10', '2026-09-19'))
             ->assertRedirect();
+
+        $this->actingAs($this->user)
+            ->get("/trips/{$this->trip->fresh()->getRouteKey()}")
+            ->assertInertia(fn ($page) => $page->where('flights.0.outside_trip_dates', false));
     }
 
     public function test_other_user_cannot_update_the_trip(): void

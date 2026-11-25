@@ -95,9 +95,14 @@ Leyenda del resultado: ✅ esperado · ⚠️ caso límite.
 | F9 | ⚠️ Horas inválidas | `24:00`, `12:60`, `7:3`, `730` | ✅ Aviso «Use the 24-hour format HH:MM…»; ningún botón guarda. |
 | F10 | Llegada sin salida | Solo la hora de llegada | ✅ Aviso, y al guardar, error en la llegada. |
 | F11 | ⚠️ Hora inexistente por el cambio de horario | MAD, 29-03-2026 a las 02:30 | ✅ Error: esa hora no existe en Madrid. |
-| F12 | ⚠️ Vuelo fuera de las fechas del viaje | Vuelo del viaje V1 el 06-05-2024 | ✅ Error en la fecha de salida. |
+| F12 | ⚠️ Vuelo fuera de las fechas del viaje | Vuelo del viaje V1 el 06-05-2024 | ✅ Aviso «Outside the trip dates» en el formulario, pero se guarda. En la ficha del viaje aparece con la etiqueta **Outside trip dates**. |
 | F13 | Cambiar la salida varias veces | Editar F2 cambiando la salida tres veces | ✅ La llegada y su «+1 day» no cambian. |
 | F14 | Origen igual a destino | MAD → MAD | ✅ Error. |
+| F16 | Sugerencias al crear un viaje | Vuelos sueltos MAD → LIS el 30-04-2024 y LIS → MAD el 06-05-2024; crear «Lisboa» 01-05-2024 → 05-05-2024 | ✅ Bajo las fechas aparecen los dos vuelos («Flights without a trip»), con aviso de fuera de fechas. «Accept» en uno y «Dismiss» en el otro: al crear, solo el aceptado está en el viaje. Al editar el viaje, el descartado vuelve a sugerirse. |
+| F17 | ⚠️ Margen de un día | Vuelo suelto el 28-04-2024 para el viaje anterior | ✅ No se sugiere (dos días antes). Sí se encuentra con «Add existing flight» buscando la fecha o «MAD LIS». |
+| F18 | Añadir un vuelo existente desde la ficha | «Add existing flight» en la ficha del viaje | ✅ Sin búsqueda muestra las sugerencias; con texto o fecha, busca entre los vuelos sueltos. «Add to trip» lo asocia. Los vuelos que ya están en otro viaje no aparecen. |
+| F19 | Quitar un vuelo del viaje | «Remove from trip» en un vuelo de un viaje completado | ✅ Desaparece del viaje, sigue en Flight History como independiente y **confirmado** (sigue contando). |
+| F20 | Demo | Ficha de un viaje con la cuenta demo | ✅ Sin «Add existing flight», «Add flight», «Remove from trip» ni «Delete». |
 | F15 | Vuelo en un viaje cancelado | Cancelar el viaje de F1 | ✅ El vuelo **no aparece** en Home, Flight History ni Passport y deja de contar en las cifras (intencionado: test «a past flight of a cancelled trip appears nowhere»). Solo se sigue viendo en la ficha de su viaje, marcado como cancelado y en gris en el mapa. |
 
 ## P2 — Estadísticas (comprobar tras cada cambio)

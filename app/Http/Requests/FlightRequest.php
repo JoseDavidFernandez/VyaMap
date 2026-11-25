@@ -21,8 +21,8 @@ use Illuminate\Validation\Validator;
  * - La hora de llegada solo se admite con hora de salida (D4).
  * - Las horas se interpretan en la zona del aeropuerto correspondiente; una
  *   hora inexistente por el cambio de horario se rechaza.
- * - Con viaje, la fecha local de salida debe estar dentro de sus fechas,
- *   ambas incluidas; la llegada no se limita (D3).
+ * - Con viaje, la fecha local de salida fuera de sus fechas no se bloquea:
+ *   la ficha del viaje lo avisa (D3; ver TripFlightService).
  */
 class FlightRequest extends FormRequest
 {
@@ -86,7 +86,6 @@ class FlightRequest extends FormRequest
                 }
 
                 $this->validateTimes($validator);
-                $this->validateTripDates($validator);
             },
         ];
     }
@@ -184,24 +183,6 @@ class FlightRequest extends FormRequest
 
         if ($this->arrivalInstant->lessThanOrEqualTo($this->departureInstant)) {
             $validator->errors()->add('arrival_time', 'The arrival must occur after the departure in real time.');
-        }
-    }
-
-    private function validateTripDates(Validator $validator): void
-    {
-        $trip = $this->trip();
-
-        if ($trip === null || $validator->errors()->isNotEmpty()) {
-            return;
-        }
-
-        $date = $this->input('departure_date');
-
-        if ($date < $trip->start_date->toDateString() || $date > $trip->end_date->toDateString()) {
-            $validator->errors()->add(
-                'departure_date',
-                "The local departure date must be within the trip ({$trip->start_date->toDateString()} – {$trip->end_date->toDateString()})."
-            );
         }
     }
 
